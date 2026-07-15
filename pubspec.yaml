@@ -1,0 +1,56 @@
+name: gp_fantasy_advisor
+description: "GP Fantasy Advisor — asesor no oficial para F1 Fantasy."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # Estado
+  flutter_riverpod: ^2.5.1
+
+  # Red
+  dio: ^5.4.3+1
+
+  # Persistencia local
+  drift: ^2.16.0
+  sqlite3_flutter_libs: ^0.5.20
+  path_provider: ^2.1.3
+  path: ^1.9.0
+
+  # Secretos (token de sesión F1 Fantasy)
+  flutter_secure_storage: ^9.2.2
+
+  # UI
+  fl_chart: ^0.68.0
+  intl: ^0.19.0
+  google_fonts: ^6.2.1 # Syne / DM Sans / JetBrains Mono (diseño de la referencia)
+
+  # Preferencias (pesos del modelo elegidos por el usuario)
+  shared_preferences: ^2.2.3
+
+  # Login Plan B (WebView de respaldo)
+  webview_flutter: ^4.8.0
+
+  # Concurrencia: se usa Isolate.run (nativo de Dart 3, sin dependencia extra)
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.9
+  drift_dev: ^2.16.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/scoring_2026.json
+    - assets/model_weights.json
+    - assets/remote_config_fallback.json
+    - assets/driver_standings_2026.json
+    - assets/constructor_standings_2026.json

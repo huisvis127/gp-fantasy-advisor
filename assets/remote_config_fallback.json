@@ -1,0 +1,18 @@
+{
+  "_comment": "Copia local de respaldo del JSON de config remota (sección 3, notas de implementación). El fichero real vive en GitHub Pages del repo; la app intenta descargarlo y si falla usa este fallback embebido.",
+  "config_version": 1,
+  "endpoints": {
+    "jolpica_base": "https://api.jolpi.ca/ergast/f1",
+    "openf1_base": "https://api.openf1.org/v1",
+    "fantasy_public_base": "https://fantasy.formula1.com",
+    "fantasy_login_base": "https://api.formula1.com"
+  },
+  "rate_limits": {
+    "jolpica_requests_per_hour": 500,
+    "max_requests_per_user_session": 20
+  },
+  "feature_flags": {
+    "login_plan_a_enabled": true,
+    "login_plan_b_webview_enabled": true
+  }
+}
