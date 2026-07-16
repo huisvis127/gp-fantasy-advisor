@@ -195,11 +195,28 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
 
   Widget _leagueCard(Map<String, dynamic> league) {
     final id = _first(league, const ['league_id', 'leagueid', 'id']);
-    final name = _first(league,
+    final rawName = _first(league,
             const ['league_name', 'leaguename', 'name', 'display_name']) ??
         'Liga';
-    final count =
-        _first(league, const ['entry_count', 'entryCount', 'members_count']);
+    final name = _decodeDisplayText(rawName.toString());
+    var count = _first(league,
+        const ['entry_count', 'entryCount', 'members_count', 'memebercount']);
+    final cachedLeaderboards = _snapshot?['leaderboards'];
+    final cached = cachedLeaderboards is Map && id != null
+        ? cachedLeaderboards[id.toString()]
+        : null;
+    if (cached is Map) {
+      final capturedRows = _extractList(cached, const {
+        'leaderboards',
+        'leaderboard',
+        'entries',
+        'results',
+        'member',
+        'details',
+        'value',
+      });
+      if (capturedRows.isNotEmpty) count = capturedRows.length;
+    }
     final rank = _first(league, const ['rank', 'position', 'overall_rank']);
     return RefCard(
       padding: EdgeInsets.zero,
@@ -340,22 +357,31 @@ class _LeaderboardSheet extends StatelessWidget {
                     separatorBuilder: (_, __) => const SizedBox(height: 7),
                     itemBuilder: (_, index) {
                       final row = rows[index];
-                      final rank = _first(row,
-                              const ['rank', 'position', 'overall_rank']) ??
+                      final rank = _first(row, const [
+                            'rank',
+                            'position',
+                            'overall_rank',
+                            'userrank'
+                          ]) ??
                           index + 1;
-                      final name = _first(row, const [
+                      final rawName = _first(row, const [
                             'team_name',
                             'entry_name',
                             'display_name',
                             'name',
-                            'user_name'
+                            'user_name',
+                            'teamname',
+                            'username'
                           ]) ??
                           'Participante';
+                      final name = _displayValue(rawName);
                       final points = _first(row, const [
                         'points',
                         'total_points',
                         'score',
-                        'overall_points'
+                        'overall_points',
+                        'ovpoints',
+                        'totalpoints'
                       ]);
                       return RefCard(
                         padding: const EdgeInsets.symmetric(
@@ -368,7 +394,7 @@ class _LeaderboardSheet extends StatelessWidget {
                                     style: AppText.mono(10,
                                         color: AppColors.lime))),
                             Expanded(
-                                child: Text(name.toString(),
+                                child: Text(name,
                                     style: AppText.body(13,
                                         weight: FontWeight.w700))),
                             if (points != null)
@@ -423,4 +449,23 @@ dynamic _first(Map<String, dynamic> map, List<String> keys) {
     if (value != null && value.toString().isNotEmpty) return value;
   }
   return null;
+}
+
+String _decodeDisplayText(String value) {
+  try {
+    return Uri.decodeComponent(value.replaceAll('+', ' '));
+  } catch (_) {
+    return value;
+  }
+}
+
+String _displayValue(dynamic value) {
+  if (value is List) {
+    final items = value
+        .where((item) => item != null && item.toString().trim().isNotEmpty)
+        .map((item) => _decodeDisplayText(item.toString()))
+        .toList();
+    return items.isEmpty ? 'Participante' : items.join(' / ');
+  }
+  return _decodeDisplayText(value.toString());
 }

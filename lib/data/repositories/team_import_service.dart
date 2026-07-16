@@ -51,8 +51,9 @@ class TeamImportService {
     if (snapshotRaw != null && snapshotRaw.isNotEmpty) {
       try {
         final snapshot = jsonDecode(snapshotRaw) as Map<String, dynamic>;
+        final capturedTeams = snapshot['teamDetails'] ?? snapshot['teams'];
         pickedJson = Map<String, dynamic>.from(
-          snapshot['teams'] as Map? ?? const <String, dynamic>{},
+          capturedTeams as Map? ?? const <String, dynamic>{},
         );
       } catch (_) {
         throw TeamImportException(
@@ -71,11 +72,20 @@ class TeamImportService {
       }
     }
 
-    final pickedPlayers = _findPickedPlayerIds(pickedJson);
+    var pickedPlayers = _findPickedPlayerIds(pickedJson);
     if (pickedPlayers.isEmpty) {
       throw TeamImportException(
           'Respuesta recibida pero sin equipo dentro. Claves de la respuesta: '
           '${_describeKeys(pickedJson)}. Envíame esto para ajustar el parseo.');
+    }
+    final captainId = _findCaptainId(pickedJson);
+    if (captainId != null) {
+      pickedPlayers = pickedPlayers
+          .map((picked) => _PickedPlayer(
+                playerId: picked.playerId,
+                isBoosted: picked.isBoosted || picked.playerId == captainId,
+              ))
+          .toList();
     }
 
     // 2. Catálogo público del juego para traducir ids internos -> nombres.
@@ -124,10 +134,10 @@ class TeamImportService {
       }
     }
 
-    if (driverIds.isEmpty && constructorIds.isEmpty) {
+    if (driverIds.length != 5 || constructorIds.length != 2) {
       throw TeamImportException(
           'No pude emparejar ningún fichaje con el catálogo. '
-          'Sin emparejar: ${unmatched.join(', ')}.');
+          'Actualiza los datos y vuelve a intentarlo.');
     }
 
     final budget = _findBudget(pickedJson);
@@ -165,6 +175,15 @@ class TeamImportService {
         final result = _findPickedPlayerIds(item);
         if (result.isNotEmpty) return result;
       }
+    } else if (node is String) {
+      final text = node.trim();
+      if (text.startsWith('{') || text.startsWith('[')) {
+        try {
+          return _findPickedPlayerIds(jsonDecode(text));
+        } catch (_) {
+          // Not every string beginning with a bracket is JSON.
+        }
+      }
     }
     return const [];
   }
@@ -173,15 +192,22 @@ class TeamImportService {
     final out = <_PickedPlayer>[];
     for (final item in raw) {
       if (item is Map<String, dynamic>) {
-        final id =
-            (item['player_id'] ?? item['PlayerId'] ?? item['id'])?.toString();
-        if (id == null) continue;
+        final normalized = <String, dynamic>{
+          for (final entry in item.entries)
+            entry.key.toLowerCase().replaceAll('_', ''): entry.value,
+        };
+        final rawId = normalized['playerid'] ?? normalized['id'];
+        // A team container also uses `playerid`, but its value is the list of
+        // seven picks. Let the recursive walk enter that list instead of
+        // turning the whole collection into one invalid identifier.
+        if (rawId is Map || rawId is List || rawId == null) continue;
+        final id = rawId.toString();
         final boosted = item.entries.any((e) =>
             (e.key.toLowerCase().contains('captain') ||
                 e.key.toLowerCase().contains('boost') ||
                 e.key.toLowerCase().contains('turbo') ||
                 e.key.toLowerCase().contains('mega')) &&
-            e.value == true);
+            (e.value == true || e.value == 1 || e.value == '1'));
         out.add(_PickedPlayer(playerId: id, isBoosted: boosted));
       } else if (item is num || item is String) {
         out.add(_PickedPlayer(playerId: item.toString(), isBoosted: false));
@@ -195,7 +221,10 @@ class TeamImportService {
       for (final entry in node.entries) {
         final key = entry.key.toLowerCase();
         if (entry.value is num &&
-            (key.contains('budget') || key.contains('balance'))) {
+            (key.contains('budget') ||
+                key.contains('balance') ||
+                key == 'teambal' ||
+                key == 'team_bal')) {
           final value = (entry.value as num).toDouble();
           // Algunas versiones dan décimas de millón.
           return value > 120 ? value / 10.0 : value;
@@ -208,6 +237,37 @@ class TeamImportService {
     } else if (node is List) {
       for (final item in node) {
         final found = _findBudget(item);
+        if (found != null) return found;
+      }
+    } else if (node is String) {
+      final text = node.trim();
+      if (text.startsWith('{') || text.startsWith('[')) {
+        try {
+          return _findBudget(jsonDecode(text));
+        } catch (_) {
+          // Ignore non-JSON strings.
+        }
+      }
+    }
+    return null;
+  }
+
+  String? _findCaptainId(dynamic node) {
+    if (node is Map) {
+      for (final entry in node.entries) {
+        final key = entry.key.toString().toLowerCase().replaceAll('_', '');
+        if ((key == 'capplayerid' || key == 'mgcapplayerid') &&
+            entry.value != null) {
+          return entry.value.toString();
+        }
+      }
+      for (final value in node.values) {
+        final found = _findCaptainId(value);
+        if (found != null) return found;
+      }
+    } else if (node is List) {
+      for (final value in node) {
+        final found = _findCaptainId(value);
         if (found != null) return found;
       }
     }

@@ -56,47 +56,56 @@ class _RootShellState extends ConsumerState<RootShell> {
                 decoration: const BoxDecoration(
                   border: Border(bottom: BorderSide(color: AppColors.border1)),
                 ),
-                child: Row(
-                  children: [
-                    Text(
-                      'Fantasy Companion',
-                      style: AppText.syne(18, color: AppColors.lime).copyWith(
-                        shadows: [
-                          Shadow(
-                            color: AppColors.lime.withValues(alpha: 0.45),
-                            blurRadius: 12,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Text('F1', style: AppText.mono(10)),
-                    const Spacer(),
-                    if (selectedRace != null)
-                      Flexible(
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Row(
+                    children: [
+                      Expanded(
                         child: Text(
-                          selectedRace.raceName.toUpperCase(),
+                          'Fantasy Companion',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style:
-                              AppText.mono(9, color: AppColors.textSecondary),
+                              AppText.syne(18, color: AppColors.lime).copyWith(
+                            shadows: [
+                              Shadow(
+                                color: AppColors.lime.withValues(alpha: 0.45),
+                                blurRadius: 12,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      tooltip: 'Ajustes',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const SettingsScreen()),
+                      const SizedBox(width: 9),
+                      Text('F1', style: AppText.mono(10)),
+                      if (selectedRace != null &&
+                          constraints.maxWidth >= 600) ...[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            selectedRace.raceName.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                AppText.mono(9, color: AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 4),
+                      IconButton(
+                        tooltip: 'Ajustes',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const SettingsScreen()),
+                        ),
+                        icon: const Icon(
+                          Icons.settings_rounded,
+                          size: 19,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                      icon: const Icon(
-                        Icons.settings_rounded,
-                        size: 19,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               Expanded(child: IndexedStack(index: _index, children: _screens)),

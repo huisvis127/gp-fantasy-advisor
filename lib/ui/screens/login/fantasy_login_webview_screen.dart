@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -47,6 +48,7 @@ class _FantasyLoginWebViewScreenState
       )
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (url) async {
+          await _fitPageToPhone();
           if (!_tokenCaptured && url.contains('formula1.com')) {
             await _tryCapture(silent: true);
           }
@@ -55,11 +57,43 @@ class _FantasyLoginWebViewScreenState
       ..loadRequest(Uri.parse(_loginUrl));
   }
 
+  /// Keeps a mobile viewport without applying CSS scaling: scaling the root
+  /// element makes Android WebView hit targets drift away from their visuals.
+  Future<void> _fitPageToPhone() async {
+    try {
+      await _controller.runJavaScript(r'''
+(function () {
+  var viewport = document.querySelector('meta[name="viewport"]');
+  if (!viewport) {
+    viewport = document.createElement('meta');
+    viewport.name = 'viewport';
+    document.head.appendChild(viewport);
+  }
+  viewport.content = 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes';
+})()
+''');
+    } catch (_) {
+      // Some intermediate identity pages block injected scripts.
+    }
+  }
+
   /// Inspecciona cookies y localStorage de la página actual buscando el
   /// subscriptionToken. Con `silent: false` informa también si no lo halla.
   Future<void> _tryCapture({required bool silent}) async {
     try {
       if (!silent) _showBridgeErrors = true;
+      final currentUrl = await _controller.currentUrl();
+      final currentHost = Uri.tryParse(currentUrl ?? '')?.host;
+      if (currentHost != Uri.parse(_loginUrl).host) {
+        if (!silent) {
+          await _controller.loadRequest(Uri.parse(_loginUrl));
+          if (mounted) {
+            setState(() => _status =
+                'Volviendo a F1 Fantasy. Espera a ver tu cuenta y pulsa Capturar.');
+          }
+        }
+        return;
+      }
       final raw = await _controller.runJavaScriptReturningResult(r'''
 (function () {
   var out = { cookie: document.cookie || '', ls: {} };
@@ -81,10 +115,14 @@ class _FantasyLoginWebViewScreenState
         final auth = ref.read(fantasyAuthServiceProvider);
         await auth.saveExternalToken(token);
         if (mounted) {
-          setState(
-              () => _status = 'Sesión detectada. Descargando equipo y ligas…');
+          setState(() => _status =
+              'Cuenta detectada. Pulsa Capturar para copiar equipo y ligas.');
         }
       }
+      // La web recarga varias veces durante y después del login. No debemos
+      // capturar ni cerrar el navegador desde onPageFinished: en ese momento
+      // la sesión privada puede existir pero equipo y ligas aún no estar listos.
+      if (silent) return;
       await _captureOfficialSnapshot();
       if (!silent && mounted) {
         setState(() => _status =
@@ -101,11 +139,12 @@ class _FantasyLoginWebViewScreenState
   Future<void> _captureOfficialSnapshot() async {
     await _controller.runJavaScript(r'''
 (async function () {
+  let stage = 'session';
   try {
     const headers = {'Content-Type':'application/json', 'entity':'Wh@t$|_||>'};
     const readJson = async (url, options) => {
       const response = await fetch(url, Object.assign({credentials:'include', headers:headers}, options || {}));
-      if (!response.ok) throw new Error(url + ' -> ' + response.status);
+      if (!response.ok) throw new Error('HTTP ' + response.status);
       return await response.json();
     };
     const valueOf = value => value && value.Data && value.Data.Value !== undefined
@@ -118,16 +157,21 @@ class _FantasyLoginWebViewScreenState
     const guid = sessionValue.GUID || sessionValue.Guid || sessionValue.guid || sessionValue.UserGuid;
     if (!guid) throw new Error('Sesión abierta, pero no llegó el identificador de usuario');
 
+    stage = 'schedule';
     const schedule = await readJson('/feeds/v2/schedule/raceday_en.json');
     const fixtures = (schedule.Data && schedule.Data.fixtures) || [];
     const current = fixtures.find(x => Number(x.GDIsCurrent) === 1) || fixtures[0] || {};
     const gameDay = Number(current.GamedayId || current.Gameday || 1);
+    const schedulePhaseId = Number(current.PhaseId || current.PhaseID || current.phaseId || 1);
+    stage = 'teams';
     const teams = await readJson('/services/user/gameplay/' + guid + '/getusergamedaysv1/1');
+    stage = 'leagues';
     const leagues = await readJson('/services/user/league/' + guid + '/getuserleague/1');
 
     const findArray = node => {
       if (!node || typeof node !== 'object') return [];
-      for (const key of ['Details','leagues','Leagues','Value','results']) {
+      if (Array.isArray(node)) return node;
+      for (const key of ['Details','leagues','Leagues','leaguesdata','Value','results']) {
         if (Array.isArray(node[key])) return node[key];
       }
       for (const value of Object.values(node)) {
@@ -136,10 +180,52 @@ class _FantasyLoginWebViewScreenState
       }
       return [];
     };
+    const teamRows = findArray(valueOf(teams));
+    const teamDetails = {};
+    const teamDetailErrors = [];
+    for (const team of teamRows.slice(0, 3)) {
+      const teamNo = Number(team.teamno || team.teamNo || team.teanNo || 1);
+      const md = team.mddetails || {};
+      const primaryDay = Number(team.cugdid) || gameDay;
+      const primaryInfo = md[String(primaryDay)] || md[primaryDay] || {};
+      const candidates = [
+        {day:primaryDay, phase:Number(primaryInfo.phId || primaryInfo.phaseId || schedulePhaseId || 1)},
+        ...Object.entries(md).reverse().map(([key, info]) => ({
+          day:Number(key),
+          phase:Number((info || {}).phId || (info || {}).phaseId || schedulePhaseId || 1)
+        })),
+        ...fixtures.slice().reverse().map(fixture => ({
+          day:Number(fixture.GamedayId || fixture.Gameday),
+          phase:Number(fixture.PhaseId || fixture.PhaseID || 1)
+        }))
+      ];
+      const seen = new Set();
+      for (const candidate of candidates) {
+        const candidateKey = candidate.day + ':' + candidate.phase;
+        if (!candidate.day || !candidate.phase || seen.has(candidateKey)) continue;
+        seen.add(candidateKey);
+        try {
+          const detail = await readJson(
+            '/services/user/gameplay/' + guid + '/getteam/1/' + teamNo + '/' + candidate.day + '/' + candidate.phase
+          );
+          const detailValue = valueOf(detail) || {};
+          if (Array.isArray(detailValue.userTeam) &&
+              detailValue.userTeam.length > 0) {
+            teamDetails[String(teamNo)] = detail;
+            break;
+          }
+        } catch (error) {
+          teamDetailErrors.push(String(error && error.message || error));
+        }
+      }
+      if (!teamDetails[String(teamNo)]) {
+        teamDetailErrors.push('NO_TEAM_DATA');
+      }
+    }
     const leagueRows = findArray(valueOf(leagues));
     const leaderboards = {};
     for (const league of leagueRows.slice(0, 20)) {
-      const id = league.LeagueId || league.LeagueID || league.league_id || league.id;
+      const id = league.LeagueId || league.LeagueID || league.leagueId || league.league_id || league.id;
       if (!id) continue;
       const h2h = Number(league.IsHTHLeague || league.isHTHLeague || 0);
       try {
@@ -150,10 +236,15 @@ class _FantasyLoginWebViewScreenState
     }
     F1Bridge.postMessage(JSON.stringify({
       capturedAt:new Date().toISOString(), guid:guid, gameDay:gameDay,
-      session:session, teams:teams, leagues:leagues, leaderboards:leaderboards
+      session:session, teams:teams, teamDetails:teamDetails,
+      teamDetailErrors:teamDetailErrors,
+      leagues:leagues, leaderboards:leaderboards
     }));
   } catch (error) {
-    F1Bridge.postMessage(JSON.stringify({error:String(error && error.message || error)}));
+    F1Bridge.postMessage(JSON.stringify({
+      errorStage:stage,
+      error:String(error && error.message || error)
+    }));
   }
 })()
 ''');
@@ -162,11 +253,27 @@ class _FantasyLoginWebViewScreenState
   Future<void> _onBridgeMessage(JavaScriptMessage message) async {
     try {
       final decoded = jsonDecode(message.message);
+      if (kDebugMode) {
+        debugPrint(
+            '[F1_CAPTURE_STRUCTURE] ${jsonEncode(_structureOf(decoded))}');
+      }
       if (decoded is Map && decoded['error'] != null) {
+        if (kDebugMode) {
+          debugPrint('[F1_CAPTURE_ERROR_STAGE] ${decoded['errorStage']}');
+        }
         if (_showBridgeErrors && mounted) {
           setState(() => _status =
               'Todavía no se detecta una cuenta conectada. Inicia sesión en '
-              'la web y vuelve a pulsar "Capturar sesión".');
+                  'la web y vuelve a pulsar "Capturar sesión".');
+        }
+        return;
+      }
+      final details = decoded is Map ? decoded['teamDetails'] : null;
+      if (details is! Map || details.isEmpty) {
+        if (mounted) {
+          setState(() =>
+              _status = 'La cuenta esta abierta, pero aun no llego el equipo. '
+                  'Abre "Mi equipo", espera unos segundos y pulsa Capturar.');
         }
         return;
       }
@@ -184,6 +291,23 @@ class _FantasyLoginWebViewScreenState
             () => _status = 'La web respondió con datos no válidos: $error');
       }
     }
+  }
+
+  dynamic _structureOf(dynamic value, [int depth = 0]) {
+    if (depth >= 4) return value.runtimeType.toString();
+    if (value is Map) {
+      return <String, dynamic>{
+        for (final entry in value.entries.take(30))
+          entry.key.toString(): _structureOf(entry.value, depth + 1),
+      };
+    }
+    if (value is List) {
+      return <String, dynamic>{
+        'length': value.length,
+        if (value.isNotEmpty) 'first': _structureOf(value.first, depth + 1),
+      };
+    }
+    return value.runtimeType.toString();
   }
 
   /// runJavaScriptReturningResult devuelve el JSON con comillas escapadas
@@ -221,12 +345,21 @@ class _FantasyLoginWebViewScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Iniciar sesión (navegador)')),
+      appBar: AppBar(
+        title: const Text('Conectar F1 Fantasy'),
+        actions: [
+          IconButton(
+            tooltip: 'Volver a F1 Fantasy',
+            onPressed: () => _controller.loadRequest(Uri.parse(_loginUrl)),
+            icon: const Icon(Icons.home_rounded),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             color: AppColors.surface2,
             child: Row(
               children: [
@@ -234,10 +367,14 @@ class _FantasyLoginWebViewScreenState
                   child: Text(_status,
                       style: AppText.body(12, color: AppColors.textSecondary)),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 ElevatedButton(
                   onPressed: () => _tryCapture(silent: false),
-                  child: const Text('CAPTURAR SESIÓN'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                  ),
+                  child: const Text('CAPTURAR'),
                 ),
               ],
             ),
