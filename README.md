@@ -10,7 +10,7 @@ No está afiliada a Formula One Licensing B.V.
 - **Análisis**: ranking configurable con pesos de rendimiento, forma, circuito y riesgo.
 - **Fantasy**: equipo ideal según presupuesto y consulta/importación del equipo personal.
 - **Circuito**: información del GP seleccionado y afinidad de cada participante.
-- **Liga**: acceso mediante la web oficial de F1 Fantasy, ligas y clasificaciones.
+- **Liga**: selector de liga activa, clasificación, gráficas de puntos y posiciones por GP, y medallero de podios.
 
 ## Datos y privacidad
 
@@ -18,6 +18,7 @@ No está afiliada a Formula One Licensing B.V.
 - Precios y catálogo de F1 Fantasy: feeds públicos oficiales actuales.
 - Cuenta, equipo y ligas: se abren dentro de la web oficial. La contraseña no pasa por la aplicación ni se guarda en ella.
 - La sesión capturada y los datos privados se almacenan cifrados en el dispositivo.
+- Al actualizar la cuenta se captura también la clasificación de cada GP cerrado para construir el histórico de la liga.
 - Si una fuente temporalmente no responde, se conservan los últimos datos válidos y se muestra el estado de la sincronización.
 
 ## Compilar y comprobar

@@ -223,22 +223,55 @@ class _FantasyLoginWebViewScreenState
       }
     }
     const leagueRows = findArray(valueOf(leagues));
+    const eventsByDay = new Map();
+    for (const fixture of fixtures) {
+      const day = Number(fixture.GamedayId || fixture.Gameday);
+      if (!day || day > gameDay) continue;
+      const label = fixture.GamedayName || fixture.RaceDayName ||
+        fixture.MeetingName || fixture.CircuitName || fixture.CountryName ||
+        fixture.EventName || fixture.Name || ('R' + day);
+      const isComplete = Number(fixture.GDIsLocked) === 1 &&
+        String(fixture.SessionType || '').toLowerCase() === 'race';
+      if (!eventsByDay.has(day)) {
+        eventsByDay.set(day, {gameDayId:day, label:String(label), isComplete:isComplete});
+      } else if (isComplete) {
+        eventsByDay.get(day).isComplete = true;
+      }
+    }
+    if (!eventsByDay.has(gameDay)) {
+      eventsByDay.set(gameDay, {gameDayId:gameDay, label:'R' + gameDay, isComplete:false});
+    }
+    const leagueEvents = Array.from(eventsByDay.values())
+      .sort((a, b) => a.gameDayId - b.gameDayId)
+      .slice(-24);
     const leaderboards = {};
+    const leagueHistory = {};
     for (const league of leagueRows.slice(0, 20)) {
       const id = league.LeagueId || league.LeagueID || league.leagueId || league.league_id || league.id;
       if (!id) continue;
       const h2h = Number(league.IsHTHLeague || league.isHTHLeague || 0);
-      try {
-        leaderboards[String(id)] = await readJson(
-          '/services/user/league/' + guid + '/getuserleaguemembers/1/' + id + '/' + h2h + '/' + gameDay + '/1/100/'
-        );
-      } catch (_) {}
+      const history = {};
+      await Promise.all(leagueEvents.map(async event => {
+        try {
+          const board = await readJson(
+            '/services/user/league/' + guid + '/getuserleaguemembers/1/' + id + '/' + h2h + '/' + event.gameDayId + '/1/100/'
+          );
+          history[String(event.gameDayId)] = board;
+          if (event.gameDayId === gameDay) leaderboards[String(id)] = board;
+        } catch (_) {}
+      }));
+      leagueHistory[String(id)] = history;
+      if (!leaderboards[String(id)]) {
+        const days = Object.keys(history).sort((a, b) => Number(a) - Number(b));
+        if (days.length) leaderboards[String(id)] = history[days[days.length - 1]];
+      }
     }
     F1Bridge.postMessage(JSON.stringify({
       capturedAt:new Date().toISOString(), guid:guid, gameDay:gameDay,
       session:session, teams:teams, teamDetails:teamDetails,
       teamDetailErrors:teamDetailErrors,
-      leagues:leagues, leaderboards:leaderboards
+      leagues:leagues, leaderboards:leaderboards,
+      leagueEvents:leagueEvents, leagueHistory:leagueHistory
     }));
   } catch (error) {
     F1Bridge.postMessage(JSON.stringify({
