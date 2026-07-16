@@ -27,7 +27,8 @@ class GpFantasyAdvisorApp extends ConsumerStatefulWidget {
   const GpFantasyAdvisorApp({super.key});
 
   @override
-  ConsumerState<GpFantasyAdvisorApp> createState() => _GpFantasyAdvisorAppState();
+  ConsumerState<GpFantasyAdvisorApp> createState() =>
+      _GpFantasyAdvisorAppState();
 }
 
 class _GpFantasyAdvisorAppState extends ConsumerState<GpFantasyAdvisorApp> {
