@@ -34,10 +34,10 @@ class DataRepository {
     required JolpicaApi jolpica,
     required OpenF1Api openF1,
     required FantasyApi fantasyApi,
-  })  : _db = db,
-        _jolpica = jolpica,
-        _openF1 = openF1,
-        _fantasyApi = fantasyApi;
+  }) : _db = db,
+       _jolpica = jolpica,
+       _openF1 = openF1,
+       _fantasyApi = fantasyApi;
 
   final AppDatabase _db;
   final JolpicaApi _jolpica;
@@ -51,20 +51,27 @@ class DataRepository {
   /// fallos individuales no deben interrumpir el resto de la sync.
   Future<SyncReport> syncAll({required int currentSeason}) async {
     final report = SyncReport();
-    // Prioriza la temporada actual: el calendario visible no debe depender
-    // de que terminen primero todas las descargas históricas.
-    final seasonsToSync = [currentSeason, currentSeason - 1, currentSeason - 2];
+    final seasonsToSync = [currentSeason - 2, currentSeason - 1, currentSeason];
     for (final season in seasonsToSync) {
-      await _trySync(report, 'temporada $season',
-          () => _syncCalendarAndResults(season, report));
+      await _trySync(
+        report,
+        'temporada $season',
+        () => _syncCalendarAndResults(season, report),
+      );
     }
     await _trySync(
-        report, 'precios fantasy', () => _syncPrices(currentSeason, report));
+      report,
+      'precios fantasy',
+      () => _syncPrices(currentSeason, report),
+    );
     return report;
   }
 
   Future<void> _trySync(
-      SyncReport report, String label, Future<void> Function() task) async {
+    SyncReport report,
+    String label,
+    Future<void> Function() task,
+  ) async {
     try {
       await task();
     } catch (e) {
@@ -84,45 +91,59 @@ class DataRepository {
     await _db.upsertRaces(calendar.map(_raceToCompanion).toList());
     report.racesSynced += calendar.length;
 
+    // Sincronización incremental: no re-descargar rondas ya cacheadas
+    // (respeto del rate limit de Jolpica, sección 3 del plan).
+    final cachedRounds = await _db.roundsWithResults(season);
+
     final drivers = await _jolpica.getDrivers(season);
-    await _db.upsertDrivers(drivers
-        .map((d) => DriversCompanion.insert(
+    await _db.upsertDrivers(
+      drivers
+          .map(
+            (d) => DriversCompanion.insert(
               id: d.id,
               code: d.code,
               givenName: d.givenName,
               familyName: d.familyName,
               constructorId: d.constructorId,
               number: Value(d.number),
-            ))
-        .toList());
+            ),
+          )
+          .toList(),
+    );
 
     final constructorsList = await _jolpica.getConstructors(season);
-    await _db.upsertConstructors(constructorsList
-        .map((c) => ConstructorsCompanion.insert(
+    await _db.upsertConstructors(
+      constructorsList
+          .map(
+            (c) => ConstructorsCompanion.insert(
               id: c.id,
               name: c.name,
               nationality: c.nationality,
-            ))
-        .toList());
+            ),
+          )
+          .toList(),
+    );
 
-    // Descargas agrupadas: resultados y clasificación requieren una sola
-    // petición cada uno, en lugar de dos peticiones por ronda.
-    final raceResults = await _jolpica.getSeasonResults(season);
-    if (raceResults.isNotEmpty) {
-      await _db.upsertResults(raceResults.map(_resultToCompanion).toList());
-      report.resultsSynced += raceResults.length;
-    }
-
-    final qualifying = await _jolpica.getSeasonQualifying(season);
-    if (qualifying.isNotEmpty) {
-      await _db.upsertQualifying(qualifying.map(_qualiToCompanion).toList());
-    }
-
-    // Jolpica no da el constructorId en /drivers.json. Se completa con el
-    // resultado más reciente de cada piloto.
+    // Jolpica no da el constructorId en /drivers.json (ver jolpica_api.dart);
+    // se completa con el constructor de la carrera más reciente en la que
+    // corrió cada piloto, recorriendo el calendario en orden cronológico.
     final latestConstructorByDriver = <String, String>{};
-    for (final result in raceResults) {
-      latestConstructorByDriver[result.driverId] = result.constructorId;
+
+    for (final race in calendar) {
+      if (race.date.isAfter(DateTime.now())) continue; // no hay resultados aún
+      if (cachedRounds.contains(race.round)) continue; // ya sincronizada
+      final raceResults = await _jolpica.getRaceResults(season, race.round);
+      if (raceResults.isNotEmpty) {
+        await _db.upsertResults(raceResults.map(_resultToCompanion).toList());
+        report.resultsSynced += raceResults.length;
+        for (final r in raceResults) {
+          latestConstructorByDriver[r.driverId] = r.constructorId;
+        }
+      }
+      final quali = await _jolpica.getQualifyingResults(season, race.round);
+      if (quali.isNotEmpty) {
+        await _db.upsertQualifying(quali.map(_qualiToCompanion).toList());
+      }
     }
 
     if (latestConstructorByDriver.isNotEmpty) {
@@ -133,15 +154,19 @@ class DataRepository {
   Future<void> _syncPrices(int season, SyncReport report) async {
     final prices = await _fantasyApi.getCurrentPrices(season);
     report.pricesSynced += prices.length;
-    await _db.upsertPrices(prices
-        .map((p) => FantasyPricesCompanion.insert(
+    await _db.upsertPrices(
+      prices
+          .map(
+            (p) => FantasyPricesCompanion.insert(
               assetId: p.assetId,
               assetType: p.assetType.name,
               season: p.season,
               round: p.round,
               priceMillions: p.priceMillions,
-            ))
-        .toList());
+            ),
+          )
+          .toList(),
+    );
   }
 
   // ---- Lecturas (siempre desde caché local; instantáneas) ----
@@ -154,6 +179,50 @@ class DataRepository {
   Future<List<Race>> allRaces(int season) async {
     final rows = await _db.allRaces(season);
     return rows.map(_raceRowToDomain).toList();
+  }
+
+  Future<List<RaceResult>> raceResults(int season, int round) async {
+    final rows = await _db.resultsForRace(season, round);
+    return rows
+        .map(
+          (row) => RaceResult(
+            season: row.season,
+            round: row.round,
+            driverId: row.driverId,
+            constructorId: row.constructorId,
+            gridPosition: row.gridPosition,
+            finishPosition: row.finishPosition,
+            status: row.status,
+            fastestLap: row.fastestLap,
+          ),
+        )
+        .toList();
+  }
+
+  Future<List<QualifyingResult>> qualifyingResults(
+    int season,
+    int round,
+  ) async {
+    final rows = await _db.qualifyingForRace(season, round);
+    return rows
+        .map(
+          (row) => QualifyingResult(
+            season: row.season,
+            round: row.round,
+            driverId: row.driverId,
+            position: row.position,
+            q1: row.q1Millis == null
+                ? null
+                : Duration(milliseconds: row.q1Millis!),
+            q2: row.q2Millis == null
+                ? null
+                : Duration(milliseconds: row.q2Millis!),
+            q3: row.q3Millis == null
+                ? null
+                : Duration(milliseconds: row.q3Millis!),
+          ),
+        )
+        .toList();
   }
 
   Future<double?> currentPrice(String assetId, {required bool isConstructor}) =>
@@ -229,30 +298,40 @@ class DataRepository {
 
       final dnfCount = recent8.where((r) => r.finishPosition == null).length;
 
-      contexts.add(DriverContext(
-        driverId: driver.id,
-        constructorId: constructorId,
-        // Se pasan las 8 (no solo 5): la feature de ritmo reciente usa solo
-        // las 5 más recientes internamente (take(5)) y la de consistencia
-        // usa las 8 (sección 5.1); DriverContext lleva la ventana más ancha.
-        recentRaceFinishPositions:
-            recent8.map((r) => r.finishPosition).toList(),
-        recentQualifyingPositions: recentQuali.map((q) => q.position).toList(),
-        // Aproximación sin OpenF1: 0 si tuvo la vuelta rápida, 1.5% si no.
-        // Sustituir por el gap real de OpenF1 cuando haya sesión en curso.
-        recentFastestLapGapPercent:
-            recent8.map((r) => r.fastestLap ? 0.0 : 1.5).toList(),
-        circuitHistoryFinishPositions:
-            circuitHistory.map((r) => r.finishPosition).toList(),
-        constructorRecentPoints: constructorRecent
-            .map((r) => (raceScoreByPosition[r.finishPosition] ?? 0).toDouble())
-            .toList(),
-        driverDnfRateLast2Seasons:
-            recent8.isEmpty ? 0.1 : dnfCount / recent8.length,
-        constructorDnfRateLast2Seasons:
-            0.1, // placeholder hasta agregarlo por constructor
-        gridSize: gridSize,
-      ));
+      contexts.add(
+        DriverContext(
+          driverId: driver.id,
+          constructorId: constructorId,
+          // Se pasan las 8 (no solo 5): la feature de ritmo reciente usa solo
+          // las 5 más recientes internamente (take(5)) y la de consistencia
+          // usa las 8 (sección 5.1); DriverContext lleva la ventana más ancha.
+          recentRaceFinishPositions: recent8
+              .map((r) => r.finishPosition)
+              .toList(),
+          recentQualifyingPositions: recentQuali
+              .map((q) => q.position)
+              .toList(),
+          // Aproximación sin OpenF1: 0 si tuvo la vuelta rápida, 1.5% si no.
+          // Sustituir por el gap real de OpenF1 cuando haya sesión en curso.
+          recentFastestLapGapPercent: recent8
+              .map((r) => r.fastestLap ? 0.0 : 1.5)
+              .toList(),
+          circuitHistoryFinishPositions: circuitHistory
+              .map((r) => r.finishPosition)
+              .toList(),
+          constructorRecentPoints: constructorRecent
+              .map(
+                (r) => (raceScoreByPosition[r.finishPosition] ?? 0).toDouble(),
+              )
+              .toList(),
+          driverDnfRateLast2Seasons: recent8.isEmpty
+              ? 0.1
+              : dnfCount / recent8.length,
+          constructorDnfRateLast2Seasons:
+              0.1, // placeholder hasta agregarlo por constructor
+          gridSize: gridSize,
+        ),
+      );
     }
     return contexts;
   }
@@ -260,24 +339,30 @@ class DataRepository {
   // ---- Mi equipo ----
 
   Future<void> saveMyTeam(MyTeam team) async {
-    await _db.saveMyTeam(MyTeamTableCompanion.insert(
-      driverIdsCsv: team.driverIds.join(','),
-      constructorIdsCsv: team.constructorIds.join(','),
-      remainingBudgetMillions: team.remainingBudgetMillions,
-      boostedDriverId: Value(team.boostedDriverId),
-      source: team.source.name,
-      chipsUsedCsv: Value(team.chipsUsed.join(',')),
-    ));
+    await _db.saveMyTeam(
+      MyTeamTableCompanion.insert(
+        driverIdsCsv: team.driverIds.join(','),
+        constructorIdsCsv: team.constructorIds.join(','),
+        remainingBudgetMillions: team.remainingBudgetMillions,
+        boostedDriverId: Value(team.boostedDriverId),
+        source: team.source.name,
+        chipsUsedCsv: Value(team.chipsUsed.join(',')),
+      ),
+    );
   }
 
   Future<MyTeam?> loadMyTeam() async {
     final row = await _db.loadMyTeam();
     if (row == null) return null;
     return MyTeam(
-      driverIds:
-          row.driverIdsCsv.split(',').where((s) => s.isNotEmpty).toList(),
-      constructorIds:
-          row.constructorIdsCsv.split(',').where((s) => s.isNotEmpty).toList(),
+      driverIds: row.driverIdsCsv
+          .split(',')
+          .where((s) => s.isNotEmpty)
+          .toList(),
+      constructorIds: row.constructorIdsCsv
+          .split(',')
+          .where((s) => s.isNotEmpty)
+          .toList(),
       remainingBudgetMillions: row.remainingBudgetMillions,
       boostedDriverId: row.boostedDriverId,
       source: MyTeamSource.values.firstWhere(
@@ -291,37 +376,37 @@ class DataRepository {
   // ---- Mappers dominio <-> companions/rows drift ----
 
   Race _raceRowToDomain(RaceRow r) => Race(
-        season: r.season,
-        round: r.round,
-        raceName: r.raceName,
-        circuitId: r.circuitId,
-        circuitName: r.circuitName,
-        country: r.country,
-        date: r.date,
-        hasSprint: r.hasSprint,
-      );
+    season: r.season,
+    round: r.round,
+    raceName: r.raceName,
+    circuitId: r.circuitId,
+    circuitName: r.circuitName,
+    country: r.country,
+    date: r.date,
+    hasSprint: r.hasSprint,
+  );
 
   RacesCompanion _raceToCompanion(Race r) => RacesCompanion.insert(
-        season: r.season,
-        round: r.round,
-        raceName: r.raceName,
-        circuitId: r.circuitId,
-        circuitName: r.circuitName,
-        country: r.country,
-        date: r.date,
-        hasSprint: Value(r.hasSprint),
-      );
+    season: r.season,
+    round: r.round,
+    raceName: r.raceName,
+    circuitId: r.circuitId,
+    circuitName: r.circuitName,
+    country: r.country,
+    date: r.date,
+    hasSprint: Value(r.hasSprint),
+  );
 
   ResultsCompanion _resultToCompanion(RaceResult r) => ResultsCompanion.insert(
-        season: r.season,
-        round: r.round,
-        driverId: r.driverId,
-        constructorId: r.constructorId,
-        gridPosition: r.gridPosition,
-        finishPosition: Value(r.finishPosition),
-        status: r.status,
-        fastestLap: Value(r.fastestLap),
-      );
+    season: r.season,
+    round: r.round,
+    driverId: r.driverId,
+    constructorId: r.constructorId,
+    gridPosition: r.gridPosition,
+    finishPosition: Value(r.finishPosition),
+    status: r.status,
+    fastestLap: Value(r.fastestLap),
+  );
 
   QualifyingResultsCompanion _qualiToCompanion(QualifyingResult q) =>
       QualifyingResultsCompanion.insert(
