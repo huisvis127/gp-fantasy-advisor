@@ -156,6 +156,44 @@ class DataRepository {
     return rows.map(_raceRowToDomain).toList();
   }
 
+  Future<List<RaceResult>> raceResults(int season, int round) async {
+    final rows = await _db.resultsForRace(season, round);
+    return rows
+        .map((row) => RaceResult(
+              season: row.season,
+              round: row.round,
+              driverId: row.driverId,
+              constructorId: row.constructorId,
+              gridPosition: row.gridPosition,
+              finishPosition: row.finishPosition,
+              status: row.status,
+              fastestLap: row.fastestLap,
+            ))
+        .toList();
+  }
+
+  Future<List<QualifyingResult>> qualifyingResults(
+      int season, int round) async {
+    final rows = await _db.qualifyingForRace(season, round);
+    return rows
+        .map((row) => QualifyingResult(
+              season: row.season,
+              round: row.round,
+              driverId: row.driverId,
+              position: row.position,
+              q1: row.q1Millis == null
+                  ? null
+                  : Duration(milliseconds: row.q1Millis!),
+              q2: row.q2Millis == null
+                  ? null
+                  : Duration(milliseconds: row.q2Millis!),
+              q3: row.q3Millis == null
+                  ? null
+                  : Duration(milliseconds: row.q3Millis!),
+            ))
+        .toList();
+  }
+
   Future<double?> currentPrice(String assetId, {required bool isConstructor}) =>
       _db.latestPrice(assetId, isConstructor ? 'constructor' : 'driver');
 

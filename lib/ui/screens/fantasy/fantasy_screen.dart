@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme.dart';
 import '../../widgets/ref_widgets.dart';
+import 'fantasy_history_screen.dart';
 import '../ideal/ideal_screen.dart';
 import '../my_team/my_team_screen.dart';
 
@@ -37,7 +38,7 @@ class _FantasyScreenState extends State<FantasyScreen> {
               ),
               const SizedBox(height: 12),
               SubTabs(
-                labels: const ['Equipo ideal', 'Mi equipo'],
+                labels: const ['Equipo ideal', 'Mi equipo', 'Historial'],
                 selectedIndex: _tab,
                 onSelected: (value) => setState(() => _tab = value),
               ),
@@ -48,7 +49,11 @@ class _FantasyScreenState extends State<FantasyScreen> {
         Expanded(
           child: IndexedStack(
             index: _tab,
-            children: const [IdealScreen(), MyTeamScreen()],
+            children: const [
+              IdealScreen(),
+              MyTeamScreen(),
+              FantasyHistoryScreen()
+            ],
           ),
         ),
       ],

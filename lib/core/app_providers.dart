@@ -37,7 +37,8 @@ final pricesAreEstimatedProvider = FutureProvider<bool>((ref) async {
 
 /// Predicciones de pilotos para el GP SELECCIONADO, con los pesos elegidos
 /// por el usuario (sliders). Recalcula al cambiar GP o pesos.
-final driverPredictionsProvider = FutureProvider<List<AssetPrediction>>((ref) async {
+final driverPredictionsProvider =
+    FutureProvider<List<AssetPrediction>>((ref) async {
   final race = await ref.watch(selectedRaceProvider.future);
   if (race == null) return ref.watch(fallbackDriverPredictionsProvider.future);
 
@@ -45,7 +46,9 @@ final driverPredictionsProvider = FutureProvider<List<AssetPrediction>>((ref) as
   final weights = await ref.watch(effectiveWeightsProvider.future);
   final scoringJson = await ref.watch(scoringJsonProvider.future);
   var contexts = await repo.buildDriverContexts(race);
-  if (contexts.isEmpty) return ref.watch(fallbackDriverPredictionsProvider.future);
+  if (contexts.isEmpty) {
+    return ref.watch(fallbackDriverPredictionsProvider.future);
+  }
 
   // Predicción por etapas: si hay sesiones del finde (OpenF1), se inyectan
   // los gaps por sesión en los contextos y el motor los mezcla según la
@@ -78,7 +81,8 @@ final driverPredictionsProvider = FutureProvider<List<AssetPrediction>>((ref) as
   final prices = <String, double>{};
   for (final ctx in contexts) {
     final dbPrice = await repo.currentPrice(ctx.driverId, isConstructor: false);
-    prices[ctx.driverId] = dbPrice ?? catalog[ctx.driverId]?.priceMillions ?? 15.0;
+    prices[ctx.driverId] =
+        dbPrice ?? catalog[ctx.driverId]?.priceMillions ?? 15.0;
   }
 
   final predictions = await PredictionIsolateRunner.predictDrivers(
@@ -88,7 +92,9 @@ final driverPredictionsProvider = FutureProvider<List<AssetPrediction>>((ref) as
     currentPricesMillions: prices,
     isSprintWeekend: race.hasSprint,
   );
-  return predictions.isEmpty ? ref.watch(fallbackDriverPredictionsProvider.future) : predictions;
+  return predictions.isEmpty
+      ? ref.watch(fallbackDriverPredictionsProvider.future)
+      : predictions;
 });
 
 /// Predicciones de constructores derivadas del mismo motor: suma de los
@@ -107,7 +113,8 @@ final engineConstructorPredictionsProvider =
 
   // Agrupar pilotos por constructor usando el catálogo de standings
   // (id piloto -> nombre de equipo) y el mapa de constructores.
-  final constructorInfos = (await ref.watch(fantasyConstructorAssetInfoProvider.future));
+  final constructorInfos =
+      (await ref.watch(fantasyConstructorAssetInfoProvider.future));
   final driversByTeamName = <String, List<AssetPrediction>>{};
   for (final pred in driverPreds) {
     final teamName = catalog[pred.assetId]?.teamName ?? '';
@@ -117,7 +124,8 @@ final engineConstructorPredictionsProvider =
 
   final result = <AssetPrediction>[];
   for (final info in constructorInfos) {
-    final teamDrivers = driversByTeamName[info.name] ?? const <AssetPrediction>[];
+    final teamDrivers =
+        driversByTeamName[info.name] ?? const <AssetPrediction>[];
     if (teamDrivers.isEmpty) {
       result.add(info.toPrediction());
       continue;
@@ -148,7 +156,8 @@ final engineConstructorPredictionsProvider =
   return result;
 });
 
-final myTeamProvider = AsyncNotifierProvider<MyTeamNotifier, MyTeam?>(MyTeamNotifier.new);
+final myTeamProvider =
+    AsyncNotifierProvider<MyTeamNotifier, MyTeam?>(MyTeamNotifier.new);
 
 class MyTeamNotifier extends AsyncNotifier<MyTeam?> {
   @override
@@ -164,9 +173,11 @@ class MyTeamNotifier extends AsyncNotifier<MyTeam?> {
   }
 }
 
-final teamOptimizerProvider = Provider<TeamOptimizer>((ref) => const TeamOptimizer());
+final teamOptimizerProvider =
+    Provider<TeamOptimizer>((ref) => const TeamOptimizer());
 
-final optimalTeamProvider = FutureProvider.family<TeamCombo, TeamPriority>((ref, priority) async {
+final optimalTeamProvider =
+    FutureProvider.family<TeamCombo, TeamPriority>((ref, priority) async {
   final driverPredictions = await ref.watch(driverPredictionsProvider.future);
   final constructorPredictions =
       await ref.watch(engineConstructorPredictionsProvider.future);
@@ -185,6 +196,212 @@ final optimalTeamProvider = FutureProvider.family<TeamCombo, TeamPriority>((ref,
     totalBudgetMillions: 100,
     priority: priority,
   );
+});
+
+class FantasySimulationRound {
+  const FantasySimulationRound({
+    required this.race,
+    required this.team,
+    required this.transfersOut,
+    required this.transfersIn,
+    required this.points,
+    required this.cumulativePoints,
+  });
+
+  final Race race;
+  final TeamCombo team;
+  final List<String> transfersOut;
+  final List<String> transfersIn;
+  final double points;
+  final double cumulativePoints;
+}
+
+class FantasySeasonSimulation {
+  const FantasySeasonSimulation({required this.rounds});
+  final List<FantasySimulationRound> rounds;
+
+  double get totalPoints => rounds.isEmpty ? 0 : rounds.last.cumulativePoints;
+  TeamCombo? get currentTeam => rounds.isEmpty ? null : rounds.last.team;
+}
+
+/// Reconstruye la estrategia de la app desde la primera carrera. Antes de cada
+/// GP conserva el equipo o ejecuta hasta dos cambios gratuitos cuando mejoran
+/// la proyección. No aplica ningún chip.
+final fantasySeasonSimulationProvider =
+    FutureProvider<FantasySeasonSimulation>((ref) async {
+  ref.watch(syncControllerProvider);
+  final repo = ref.watch(dataRepositoryProvider);
+  final season = ref.watch(currentSeasonProvider);
+  final weights = await ref.watch(effectiveWeightsProvider.future);
+  final scoringJson = await ref.watch(scoringJsonProvider.future);
+  final catalog = await ref.watch(fantasyAssetNameProvider.future);
+  final races = (await repo.allRaces(season))
+      .where((race) => race.date.isBefore(DateTime.now()))
+      .toList()
+    ..sort((a, b) => a.round.compareTo(b.round));
+  final optimizer = ref.watch(teamOptimizerProvider);
+  final output = <FantasySimulationRound>[];
+  TeamCombo? currentTeam;
+  var cumulative = 0.0;
+
+  for (final race in races) {
+    final results = await repo.raceResults(season, race.round);
+    final contexts = await repo.buildDriverContexts(race);
+    if (results.isEmpty || contexts.isEmpty) continue;
+
+    final prices = <String, double>{
+      for (final context in contexts)
+        context.driverId: catalog[context.driverId]?.priceMillions ?? 15,
+    };
+    final driverPredictions = await PredictionIsolateRunner.predictDrivers(
+      weights: weights,
+      scoringJson: scoringJson,
+      drivers: contexts,
+      currentPricesMillions: prices,
+      isSprintWeekend: race.hasSprint,
+    );
+    final contextByDriver = {
+      for (final context in contexts) context.driverId: context
+    };
+    final byConstructor = <String, List<AssetPrediction>>{};
+    for (final prediction in driverPredictions) {
+      final constructorId = contextByDriver[prediction.assetId]?.constructorId;
+      if (constructorId != null && constructorId.isNotEmpty) {
+        byConstructor.putIfAbsent(constructorId, () => []).add(prediction);
+      }
+    }
+    final constructorPredictions = [
+      for (final group in byConstructor.entries)
+        AssetPrediction(
+          assetId: group.key,
+          expectedPoints:
+              group.value.fold<double>(0, (sum, p) => sum + p.expectedPoints),
+          winProbability: group.value.fold<double>(0,
+              (best, p) => p.winProbability > best ? p.winProbability : best),
+          podiumProbability: group.value.fold<double>(
+              0,
+              (best, p) =>
+                  p.podiumProbability > best ? p.podiumProbability : best),
+          top10Probability: 1,
+          priceMillions: catalog[group.key]?.priceMillions ?? 12,
+          breakdown: const {},
+        ),
+    ];
+    if (driverPredictions.length < 5 || constructorPredictions.length < 2) {
+      continue;
+    }
+
+    var transfersOut = const <String>[];
+    var transfersIn = const <String>[];
+    if (currentTeam == null) {
+      currentTeam = optimizer.findOptimalTeam(
+        driverPredictions: driverPredictions,
+        constructorPredictions: constructorPredictions,
+        totalBudgetMillions: 100,
+      );
+    } else {
+      final driverById = {
+        for (final prediction in driverPredictions)
+          prediction.assetId: prediction
+      };
+      final constructorById = {
+        for (final prediction in constructorPredictions)
+          prediction.assetId: prediction
+      };
+      final currentCost = currentTeam.driverIds.fold<double>(
+              0, (sum, id) => sum + (driverById[id]?.priceMillions ?? 0)) +
+          currentTeam.constructorIds.fold<double>(
+              0, (sum, id) => sum + (constructorById[id]?.priceMillions ?? 0));
+      final plans = optimizer.suggestTransfers(
+        currentDriverIds: currentTeam.driverIds,
+        currentConstructorIds: currentTeam.constructorIds,
+        driverPredictions: driverPredictions,
+        constructorPredictions: constructorPredictions,
+        remainingBudgetMillions:
+            (100 - currentCost).clamp(0.0, 100.0).toDouble(),
+        maxTransfersToConsider: 2,
+      );
+      final best = plans.isEmpty ? null : plans.first;
+      if (best != null && best.netExpectedGain > 0) {
+        currentTeam = best.resultingTeam;
+        transfersOut = best.transfersOut;
+        transfersIn = best.transfersIn;
+      }
+    }
+    final team = currentTeam;
+    if (team.driverIds.length != 5 || team.constructorIds.length != 2) {
+      continue;
+    }
+
+    final qualifying = await repo.qualifyingResults(season, race.round);
+    final qualifyingByDriver = {
+      for (final result in qualifying) result.driverId: result
+    };
+    final raceRules = Map<String, dynamic>.from(scoringJson['race'] as Map);
+    final qualifyingRules =
+        Map<String, dynamic>.from(scoringJson['qualifying'] as Map);
+    final constructorRules =
+        Map<String, dynamic>.from(scoringJson['constructor'] as Map);
+    final racePositions =
+        Map<String, dynamic>.from(raceRules['position_points'] as Map);
+    final qualifyingPositions =
+        Map<String, dynamic>.from(qualifyingRules['position_points'] as Map);
+    final driverScores = <String, double>{};
+    final constructorByDriver = <String, String>{};
+    for (final result in results) {
+      constructorByDriver[result.driverId] = result.constructorId;
+      var score = (racePositions[result.finishPosition?.toString()] as num?)
+              ?.toDouble() ??
+          (result.finishPosition == null
+              ? (raceRules['dnf'] as num?)?.toDouble() ?? -20
+              : 0);
+      score += (qualifyingPositions[qualifyingByDriver[result.driverId]
+                  ?.position
+                  .toString()] as num?)
+              ?.toDouble() ??
+          0;
+      if (result.finishPosition != null && result.gridPosition > 0) {
+        score += (result.gridPosition - result.finishPosition!) *
+            ((raceRules['positions_gained_per_place'] as num?)?.toDouble() ??
+                1);
+      }
+      if (result.fastestLap) {
+        score += (raceRules['fastest_lap'] as num?)?.toDouble() ?? 0;
+      }
+      driverScores[result.driverId] = score;
+    }
+    final constructorScores = <String, double>{};
+    for (final id in team.constructorIds) {
+      final drivers = constructorByDriver.entries
+          .where((entry) => entry.value == id)
+          .map((entry) => entry.key)
+          .toList();
+      var score =
+          drivers.fold<double>(0, (sum, id) => sum + (driverScores[id] ?? 0));
+      if (drivers
+              .where((id) => (qualifyingByDriver[id]?.position ?? 99) <= 10)
+              .length >=
+          2) {
+        score +=
+            (constructorRules['both_cars_q3_bonus'] as num?)?.toDouble() ?? 0;
+      }
+      constructorScores[id] = score;
+    }
+    final roundPoints = team.driverIds
+            .fold<double>(0, (sum, id) => sum + (driverScores[id] ?? 0)) +
+        team.constructorIds
+            .fold<double>(0, (sum, id) => sum + (constructorScores[id] ?? 0));
+    cumulative += roundPoints;
+    output.add(FantasySimulationRound(
+      race: race,
+      team: team,
+      transfersOut: transfersOut,
+      transfersIn: transfersIn,
+      points: roundPoints,
+      cumulativePoints: cumulative,
+    ));
+  }
+  return FantasySeasonSimulation(rounds: output);
 });
 
 /// Los 3 mejores planes de cambios para el equipo del usuario.
