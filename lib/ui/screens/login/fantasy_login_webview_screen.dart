@@ -136,16 +136,56 @@ class _FantasyLoginWebViewScreenState
       }
       return [];
     };
-    const leagueRows = findArray(valueOf(leagues));
+    const allLeagueRows = findArray(valueOf(leagues));
+    const numberOf = (row, keys) => {
+      for (const key of keys) {
+        const value = Number(row && row[key]);
+        if (Number.isFinite(value) && value > 0) return value;
+      }
+      return 0;
+    };
+    const isPrivateLeague = league => {
+      const explicitPrivate = Number(league.IsPrivateLeague || league.IsPrivate || league.isPrivate || 0) === 1;
+      const explicitGlobal = Number(league.IsGlobalLeague || league.IsGlobal || league.isGlobal || 0) === 1;
+      const type = String(league.LeagueType || league.Type || league.type || '').toLowerCase();
+      return explicitPrivate || (!explicitGlobal && !type.includes('global') && !type.includes('general'));
+    };
+    const leagueRows = allLeagueRows.filter(league => {
+      const count = numberOf(league, ['MemberCount','MembersCount','TotalMembers','EntryCount','LeagueSize']);
+      return isPrivateLeague(league) && (count === 0 || count <= 20);
+    });
     const leaderboards = {};
-    for (const league of leagueRows.slice(0, 20)) {
+    for (const league of leagueRows) {
       const id = league.LeagueId || league.LeagueID || league.league_id || league.id;
       if (!id) continue;
       const h2h = Number(league.IsHTHLeague || league.isHTHLeague || 0);
       try {
-        leaderboards[String(id)] = await readJson(
-          '/services/user/league/' + guid + '/getuserleaguemembers/1/' + id + '/' + h2h + '/' + gameDay + '/1/100/'
-        );
+        const rounds = {};
+        let currentBoard = null;
+        for (let round = 1; round <= gameDay; round++) {
+          try {
+            const board = await readJson(
+              '/services/user/league/' + guid + '/getuserleaguemembers/1/' + id + '/' + h2h + '/' + round + '/1/20/'
+            );
+            rounds[String(round)] = board;
+            if (round === gameDay) currentBoard = board;
+          } catch (_) {}
+        }
+        if (!currentBoard && rounds[String(gameDay)]) currentBoard = rounds[String(gameDay)];
+
+        const memberTeams = {};
+        const currentRows = findArray(valueOf(currentBoard));
+        for (const member of currentRows.slice(0, 20)) {
+          const memberGuid = member.UserGUID || member.UserGuid || member.GUID || member.Guid || member.userGuid;
+          const memberId = member.TeamId || member.EntryId || member.UserId || memberGuid;
+          if (!memberGuid || !memberId) continue;
+          try {
+            memberTeams[String(memberId)] = await readJson(
+              '/services/user/gameplay/' + memberGuid + '/getusergamedaysv1/1'
+            );
+          } catch (_) {}
+        }
+        leaderboards[String(id)] = {current:currentBoard, rounds:rounds, teams:memberTeams};
       } catch (_) {}
     }
     F1Bridge.postMessage(JSON.stringify({
@@ -166,7 +206,7 @@ class _FantasyLoginWebViewScreenState
         if (_showBridgeErrors && mounted) {
           setState(() => _status =
               'Todavía no se detecta una cuenta conectada. Inicia sesión en '
-              'la web y vuelve a pulsar "Capturar sesión".');
+                  'la web y vuelve a pulsar "Capturar sesión".');
         }
         return;
       }

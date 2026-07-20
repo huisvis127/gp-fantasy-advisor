@@ -38,7 +38,16 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
             (snapshotRaw == null || snapshotRaw.isEmpty)) {
           return _signedOut();
         }
-        return _LeaguesList(token: token ?? '', snapshotRaw: snapshotRaw);
+        return _LeaguesList(
+          token: token ?? '',
+          snapshotRaw: snapshotRaw,
+          onRefreshSession: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FantasyLoginScreen()),
+            );
+            if (mounted) setState(() => _refreshKey++);
+          },
+        );
       },
     );
   }
@@ -83,10 +92,15 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
 }
 
 class _LeaguesList extends ConsumerStatefulWidget {
-  const _LeaguesList({required this.token, this.snapshotRaw});
+  const _LeaguesList({
+    required this.token,
+    required this.onRefreshSession,
+    this.snapshotRaw,
+  });
 
   final String token;
   final String? snapshotRaw;
+  final VoidCallback onRefreshSession;
 
   @override
   ConsumerState<_LeaguesList> createState() => _LeaguesListState();
@@ -95,6 +109,7 @@ class _LeaguesList extends ConsumerStatefulWidget {
 class _LeaguesListState extends ConsumerState<_LeaguesList> {
   late Future<Map<String, dynamic>> _request;
   Map<String, dynamic>? _snapshot;
+  String? _selectedLeagueId;
 
   @override
   void initState() {
@@ -152,17 +167,25 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
           'details',
           'value',
         });
-        if (leagues.isEmpty) {
+        final privateLeagues = leagues.where((league) {
+          final count = _leagueMemberCount(league);
+          return _isPrivateLeague(league) && (count == null || count <= 20);
+        }).toList();
+        if (privateLeagues.isEmpty) {
           return ListView(
             padding: const EdgeInsets.all(14),
             children: const [
               StatusBanner(
                 message:
-                    'La sesión es válida, pero la cuenta no devolvió ligas privadas.',
+                    'No hay ligas privadas de hasta 20 integrantes. Las ligas generales se ocultan porque no aportan un análisis útil.',
               ),
             ],
           );
         }
+
+        final selectedId = _selectedLeagueId ??
+            _first(privateLeagues.first, const ['league_id', 'leagueid', 'id'])
+                ?.toString();
 
         return RefreshIndicator(
           color: AppColors.lime,
@@ -174,79 +197,82 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
             children: [
               const SectionHead(
-                kicker: 'Competición',
-                title: 'Mis ligas',
+                kicker: 'Competición privada',
+                title: 'Liga',
               ),
               const SizedBox(height: 5),
               Text(
-                'Toca una liga para consultar la clasificación.',
+                'Solo se muestran ligas privadas de hasta 20 integrantes.',
                 style: AppText.body(12, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
-              for (final league in leagues) ...[
-                _leagueCard(league),
-                const SizedBox(height: 8),
-              ],
+              RefCard(
+                child: DropdownButtonFormField<String>(
+                  initialValue: selectedId,
+                  decoration: const InputDecoration(
+                    labelText: 'Liga privada',
+                    prefixIcon: Icon(Icons.emoji_events_rounded),
+                  ),
+                  items: [
+                    for (final league in privateLeagues)
+                      DropdownMenuItem(
+                        value: _first(
+                                league, const ['league_id', 'leagueid', 'id'])
+                            .toString(),
+                        child: Text(
+                          (_first(league, const [
+                                    'league_name',
+                                    'leaguename',
+                                    'name',
+                                    'display_name'
+                                  ]) ??
+                                  'Liga')
+                              .toString(),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _selectedLeagueId = value);
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (selectedId != null)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      final league = privateLeagues.firstWhere(
+                        (item) =>
+                            _first(item, const ['league_id', 'leagueid', 'id'])
+                                .toString() ==
+                            selectedId,
+                      );
+                      final name = _first(league, const [
+                            'league_name',
+                            'leaguename',
+                            'name',
+                            'display_name'
+                          ]) ??
+                          'Liga';
+                      _openLeaderboard(selectedId, name.toString());
+                    },
+                    icon: const Icon(Icons.query_stats_rounded, size: 18),
+                    label: const Text('VER EQUIPOS Y GRÁFICOS'),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: widget.onRefreshSession,
+                icon: const Icon(Icons.sync_rounded, size: 17),
+                label: const Text('ACTUALIZAR DATOS DE LIGA'),
+              ),
             ],
           ),
         );
       },
-    );
-  }
-
-  Widget _leagueCard(Map<String, dynamic> league) {
-    final id = _first(league, const ['league_id', 'leagueid', 'id']);
-    final name = _first(league,
-            const ['league_name', 'leaguename', 'name', 'display_name']) ??
-        'Liga';
-    final count =
-        _first(league, const ['entry_count', 'entryCount', 'members_count']);
-    final rank = _first(league, const ['rank', 'position', 'overall_rank']);
-    return RefCard(
-      padding: EdgeInsets.zero,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: id == null
-            ? null
-            : () => _openLeaderboard(id.toString(), name.toString()),
-        child: Padding(
-          padding: const EdgeInsets.all(15),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.lime.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: AppColors.lime.withValues(alpha: .35)),
-                ),
-                child: const Icon(Icons.emoji_events_rounded,
-                    color: AppColors.lime),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name.toString(),
-                        style: AppText.body(14, weight: FontWeight.w700)),
-                    if (count != null)
-                      Text('$count participantes',
-                          style:
-                              AppText.body(11, color: AppColors.textTertiary)),
-                  ],
-                ),
-              ),
-              if (rank != null) TagChip('#$rank', color: AppColors.cyan),
-              const SizedBox(width: 6),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textTertiary),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -342,9 +368,11 @@ class _LeaderboardSheetState extends State<_LeaderboardSheet> {
                     return const Center(
                         child: Text('Sin participantes disponibles.'));
                   }
+                  final enrichedRows =
+                      _enrichLeagueRows(snapshot.data, rawRows);
                   final rows = [
-                    for (var index = 0; index < rawRows.length; index++)
-                      _LeagueEntry.fromJson(rawRows[index], index + 1),
+                    for (var index = 0; index < enrichedRows.length; index++)
+                      _LeagueEntry.fromJson(enrichedRows[index], index + 1),
                   ];
                   return ListView(
                     padding: const EdgeInsets.all(16),
@@ -402,36 +430,37 @@ class _LeagueEntry {
             ]) ??
             'Participante')
         .toString();
-    final memberRows = _nestedList(
-        [json, team], const ['players', 'picks', 'assets', 'lineup']);
+    final memberRows = _nestedList([
+      json,
+      team
+    ], const [
+      'players',
+      'picks',
+      'assets',
+      'lineup',
+      'pickedplayers',
+      'picked_players',
+      'playerspicked'
+    ]);
     final members = memberRows
-        .map((row) => (_first(row,
-                    const ['display_name', 'full_name', 'name', 'team_name']) ??
+        .map((row) => (_first(row, const [
+                  'display_name',
+                  'displayname',
+                  'full_name',
+                  'fullname',
+                  'name',
+                  'playername',
+                  'drivername',
+                  'team_name',
+                  'teamname'
+                ]) ??
                 '')
             .toString())
         .where((name) => name.isNotEmpty)
         .toList();
     final used = <String>{};
-    for (final source in [json, team]) {
-      for (final key in const [
-        'chips_used',
-        'chipsUsed',
-        'used_chips',
-        'boosters_used',
-        'chips',
-        'boosters'
-      ]) {
-        final value = source[key];
-        if (value is List) {
-          used.addAll(value.map((item) => _slug(item is Map
-              ? (_first(Map<String, dynamic>.from(item),
-                      const ['name', 'chip', 'booster', 'type']) ??
-                  '')
-              : item.toString())));
-        }
-        if (value is String) used.addAll(value.split(',').map(_slug));
-      }
-    }
+    _collectUsedChips(json, used);
+    _collectUsedChips(team, used);
     final historyRows = _nestedList([
       json,
       team
@@ -731,17 +760,175 @@ Map<String, dynamic> _map(dynamic value) =>
 List<Map<String, dynamic>> _nestedList(
     List<Map<String, dynamic>> sources, List<String> keys) {
   for (final source in sources) {
-    for (final key in keys) {
-      final value = source[key];
-      if (value is List) {
-        return value
+    final result =
+        _findNamedList(source, keys.map((key) => key.toLowerCase()).toSet());
+    if (result.isNotEmpty) return result;
+  }
+  return const [];
+}
+
+List<Map<String, dynamic>> _findNamedList(dynamic node, Set<String> keys) {
+  if (node is Map) {
+    for (final entry in node.entries) {
+      if (keys.contains(entry.key.toString().toLowerCase()) &&
+          entry.value is List) {
+        final rows = (entry.value as List)
             .whereType<Map>()
             .map((item) => Map<String, dynamic>.from(item))
             .toList();
+        if (rows.isNotEmpty) return rows;
       }
+    }
+    for (final value in node.values) {
+      final rows = _findNamedList(value, keys);
+      if (rows.isNotEmpty) return rows;
+    }
+  } else if (node is List) {
+    for (final value in node) {
+      final rows = _findNamedList(value, keys);
+      if (rows.isNotEmpty) return rows;
     }
   }
   return const [];
+}
+
+void _collectUsedChips(dynamic node, Set<String> output) {
+  if (node is Map) {
+    for (final entry in node.entries) {
+      final key = entry.key.toString().toLowerCase();
+      final isChipField = key.contains('chip') || key.contains('booster');
+      final value = entry.value;
+      if (isChipField && value is String && value.isNotEmpty) {
+        output.addAll(value.split(',').map(_slug));
+      } else if (isChipField && value is List) {
+        for (final item in value) {
+          if (item is Map) {
+            final name = _first(Map<String, dynamic>.from(item),
+                const ['name', 'chip', 'booster', 'type', 'boostername']);
+            final active = _first(Map<String, dynamic>.from(item),
+                const ['used', 'isused', 'activated', 'gamedayid']);
+            if (name != null && active != false && active != 0) {
+              output.add(_slug(name.toString()));
+            }
+          } else {
+            output.add(_slug(item.toString()));
+          }
+        }
+      }
+      _collectUsedChips(value, output);
+    }
+  } else if (node is List) {
+    for (final value in node) {
+      _collectUsedChips(value, output);
+    }
+  }
+}
+
+List<Map<String, dynamic>> _enrichLeagueRows(
+    Map<String, dynamic>? response, List<Map<String, dynamic>> currentRows) {
+  if (response == null) return currentRows;
+  final roundsRaw = response['rounds'];
+  final teamsRaw = response['teams'];
+  final rounds = roundsRaw is Map
+      ? Map<String, dynamic>.from(roundsRaw)
+      : const <String, dynamic>{};
+  final teams = teamsRaw is Map
+      ? Map<String, dynamic>.from(teamsRaw)
+      : const <String, dynamic>{};
+
+  return currentRows.map((original) {
+    final row = Map<String, dynamic>.from(original);
+    final key = _leagueMemberKey(row);
+    final history = <Map<String, dynamic>>[];
+    for (final roundEntry in rounds.entries) {
+      final round = int.tryParse(roundEntry.key);
+      if (round == null) continue;
+      final roundRows = _extractList(roundEntry.value, const {
+        'leaderboards',
+        'leaderboard',
+        'entries',
+        'results',
+        'member',
+        'details',
+        'value'
+      });
+      for (final roundRow in roundRows) {
+        if (_leagueMemberKey(roundRow) != key) continue;
+        final rank = _first(roundRow, const [
+          'rank',
+          'position',
+          'overall_rank',
+          'overallrank',
+          'leaguerank'
+        ]);
+        if (rank != null) history.add({'round': round, 'rank': rank});
+        break;
+      }
+    }
+    if (history.isNotEmpty) row['rank_history'] = history;
+    final team = teams[key] ??
+        teams[_first(row, const ['teamid', 'entryid', 'userid'])?.toString()];
+    if (team is Map) row['team'] = Map<String, dynamic>.from(team);
+    return row;
+  }).toList();
+}
+
+String _leagueMemberKey(Map<String, dynamic> row) {
+  final id = _first(row, const [
+    'teamid',
+    'team_id',
+    'entryid',
+    'entry_id',
+    'userid',
+    'user_id',
+    'userguid',
+    'guid',
+    'managerid'
+  ]);
+  if (id != null && id.toString().isNotEmpty) return id.toString();
+  return (_first(row, const [
+            'team_name',
+            'teamname',
+            'entry_name',
+            'entryname',
+            'display_name',
+            'displayname',
+            'name',
+            'user_name',
+            'username'
+          ]) ??
+          '')
+      .toString()
+      .trim()
+      .toLowerCase();
+}
+
+int? _leagueMemberCount(Map<String, dynamic> league) =>
+    int.tryParse((_first(league, const [
+              'entry_count',
+              'entrycount',
+              'members_count',
+              'memberscount',
+              'membercount',
+              'totalmembers',
+              'leaguesize'
+            ]) ??
+            '')
+        .toString());
+
+bool _isPrivateLeague(Map<String, dynamic> league) {
+  final explicitPrivate =
+      _first(league, const ['isprivateleague', 'isprivate', 'private']);
+  if (explicitPrivate == true || explicitPrivate?.toString() == '1') {
+    return true;
+  }
+  final explicitGlobal =
+      _first(league, const ['isgloballeague', 'isglobal', 'global']);
+  if (explicitGlobal == true || explicitGlobal?.toString() == '1') return false;
+  final type = (_first(league, const ['leaguetype', 'type']) ?? '')
+      .toString()
+      .toLowerCase();
+  return !type.contains('global') && !type.contains('general');
 }
 
 String _slug(String value) => value
