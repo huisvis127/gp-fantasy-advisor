@@ -24,10 +24,7 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
     final auth = ref.watch(fantasyAuthServiceProvider);
     return FutureBuilder<List<String?>>(
       key: ValueKey(_refreshKey),
-      future: Future.wait([
-        auth.readStoredToken(),
-        auth.readSessionSnapshot(),
-      ]),
+      future: Future.wait([auth.readStoredToken(), auth.readSessionSnapshot()]),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator(strokeWidth: 2));
@@ -77,7 +74,8 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
                   onPressed: () async {
                     await Navigator.of(context).push(
                       MaterialPageRoute(
-                          builder: (_) => const FantasyLoginScreen()),
+                        builder: (_) => const FantasyLoginScreen(),
+                      ),
                     );
                     if (mounted) setState(() => _refreshKey++);
                   },
@@ -184,8 +182,11 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
         }
 
         final selectedId = _selectedLeagueId ??
-            _first(privateLeagues.first, const ['league_id', 'leagueid', 'id'])
-                ?.toString();
+            _first(privateLeagues.first, const [
+              'league_id',
+              'leagueid',
+              'id',
+            ])?.toString();
 
         return RefreshIndicator(
           color: AppColors.lime,
@@ -196,10 +197,7 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
             children: [
-              const SectionHead(
-                kicker: 'Competición privada',
-                title: 'Liga',
-              ),
+              const SectionHead(kicker: 'Competición privada', title: 'Liga'),
               const SizedBox(height: 5),
               Text(
                 'Solo se muestran ligas privadas de hasta 20 integrantes.',
@@ -216,15 +214,17 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
                   items: [
                     for (final league in privateLeagues)
                       DropdownMenuItem(
-                        value: _first(
-                                league, const ['league_id', 'leagueid', 'id'])
-                            .toString(),
+                        value: _first(league, const [
+                          'league_id',
+                          'leagueid',
+                          'id',
+                        ]).toString(),
                         child: Text(
                           (_first(league, const [
                                     'league_name',
                                     'leaguename',
                                     'name',
-                                    'display_name'
+                                    'display_name',
                                   ]) ??
                                   'Liga')
                               .toString(),
@@ -246,15 +246,18 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
                     onPressed: () {
                       final league = privateLeagues.firstWhere(
                         (item) =>
-                            _first(item, const ['league_id', 'leagueid', 'id'])
-                                .toString() ==
+                            _first(item, const [
+                              'league_id',
+                              'leagueid',
+                              'id',
+                            ]).toString() ==
                             selectedId,
                       );
                       final name = _first(league, const [
                             'league_name',
                             'leaguename',
                             'name',
-                            'display_name'
+                            'display_name',
                           ]) ??
                           'Liga';
                       _openLeaderboard(selectedId, name.toString());
@@ -292,10 +295,7 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface1,
-      builder: (_) => _LeaderboardSheet(
-        name: name,
-        request: request,
-      ),
+      builder: (_) => _LeaderboardSheet(name: name, request: request),
     );
   }
 }
@@ -325,8 +325,9 @@ class _LeaderboardSheetState extends State<_LeaderboardSheet> {
               height: 4,
               margin: const EdgeInsets.only(top: 10, bottom: 14),
               decoration: BoxDecoration(
-                  color: AppColors.border2,
-                  borderRadius: BorderRadius.circular(9)),
+                color: AppColors.border2,
+                borderRadius: BorderRadius.circular(9),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -334,8 +335,9 @@ class _LeaderboardSheetState extends State<_LeaderboardSheet> {
                 children: [
                   Expanded(child: Text(widget.name, style: AppText.syne(20))),
                   IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded)),
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
                 ],
               ),
             ),
@@ -345,14 +347,16 @@ class _LeaderboardSheetState extends State<_LeaderboardSheet> {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
                     return const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2));
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    );
                   }
                   if (snapshot.hasError) {
                     return const Padding(
                       padding: EdgeInsets.all(16),
                       child: StatusBanner(
-                          message: 'No se pudo abrir la clasificación.',
-                          isError: true),
+                        message: 'No se pudo abrir la clasificación.',
+                        isError: true,
+                      ),
                     );
                   }
                   final rawRows = _extractList(snapshot.data, const {
@@ -366,10 +370,13 @@ class _LeaderboardSheetState extends State<_LeaderboardSheet> {
                   });
                   if (rawRows.isEmpty) {
                     return const Center(
-                        child: Text('Sin participantes disponibles.'));
+                      child: Text('Sin participantes disponibles.'),
+                    );
                   }
-                  final enrichedRows =
-                      _enrichLeagueRows(snapshot.data, rawRows);
+                  final enrichedRows = _enrichLeagueRows(
+                    snapshot.data,
+                    rawRows,
+                  );
                   final rows = [
                     for (var index = 0; index < enrichedRows.length; index++)
                       _LeagueEntry.fromJson(enrichedRows[index], index + 1),
@@ -378,10 +385,13 @@ class _LeaderboardSheetState extends State<_LeaderboardSheet> {
                     padding: const EdgeInsets.all(16),
                     children: [
                       _PositionChart(
-                          entries: rows,
-                          window: _window,
-                          onWindowChanged: (value) =>
-                              setState(() => _window = value)),
+                        entries: rows,
+                        window: _window,
+                        onWindowChanged: (value) =>
+                            setState(() => _window = value),
+                      ),
+                      const SizedBox(height: 12),
+                      _PointsChart(entries: rows, window: _window),
                       const SizedBox(height: 12),
                       for (final entry in rows) ...[
                         _LeagueEntryCard(entry: entry),
@@ -400,104 +410,126 @@ class _LeaderboardSheetState extends State<_LeaderboardSheet> {
 }
 
 class _LeagueEntry {
-  const _LeagueEntry(
-      {required this.rank,
-      required this.name,
-      required this.points,
-      required this.members,
-      required this.chipsUsed,
-      required this.history});
+  const _LeagueEntry({
+    required this.rank,
+    required this.name,
+    required this.points,
+    required this.members,
+    required this.chipsUsed,
+    required this.history,
+    required this.pointsHistory,
+  });
   final int rank;
   final String name;
   final String? points;
   final List<String> members;
   final Set<String> chipsUsed;
   final List<({int round, int rank})> history;
+  final List<({int round, double points})> pointsHistory;
 
   factory _LeagueEntry.fromJson(Map<String, dynamic> json, int fallbackRank) {
     final team = _map(_first(json, const ['team', 'entry', 'fantasy_team']));
     final rank = int.tryParse(
-            (_first(json, const ['rank', 'position', 'overall_rank']) ??
-                    fallbackRank)
-                .toString()) ??
+          (_first(json, const [
+                    'rank',
+                    'position',
+                    'overall_rank',
+                    'cur_rank',
+                  ]) ??
+                  fallbackRank)
+              .toString(),
+        ) ??
         fallbackRank;
     final name = (_first(json, const [
               'team_name',
               'entry_name',
               'display_name',
               'name',
-              'user_name'
+              'user_name',
             ]) ??
             'Participante')
         .toString();
-    final memberRows = _nestedList([
-      json,
-      team
-    ], const [
-      'players',
-      'picks',
-      'assets',
-      'lineup',
-      'pickedplayers',
-      'picked_players',
-      'playerspicked'
-    ]);
+    final memberRows = _nestedList(
+      [json, team],
+      const [
+        'players',
+        'picks',
+        'assets',
+        'lineup',
+        'pickedplayers',
+        'picked_players',
+        'playerspicked',
+      ],
+    );
     final members = memberRows
-        .map((row) => (_first(row, const [
-                  'display_name',
-                  'displayname',
-                  'full_name',
-                  'fullname',
-                  'name',
-                  'playername',
-                  'drivername',
-                  'team_name',
-                  'teamname'
-                ]) ??
-                '')
-            .toString())
+        .map(
+          (row) => (_first(row, const [
+                    'display_name',
+                    'displayname',
+                    'full_name',
+                    'fullname',
+                    'name',
+                    'playername',
+                    'drivername',
+                    'team_name',
+                    'teamname',
+                  ]) ??
+                  '')
+              .toString(),
+        )
         .where((name) => name.isNotEmpty)
         .toList();
     final used = <String>{};
     _collectUsedChips(json, used);
     _collectUsedChips(team, used);
-    final historyRows = _nestedList([
-      json,
-      team
-    ], const [
-      'rank_history',
-      'position_history',
-      'history',
-      'rounds',
-      'race_results'
-    ]);
+    final historyRows = _nestedList(
+      [json, team],
+      const [
+        'rank_history',
+        'position_history',
+        'history',
+        'rounds',
+        'race_results',
+      ],
+    );
     final history = <({int round, int rank})>[];
+    final pointsHistory = <({int round, double points})>[];
     for (var index = 0; index < historyRows.length; index++) {
       final row = historyRows[index];
       final position = int.tryParse(
-          (_first(row, const ['rank', 'position', 'league_rank']) ?? '')
-              .toString());
+        (_first(row, const ['rank', 'position', 'league_rank']) ?? '')
+            .toString(),
+      );
       if (position == null || position < 1) continue;
       final round = int.tryParse(
-              (_first(row, const ['round', 'gameweek', 'race_number']) ??
-                      index + 1)
-                  .toString()) ??
+            (_first(row, const ['round', 'gameweek', 'race_number']) ??
+                    index + 1)
+                .toString(),
+          ) ??
           index + 1;
       history.add((round: round, rank: position));
+      final points = double.tryParse(
+        (_first(row, const ['points', 'cur_points', 'score']) ?? '').toString(),
+      );
+      if (points != null) pointsHistory.add((round: round, points: points));
     }
     history.sort((a, b) => a.round.compareTo(b.round));
+    pointsHistory.sort((a, b) => a.round.compareTo(b.round));
     return _LeagueEntry(
-        rank: rank,
-        name: name,
-        points: _first(json, const [
-          'points',
-          'total_points',
-          'score',
-          'overall_points'
-        ])?.toString(),
-        members: members,
-        chipsUsed: used.where((chip) => chip.isNotEmpty).toSet(),
-        history: history);
+      rank: rank,
+      name: name,
+      points: _first(json, const [
+        'points',
+        'cur_points',
+        'total_points',
+        'score',
+        'overall_points',
+      ])?.toString(),
+      members: members,
+      chipsUsed: used.where((chip) => chip.isNotEmpty).toSet(),
+      history: history,
+      pointsHistory: pointsHistory,
+    );
   }
 }
 
@@ -520,52 +552,81 @@ class _LeagueEntryCardState extends State<_LeagueEntryCard> {
         onTap: () => setState(() => open = !open),
         child: Padding(
           padding: const EdgeInsets.all(13),
-          child: Column(children: [
-            Row(children: [
-              SizedBox(
-                  width: 35,
-                  child: Text('#${entry.rank}',
-                      style: AppText.mono(10, color: AppColors.lime))),
-              Expanded(
-                  child: Text(entry.name,
-                      style: AppText.body(13, weight: FontWeight.w700))),
-              if (entry.points != null)
-                Text('${entry.points} pts',
-                    style: AppText.mono(10, color: AppColors.cyan)),
-              const SizedBox(width: 4),
-              Icon(open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                  color: AppColors.textTertiary),
-            ]),
-            if (open) ...[
-              const Divider(height: 20),
-              Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('INTEGRANTES', style: AppText.mono(9))),
-              const SizedBox(height: 7),
-              if (entry.members.isEmpty)
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  SizedBox(
+                    width: 35,
+                    child: Text(
+                      '#${entry.rank}',
+                      style: AppText.mono(10, color: AppColors.lime),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      entry.name,
+                      style: AppText.body(13, weight: FontWeight.w700),
+                    ),
+                  ),
+                  if (entry.points != null)
+                    Text(
+                      '${entry.points} pts',
+                      style: AppText.mono(10, color: AppColors.cyan),
+                    ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    open
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: AppColors.textTertiary,
+                  ),
+                ],
+              ),
+              if (open) ...[
+                const Divider(height: 20),
                 Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('INTEGRANTES', style: AppText.mono(9)),
+                ),
+                const SizedBox(height: 7),
+                if (entry.members.isEmpty)
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                        'La API no ha incluido la alineación de este equipo.',
-                        style:
-                            AppText.body(10.5, color: AppColors.textTertiary)))
-              else
-                Wrap(spacing: 6, runSpacing: 6, children: [
-                  for (final member in entry.members)
-                    _Pill(label: member, color: AppColors.cyan)
-                ]),
-              const SizedBox(height: 12),
-              Align(
+                      'La API no ha incluido la alineación de este equipo.',
+                      style: AppText.body(10.5, color: AppColors.textTertiary),
+                    ),
+                  )
+                else
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final member in entry.members)
+                        _Pill(label: member, color: AppColors.cyan),
+                    ],
+                  ),
+                const SizedBox(height: 12),
+                Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('CHIPS', style: AppText.mono(9))),
-              const SizedBox(height: 7),
-              Wrap(spacing: 7, runSpacing: 7, children: [
-                for (final chip in _chips)
-                  _ChipStatus(
-                      label: chip, used: entry.chipsUsed.contains(_slug(chip)))
-              ]),
+                  child: Text('CHIPS', style: AppText.mono(9)),
+                ),
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    for (final chip in _chips)
+                      _ChipStatus(
+                        label: chip,
+                        used: entry.chipsUsed.contains(_slug(chip)),
+                      ),
+                  ],
+                ),
+              ],
             ],
-          ]),
+          ),
         ),
       ),
     );
@@ -575,10 +636,10 @@ class _LeagueEntryCardState extends State<_LeagueEntryCard> {
 const _chips = [
   'Limitless',
   'Wildcard',
-  'Triple Boost',
+  'Extra DRS',
   'No Negative',
   'Final Fix',
-  'Autopilot'
+  'Autopilot',
 ];
 
 class _ChipStatus extends StatelessWidget {
@@ -589,24 +650,27 @@ class _ChipStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = used ? AppColors.textTertiary : AppColors.lime;
     return Opacity(
-        opacity: used ? .35 : 1,
-        child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-            decoration: BoxDecoration(
-                color: color.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(color: color.withValues(alpha: .65)),
-                boxShadow: used
-                    ? null
-                    : [
-                        BoxShadow(
-                            color: color.withValues(alpha: .18), blurRadius: 8)
-                      ]),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(_chipIcon(label), size: 14, color: color),
-              const SizedBox(width: 4),
-              Text(label.toUpperCase(), style: AppText.mono(6.5, color: color))
-            ])));
+      opacity: used ? .35 : 1,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: color.withValues(alpha: .65)),
+          boxShadow: used
+              ? null
+              : [BoxShadow(color: color.withValues(alpha: .18), blurRadius: 8)],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_chipIcon(label), size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(label.toUpperCase(), style: AppText.mono(6.5, color: color)),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -616,19 +680,22 @@ class _Pill extends StatelessWidget {
   final Color color;
   @override
   Widget build(BuildContext context) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
           color: color.withValues(alpha: .08),
           borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: color.withValues(alpha: .35))),
-      child: Text(label, style: AppText.body(10.5, weight: FontWeight.w700)));
+          border: Border.all(color: color.withValues(alpha: .35)),
+        ),
+        child: Text(label, style: AppText.body(10.5, weight: FontWeight.w700)),
+      );
 }
 
 class _PositionChart extends StatelessWidget {
-  const _PositionChart(
-      {required this.entries,
-      required this.window,
-      required this.onWindowChanged});
+  const _PositionChart({
+    required this.entries,
+    required this.window,
+    required this.onWindowChanged,
+  });
   final List<_LeagueEntry> entries;
   final int? window;
   final ValueChanged<int?> onWindowChanged;
@@ -641,127 +708,353 @@ class _PositionChart extends StatelessWidget {
       ..sort();
     if (rounds.isEmpty) {
       return const StatusBanner(
-          message:
-              'El historial de posiciones aparecerá cuando F1 Fantasy lo incluya en la clasificación.');
+        message:
+            'El historial de posiciones aparecerá cuando F1 Fantasy lo incluya en la clasificación.',
+      );
     }
     final visible = window == null || rounds.length <= window!
         ? rounds
         : rounds.sublist(rounds.length - window!);
     final maxRank = entries
         .expand((entry) => entry.history.map((point) => point.rank))
-        .fold(entries.length < 2 ? 2 : entries.length,
-            (max, rank) => rank > max ? rank : max);
+        .fold(
+          entries.length < 2 ? 2 : entries.length,
+          (max, rank) => rank > max ? rank : max,
+        );
     final colors = [
       AppColors.lime,
       AppColors.cyan,
       AppColors.magenta,
       AppColors.orange,
-      AppColors.violet
+      AppColors.violet,
     ];
     return RefCard(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(
-            child: Text('EVOLUCIÓN DE POSICIONES', style: AppText.mono(9))),
-        _ChartButton(
-            label: '3', active: window == 3, onTap: () => onWindowChanged(3)),
-        const SizedBox(width: 4),
-        _ChartButton(
-            label: '6', active: window == 6, onTap: () => onWindowChanged(6)),
-        const SizedBox(width: 4),
-        _ChartButton(
-            label: 'Todo',
-            active: window == null,
-            onTap: () => onWindowChanged(null))
-      ]),
-      const SizedBox(height: 10),
-      SizedBox(
-          height: 190,
-          child: LineChart(LineChartData(
-              minX: visible.first.toDouble(),
-              maxX: visible.last == visible.first
-                  ? visible.last + 1.0
-                  : visible.last.toDouble(),
-              minY: 1,
-              maxY: maxRank.toDouble(),
-              borderData: FlBorderData(show: false),
-              gridData: FlGridData(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('EVOLUCIÓN DE POSICIONES', style: AppText.mono(9)),
+              ),
+              _ChartButton(
+                label: '3',
+                active: window == 3,
+                onTap: () => onWindowChanged(3),
+              ),
+              const SizedBox(width: 4),
+              _ChartButton(
+                label: '6',
+                active: window == 6,
+                onTap: () => onWindowChanged(6),
+              ),
+              const SizedBox(width: 4),
+              _ChartButton(
+                label: 'Todo',
+                active: window == null,
+                onTap: () => onWindowChanged(null),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _ChartLegend(entries: entries, colors: colors),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 190,
+            child: LineChart(
+              LineChartData(
+                minX: visible.first.toDouble(),
+                maxX: visible.last == visible.first
+                    ? visible.last + 1.0
+                    : visible.last.toDouble(),
+                minY: 1,
+                maxY: maxRank.toDouble(),
+                borderData: FlBorderData(show: false),
+                gridData: FlGridData(
                   drawVerticalLine: false,
                   horizontalInterval: 1,
                   getDrawingHorizontalLine: (_) =>
-                      const FlLine(color: AppColors.border1)),
-              titlesData: FlTitlesData(
+                      const FlLine(color: AppColors.border1),
+                ),
+                titlesData: FlTitlesData(
                   topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: 1,
-                          reservedSize: 28,
-                          getTitlesWidget: (value, _) =>
-                              value == value.roundToDouble() && value >= 1 && value <= maxRank
-                                  ? Text('P${maxRank - value.toInt() + 1}',
-                                      style: AppText.mono(8))
-                                  : const SizedBox.shrink())),
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 1,
+                      reservedSize: 28,
+                      getTitlesWidget: (value, _) =>
+                          value == value.roundToDouble() &&
+                                  value >= 1 &&
+                                  value <= maxRank
+                              ? Text(
+                                  'P${maxRank - value.toInt() + 1}',
+                                  style: AppText.mono(8),
+                                )
+                              : const SizedBox.shrink(),
+                    ),
+                  ),
                   bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: 1,
-                          getTitlesWidget: (value, _) => visible.contains(value.round())
-                              ? Padding(padding: const EdgeInsets.only(top: 5), child: Text('R${value.round()}', style: AppText.mono(7)))
-                              : const SizedBox.shrink()))),
-              lineBarsData: [
-                for (var i = 0; i < entries.length; i++)
-                  if (entries[i].history.isNotEmpty)
-                    LineChartBarData(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 1,
+                      getTitlesWidget: (value, _) =>
+                          visible.contains(value.round())
+                              ? Padding(
+                                  padding: const EdgeInsets.only(top: 5),
+                                  child: Text(
+                                    'R${value.round()}',
+                                    style: AppText.mono(7),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+                lineBarsData: [
+                  for (var i = 0; i < entries.length; i++)
+                    if (entries[i].history.isNotEmpty)
+                      LineChartBarData(
                         spots: [
-                          for (final point in entries[i]
-                              .history
-                              .where((point) => point.round >= visible.first))
-                            FlSpot(point.round.toDouble(),
-                                (maxRank - point.rank + 1).toDouble())
+                          for (final point in entries[i].history.where(
+                                (point) => point.round >= visible.first,
+                              ))
+                            FlSpot(
+                              point.round.toDouble(),
+                              (maxRank - point.rank + 1).toDouble(),
+                            ),
                         ],
                         color: colors[i % colors.length],
                         barWidth: 2.3,
                         isCurved: true,
-                        dotData: const FlDotData(show: false))
-              ]))),
-    ]));
+                        dotData: const FlDotData(show: false),
+                      ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
+class _PointsChart extends StatelessWidget {
+  const _PointsChart({required this.entries, required this.window});
+
+  final List<_LeagueEntry> entries;
+  final int? window;
+
+  @override
+  Widget build(BuildContext context) {
+    final rounds = entries
+        .expand((entry) => entry.pointsHistory.map((point) => point.round))
+        .toSet()
+        .toList()
+      ..sort();
+    if (rounds.isEmpty) {
+      return const StatusBanner(
+        message: 'Los puntos por carrera aparecerán tras actualizar la liga.',
+      );
+    }
+    final visible = window == null || rounds.length <= window!
+        ? rounds
+        : rounds.sublist(rounds.length - window!);
+    final values = entries
+        .expand((entry) => entry.pointsHistory)
+        .where((point) => visible.contains(point.round))
+        .map((point) => point.points)
+        .toList();
+    final rawMin = values.reduce((a, b) => a < b ? a : b);
+    final rawMax = values.reduce((a, b) => a > b ? a : b);
+    final span = (rawMax - rawMin).abs();
+    final interval = span <= 40
+        ? 10.0
+        : span <= 100
+            ? 25.0
+            : span <= 250
+                ? 50.0
+                : 100.0;
+    final minY = (rawMin / interval).floorToDouble() * interval;
+    var maxY = (rawMax / interval).ceilToDouble() * interval;
+    if (maxY <= minY) maxY = minY + interval;
+    final colors = [
+      AppColors.lime,
+      AppColors.cyan,
+      AppColors.magenta,
+      AppColors.orange,
+      AppColors.violet,
+    ];
+    return RefCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('PUNTOS POR CARRERA', style: AppText.mono(9)),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 190,
+            child: LineChart(
+              LineChartData(
+                minX: visible.first.toDouble(),
+                maxX: visible.last == visible.first
+                    ? visible.last + 1.0
+                    : visible.last.toDouble(),
+                minY: minY,
+                maxY: maxY,
+                borderData: FlBorderData(show: false),
+                gridData: FlGridData(
+                  drawVerticalLine: false,
+                  horizontalInterval: interval,
+                  getDrawingHorizontalLine: (_) =>
+                      const FlLine(color: AppColors.border1),
+                ),
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: interval,
+                      reservedSize: 34,
+                      getTitlesWidget: (value, _) => Text(
+                        value.round().toString(),
+                        style: AppText.mono(7),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 1,
+                      getTitlesWidget: (value, _) =>
+                          visible.contains(value.round())
+                              ? Padding(
+                                  padding: const EdgeInsets.only(top: 5),
+                                  child: Text(
+                                    'R${value.round()}',
+                                    style: AppText.mono(7),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+                lineBarsData: [
+                  for (var i = 0; i < entries.length; i++)
+                    if (entries[i].pointsHistory.isNotEmpty)
+                      LineChartBarData(
+                        spots: [
+                          for (final point in entries[i].pointsHistory.where(
+                                (point) => visible.contains(point.round),
+                              ))
+                            FlSpot(point.round.toDouble(), point.points),
+                        ],
+                        color: colors[i % colors.length],
+                        barWidth: 2.3,
+                        isCurved: true,
+                        dotData: const FlDotData(show: false),
+                      ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartLegend extends StatelessWidget {
+  const _ChartLegend({required this.entries, required this.colors});
+
+  final List<_LeagueEntry> entries;
+  final List<Color> colors;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+        spacing: 10,
+        runSpacing: 5,
+        children: [
+          for (var i = 0; i < entries.length; i++)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colors[i % colors.length],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 110),
+                  child: Text(
+                    entries[i].name,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.body(8.5, color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      );
+}
+
 class _ChartButton extends StatelessWidget {
-  const _ChartButton(
-      {required this.label, required this.active, required this.onTap});
+  const _ChartButton({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
   final String label;
   final bool active;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => InkWell(
-      onTap: onTap,
-      child: Container(
+        onTap: onTap,
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
           decoration: BoxDecoration(
-              color: active
-                  ? AppColors.lime.withValues(alpha: .12)
-                  : AppColors.surface3,
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(
-                  color: active ? AppColors.lime : AppColors.border1)),
-          child: Text(label,
-              style: AppText.mono(7.5,
-                  color: active ? AppColors.lime : AppColors.textSecondary))));
+            color: active
+                ? AppColors.lime.withValues(alpha: .12)
+                : AppColors.surface3,
+            borderRadius: BorderRadius.circular(7),
+            border:
+                Border.all(color: active ? AppColors.lime : AppColors.border1),
+          ),
+          child: Text(
+            label,
+            style: AppText.mono(
+              7.5,
+              color: active ? AppColors.lime : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      );
 }
 
 Map<String, dynamic> _map(dynamic value) =>
     value is Map ? Map<String, dynamic>.from(value) : const {};
 List<Map<String, dynamic>> _nestedList(
-    List<Map<String, dynamic>> sources, List<String> keys) {
+  List<Map<String, dynamic>> sources,
+  List<String> keys,
+) {
   for (final source in sources) {
-    final result =
-        _findNamedList(source, keys.map((key) => key.toLowerCase()).toSet());
+    final result = _findNamedList(
+      source,
+      keys.map((key) => key.toLowerCase()).toSet(),
+    );
     if (result.isNotEmpty) return result;
   }
   return const [];
@@ -803,10 +1096,19 @@ void _collectUsedChips(dynamic node, Set<String> output) {
       } else if (isChipField && value is List) {
         for (final item in value) {
           if (item is Map) {
-            final name = _first(Map<String, dynamic>.from(item),
-                const ['name', 'chip', 'booster', 'type', 'boostername']);
-            final active = _first(Map<String, dynamic>.from(item),
-                const ['used', 'isused', 'activated', 'gamedayid']);
+            final name = _first(Map<String, dynamic>.from(item), const [
+              'name',
+              'chip',
+              'booster',
+              'type',
+              'boostername',
+            ]);
+            final active = _first(Map<String, dynamic>.from(item), const [
+              'used',
+              'isused',
+              'activated',
+              'gamedayid',
+            ]);
             if (name != null && active != false && active != 0) {
               output.add(_slug(name.toString()));
             }
@@ -825,7 +1127,9 @@ void _collectUsedChips(dynamic node, Set<String> output) {
 }
 
 List<Map<String, dynamic>> _enrichLeagueRows(
-    Map<String, dynamic>? response, List<Map<String, dynamic>> currentRows) {
+  Map<String, dynamic>? response,
+  List<Map<String, dynamic>> currentRows,
+) {
   if (response == null) return currentRows;
   final roundsRaw = response['rounds'];
   final teamsRaw = response['teams'];
@@ -850,18 +1154,25 @@ List<Map<String, dynamic>> _enrichLeagueRows(
         'results',
         'member',
         'details',
-        'value'
+        'value',
       });
       for (final roundRow in roundRows) {
         if (_leagueMemberKey(roundRow) != key) continue;
         final rank = _first(roundRow, const [
           'rank',
+          'cur_rank',
           'position',
           'overall_rank',
           'overallrank',
-          'leaguerank'
+          'leaguerank',
         ]);
-        if (rank != null) history.add({'round': round, 'rank': rank});
+        if (rank != null) {
+          history.add({
+            'round': round,
+            'rank': rank,
+            'points': _first(roundRow, const ['points', 'cur_points', 'score']),
+          });
+        }
         break;
       }
     }
@@ -882,8 +1193,10 @@ String _leagueMemberKey(Map<String, dynamic> row) {
     'userid',
     'user_id',
     'userguid',
+    'user_guid',
+    'user_team',
     'guid',
-    'managerid'
+    'managerid',
   ]);
   if (id != null && id.toString().isNotEmpty) return id.toString();
   return (_first(row, const [
@@ -895,7 +1208,7 @@ String _leagueMemberKey(Map<String, dynamic> row) {
             'displayname',
             'name',
             'user_name',
-            'username'
+            'username',
           ]) ??
           '')
       .toString()
@@ -903,31 +1216,41 @@ String _leagueMemberKey(Map<String, dynamic> row) {
       .toLowerCase();
 }
 
-int? _leagueMemberCount(Map<String, dynamic> league) =>
-    int.tryParse((_first(league, const [
-              'entry_count',
-              'entrycount',
-              'members_count',
-              'memberscount',
-              'membercount',
-              'totalmembers',
-              'leaguesize'
-            ]) ??
-            '')
-        .toString());
+int? _leagueMemberCount(Map<String, dynamic> league) => int.tryParse(
+      (_first(league, const [
+                'entry_count',
+                'entrycount',
+                'members_count',
+                'memberscount',
+                'membercount',
+                'member_count',
+                'totalmembers',
+                'leaguesize',
+              ]) ??
+              '')
+          .toString(),
+    );
 
 bool _isPrivateLeague(Map<String, dynamic> league) {
-  final explicitPrivate =
-      _first(league, const ['isprivateleague', 'isprivate', 'private']);
+  final explicitPrivate = _first(league, const [
+    'isprivateleague',
+    'isprivate',
+    'private',
+  ]);
   if (explicitPrivate == true || explicitPrivate?.toString() == '1') {
     return true;
   }
-  final explicitGlobal =
-      _first(league, const ['isgloballeague', 'isglobal', 'global']);
+  final explicitGlobal = _first(league, const [
+    'isgloballeague',
+    'isglobal',
+    'global',
+  ]);
   if (explicitGlobal == true || explicitGlobal?.toString() == '1') return false;
-  final type = (_first(league, const ['leaguetype', 'type']) ?? '')
-      .toString()
-      .toLowerCase();
+  final type =
+      (_first(league, const ['leaguetype', 'league_type', 'type']) ?? '')
+          .toString()
+          .toLowerCase();
+  if (type.isNotEmpty) return type.contains('private');
   return !type.contains('global') && !type.contains('general');
 }
 
@@ -941,11 +1264,14 @@ IconData _chipIcon(String chip) => switch (_slug(chip)) {
       'triple_boost' => Icons.bolt_rounded,
       'no_negative' => Icons.shield_rounded,
       'final_fix' => Icons.build_circle_rounded,
-      _ => Icons.auto_awesome_rounded
+      'extra_drs' => Icons.speed_rounded,
+      _ => Icons.auto_awesome_rounded,
     };
 
 List<Map<String, dynamic>> _extractList(
-    dynamic node, Set<String> preferredKeys) {
+  dynamic node,
+  Set<String> preferredKeys,
+) {
   if (node is Map) {
     for (final entry in node.entries) {
       if (preferredKeys.contains(entry.key.toString().toLowerCase()) &&
