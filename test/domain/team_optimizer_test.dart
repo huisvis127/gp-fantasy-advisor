@@ -71,6 +71,30 @@ void main() {
 
       expect(result.totalCostMillions, lessThanOrEqualTo(40));
     });
+
+    test('incluye siempre el X2 del mejor piloto en el total', () {
+      final drivers = [
+        _fakePrediction('d1', 30, 10),
+        _fakePrediction('d2', 20, 10),
+        _fakePrediction('d3', 15, 10),
+        _fakePrediction('d4', 10, 10),
+        _fakePrediction('d5', 5, 10),
+      ];
+      final constructors = [
+        _fakePrediction('c1', 20, 10),
+        _fakePrediction('c2', 10, 10),
+      ];
+
+      const optimizer = TeamOptimizer();
+      final result = optimizer.findOptimalTeam(
+        driverPredictions: drivers,
+        constructorPredictions: constructors,
+        totalBudgetMillions: 100,
+      );
+
+      expect(result.boostedDriverId, 'd1');
+      expect(result.totalExpectedPoints, 140); // 110 base + 30 del X2.
+    });
   });
 
   group('TeamOptimizer.recommendBoost', () {

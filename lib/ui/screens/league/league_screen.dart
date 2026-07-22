@@ -11,6 +11,14 @@ import '../../../domain/services/league_snapshot_reader.dart';
 import '../../widgets/ref_widgets.dart';
 import '../login/fantasy_login_screen.dart';
 
+const _leagueColors = [
+  AppColors.lime,
+  AppColors.cyan,
+  AppColors.magenta,
+  AppColors.orange,
+  AppColors.violet,
+];
+
 class LeagueScreen extends ConsumerStatefulWidget {
   const LeagueScreen({super.key});
 
@@ -363,8 +371,13 @@ class _LeaderboardSectionState extends State<_LeaderboardSection> {
             const SizedBox(height: 12),
             _PointsChart(entries: rows, window: _window),
             const SizedBox(height: 12),
-            for (final entry in rows) ...[
-              _LeagueEntryCard(entry: entry),
+            _RacePositionTable(entries: rows),
+            const SizedBox(height: 12),
+            for (var i = 0; i < rows.length; i++) ...[
+              _LeagueEntryCard(
+                entry: rows[i],
+                color: _leagueColors[i % _leagueColors.length],
+              ),
               const SizedBox(height: 7),
             ],
           ],
@@ -506,9 +519,87 @@ class _LeagueEntry {
   }
 }
 
+class _RacePositionTable extends StatelessWidget {
+  const _RacePositionTable({required this.entries});
+
+  final List<_LeagueEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final rounds = entries
+        .expand((entry) => entry.history.map((point) => point.round))
+        .toSet()
+        .toList()
+      ..sort();
+    if (rounds.isEmpty) return const SizedBox.shrink();
+
+    Color medalColor(int? rank) => switch (rank) {
+          1 => const Color(0xFFFFD54F),
+          2 => const Color(0xFFCFD8DC),
+          3 => const Color(0xFFCD7F32),
+          _ => AppColors.textSecondary,
+        };
+
+    return RefCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('MEDALLERO · POSICIÓN POR CARRERA', style: AppText.mono(9)),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowHeight: 34,
+              dataRowMinHeight: 34,
+              dataRowMaxHeight: 38,
+              horizontalMargin: 8,
+              columnSpacing: 18,
+              columns: [
+                DataColumn(label: Text('EQUIPO', style: AppText.mono(7.5))),
+                for (final round in rounds)
+                  DataColumn(label: Text('R$round', style: AppText.mono(7.5))),
+              ],
+              rows: [
+                for (var i = 0; i < entries.length; i++)
+                  DataRow(cells: [
+                    DataCell(
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 135),
+                        child: Text(
+                          entries[i].name,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.body(9.5,
+                              color: _leagueColors[i % _leagueColors.length],
+                              weight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    for (final round in rounds)
+                      DataCell(Builder(builder: (_) {
+                        final matches = entries[i]
+                            .history
+                            .where((point) => point.round == round);
+                        final rank =
+                            matches.isEmpty ? null : matches.first.rank;
+                        return Text(
+                          rank == null ? '—' : 'P$rank',
+                          style: AppText.mono(8.5, color: medalColor(rank)),
+                        );
+                      })),
+                  ]),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _LeagueEntryCard extends StatefulWidget {
-  const _LeagueEntryCard({required this.entry});
+  const _LeagueEntryCard({required this.entry, required this.color});
   final _LeagueEntry entry;
+  final Color color;
   @override
   State<_LeagueEntryCard> createState() => _LeagueEntryCardState();
 }
@@ -539,7 +630,8 @@ class _LeagueEntryCardState extends State<_LeagueEntryCard> {
                   Expanded(
                     child: Text(
                       entry.name,
-                      style: AppText.body(13, weight: FontWeight.w700),
+                      style: AppText.body(13,
+                          color: widget.color, weight: FontWeight.w700),
                     ),
                   ),
                   if (entry.points != null)
@@ -694,13 +786,6 @@ class _PositionChart extends StatelessWidget {
           entries.length < 2 ? 2 : entries.length,
           (max, rank) => rank > max ? rank : max,
         );
-    final colors = [
-      AppColors.lime,
-      AppColors.cyan,
-      AppColors.magenta,
-      AppColors.orange,
-      AppColors.violet,
-    ];
     return RefCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -730,7 +815,7 @@ class _PositionChart extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          _ChartLegend(entries: entries, colors: colors),
+          _ChartLegend(entries: entries, colors: _leagueColors),
           const SizedBox(height: 10),
           SizedBox(
             height: 190,
@@ -802,9 +887,9 @@ class _PositionChart extends StatelessWidget {
                               (maxRank - point.rank + 1).toDouble(),
                             ),
                         ],
-                        color: colors[i % colors.length],
+                        color: _leagueColors[i % _leagueColors.length],
                         barWidth: 2.3,
-                        isCurved: true,
+                        isCurved: false,
                         dotData: const FlDotData(show: false),
                       ),
                 ],
@@ -856,13 +941,6 @@ class _PointsChart extends StatelessWidget {
     final minY = (rawMin / interval).floorToDouble() * interval;
     var maxY = (rawMax / interval).ceilToDouble() * interval;
     if (maxY <= minY) maxY = minY + interval;
-    final colors = [
-      AppColors.lime,
-      AppColors.cyan,
-      AppColors.magenta,
-      AppColors.orange,
-      AppColors.violet,
-    ];
     return RefCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -931,9 +1009,9 @@ class _PointsChart extends StatelessWidget {
                               ))
                             FlSpot(point.round.toDouble(), point.points),
                         ],
-                        color: colors[i % colors.length],
+                        color: _leagueColors[i % _leagueColors.length],
                         barWidth: 2.3,
-                        isCurved: true,
+                        isCurved: false,
                         dotData: const FlDotData(show: false),
                       ),
                 ],

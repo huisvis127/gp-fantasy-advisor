@@ -66,12 +66,55 @@ class FantasyHistoryScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Kicker('Alineación simulada actual'),
+                    const SizedBox(height: 12),
+                    Text('PILOTOS',
+                        style:
+                            AppText.mono(10, color: AppColors.textSecondary)),
                     const SizedBox(height: 8),
-                    Wrap(spacing: 7, runSpacing: 7, children: [
-                      for (final id in team.driverIds)
-                        _AssetPill(label: nameOf(id), color: AppColors.cyan),
-                      for (final id in team.constructorIds)
-                        _AssetPill(label: nameOf(id), color: AppColors.orange),
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 2.1,
+                      children: [
+                        for (final id in team.driverIds)
+                          AssetCard(
+                            tag:
+                                '${catalog[id]?.priceMillions.toStringAsFixed(1) ?? '--'} M\$${id == team.boostedDriverId ? ' · X2' : ''}',
+                            name: nameOf(id),
+                            subtitle: catalog[id]?.teamName ?? '',
+                            barColor: teamColor(catalog[id]
+                                ?.teamName
+                                .toLowerCase()
+                                .replaceAll(' ', '_')),
+                            tagColor: id == team.boostedDriverId
+                                ? AppColors.cyan
+                                : null,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text('CONSTRUCTORES',
+                        style:
+                            AppText.mono(10, color: AppColors.textSecondary)),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      for (var i = 0; i < team.constructorIds.length; i++) ...[
+                        Expanded(
+                          child: AssetCard(
+                            tag:
+                                '${catalog[team.constructorIds[i]]?.priceMillions.toStringAsFixed(1) ?? '--'} M\$',
+                            name: nameOf(team.constructorIds[i]),
+                            subtitle: 'Constructor',
+                            barColor: teamColor(team.constructorIds[i]),
+                            tagColor: AppColors.orange,
+                          ),
+                        ),
+                        if (i < team.constructorIds.length - 1)
+                          const SizedBox(width: 8),
+                      ],
                     ]),
                   ]),
             ),
@@ -112,6 +155,15 @@ class FantasyHistoryScreen extends ConsumerWidget {
                             style: AppText.mono(7)),
                       ]),
                   children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'X2 · ${nameOf(round.team.boostedDriverId ?? '')}',
+                        style: AppText.body(10.5,
+                            color: AppColors.cyan, weight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
                     if (round.transfersIn.isEmpty)
                       Align(
                           alignment: Alignment.centerLeft,
@@ -135,20 +187,4 @@ class FantasyHistoryScreen extends ConsumerWidget {
       },
     );
   }
-}
-
-class _AssetPill extends StatelessWidget {
-  const _AssetPill({required this.label, required this.color});
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-        decoration: BoxDecoration(
-            color: color.withValues(alpha: .08),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withValues(alpha: .35))),
-        child: Text(label, style: AppText.body(10.5, weight: FontWeight.w700)),
-      );
 }

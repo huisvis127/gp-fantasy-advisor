@@ -7,6 +7,7 @@ import '../../../core/fantasy_standings_provider.dart';
 import '../../../core/team_colors.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/prediction.dart';
+import '../../../domain/models/race.dart';
 import '../../widgets/ref_widgets.dart';
 
 class CircuitScreen extends ConsumerWidget {
@@ -14,7 +15,8 @@ class CircuitScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final raceAsync = ref.watch(selectedRaceProvider);
+    final raceAsync = ref.watch(selectedRaceScheduleProvider);
+    final winnersAsync = ref.watch(circuitWinnersProvider);
     final predictions = ref.watch(driverPredictionsProvider);
     final catalog = ref.watch(fantasyAssetNameProvider).valueOrNull ?? const {};
 
@@ -67,6 +69,53 @@ class CircuitScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
+        raceAsync.maybeWhen(
+          data: (race) => race == null
+              ? const SizedBox.shrink()
+              : _WeekendSchedule(race: race),
+          orElse: () => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 16),
+        const SectionHead(
+          kicker: 'Historial reciente',
+          title: 'Ganadores de los últimos 5 años',
+        ),
+        const SizedBox(height: 10),
+        winnersAsync.when(
+          data: (winners) => winners.isEmpty
+              ? const StatusBanner(
+                  message:
+                      'Los ganadores aparecerán al terminar la sincronización histórica.',
+                )
+              : RefCard(
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < winners.length; i++) ...[
+                        Row(children: [
+                          Text('${winners[i].season}',
+                              style: AppText.mono(9, color: AppColors.lime)),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              catalog[winners[i].driverId]?.name ??
+                                  prettifyId(winners[i].driverId),
+                              style: AppText.body(12, weight: FontWeight.w700),
+                            ),
+                          ),
+                        ]),
+                        if (i < winners.length - 1) const Divider(height: 20),
+                      ],
+                    ],
+                  ),
+                ),
+          loading: () =>
+              const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          error: (_, __) => const StatusBanner(
+            message: 'No se pudo cargar el historial de ganadores.',
+            isError: true,
+          ),
+        ),
+        const SizedBox(height: 16),
         const SectionHead(
           kicker: 'Afinidad',
           title: 'Especialistas del circuito',
@@ -96,7 +145,17 @@ class CircuitScreen extends ConsumerWidget {
                   : item.expectedPoints / maxExpected * 100;
             }
 
-            final sorted = [...items]
+            final withHistory = items
+                .where((item) =>
+                    (item.breakdown['circuit_history_count'] ?? 0) > 0)
+                .toList();
+            if (withHistory.isEmpty) {
+              return const StatusBanner(
+                message:
+                    'Aún no hay participaciones anteriores en este circuito para comparar.',
+              );
+            }
+            final sorted = [...withHistory]
               ..sort((a, b) => circuitScore(b).compareTo(circuitScore(a)));
             return Column(
               children: [
@@ -119,7 +178,7 @@ class CircuitScreen extends ConsumerWidget {
                                     AppText.body(14, weight: FontWeight.w700),
                               ),
                               Text(
-                                catalog[sorted[i].assetId]?.teamName ?? '',
+                                '${catalog[sorted[i].assetId]?.teamName ?? ''} · ${(sorted[i].breakdown['circuit_history_count'] ?? 0).round()} participaciones',
                                 style: AppText.body(11,
                                     color: AppColors.textTertiary),
                               ),
@@ -147,6 +206,58 @@ class CircuitScreen extends ConsumerWidget {
           error: (_, __) => const StatusBanner(
             message: 'No se pudo calcular la afinidad del circuito.',
             isError: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WeekendSchedule extends StatelessWidget {
+  const _WeekendSchedule({required this.race});
+
+  final Race race;
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = {
+      'fp1': 'Libres 1',
+      'fp2': 'Libres 2',
+      'fp3': 'Libres 3',
+      'sprint_qualifying': 'Clasificación sprint',
+      'sprint': 'Sprint',
+      'qualifying': 'Clasificación',
+      'race': 'Carrera',
+    };
+    final sessions = race.sessionTimes.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+    if (sessions.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHead(kicker: 'Fin de semana', title: 'Horarios del GP'),
+        const SizedBox(height: 10),
+        RefCard(
+          child: Column(
+            children: [
+              for (var i = 0; i < sessions.length; i++) ...[
+                Row(children: [
+                  Expanded(
+                    child: Text(labels[sessions[i].key] ?? sessions[i].key,
+                        style: AppText.body(11.5, weight: FontWeight.w700)),
+                  ),
+                  Text(
+                    DateFormat('EEE dd MMM · HH:mm', 'es')
+                        .format(sessions[i].value),
+                    style: AppText.mono(8.5,
+                        color: sessions[i].key == 'race'
+                            ? AppColors.lime
+                            : AppColors.cyan),
+                  ),
+                ]),
+                if (i < sessions.length - 1) const Divider(height: 19),
+              ],
+            ],
           ),
         ),
       ],

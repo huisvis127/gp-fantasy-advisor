@@ -128,10 +128,12 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
           children: [
             for (final id in combo.driverIds)
               AssetCard(
-                tag: '${priceOf(id).toStringAsFixed(1)} M\$',
+                tag:
+                    '${priceOf(id).toStringAsFixed(1)} M\$${id == combo.boostedDriverId ? ' · X2' : ''}',
                 name: nameOf(id),
                 subtitle: teamOf(id),
                 barColor: colorOfDriver(id),
+                tagColor: id == combo.boostedDriverId ? AppColors.cyan : null,
               ),
           ],
         ),

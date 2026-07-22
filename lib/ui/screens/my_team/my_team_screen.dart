@@ -5,7 +5,10 @@ import '../../../core/app_providers.dart';
 import '../../../core/constants.dart';
 import '../../../core/fantasy_standings_provider.dart';
 import '../../../core/providers.dart'
-    show teamImportServiceProvider, currentSeasonProvider, fantasyAuthServiceProvider;
+    show
+        teamImportServiceProvider,
+        currentSeasonProvider,
+        fantasyAuthServiceProvider;
 import '../../../core/team_colors.dart';
 import '../../../core/theme.dart';
 import '../../../data/repositories/team_import_service.dart';
@@ -44,7 +47,9 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
     for (var i = 0; i < _driverSlots && i < team.driverIds.length; i++) {
       _drivers[i] = team.driverIds[i];
     }
-    for (var i = 0; i < _constructorSlots && i < team.constructorIds.length; i++) {
+    for (var i = 0;
+        i < _constructorSlots && i < team.constructorIds.length;
+        i++) {
       _constructors[i] = team.constructorIds[i];
     }
   }
@@ -59,22 +64,28 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
     teamAsync.whenData(_hydrate);
 
     final driverPreds = driversAsync.valueOrNull ?? const <AssetPrediction>[];
-    final constructorPreds = constructorsAsync.valueOrNull ?? const <AssetPrediction>[];
+    final constructorPreds =
+        constructorsAsync.valueOrNull ?? const <AssetPrediction>[];
     final predById = {
       for (final p in [...driverPreds, ...constructorPreds]) p.assetId: p,
     };
 
-    double priceOf(String? id) =>
-        id == null ? 0 : (predById[id]?.priceMillions ?? catalog[id]?.priceMillions ?? 0);
-    double pointsOf(String? id) => id == null ? 0 : (predById[id]?.expectedPoints ?? 0);
+    double priceOf(String? id) => id == null
+        ? 0
+        : (predById[id]?.priceMillions ?? catalog[id]?.priceMillions ?? 0);
+    double pointsOf(String? id) =>
+        id == null ? 0 : (predById[id]?.expectedPoints ?? 0);
     String nameOf(String? id) =>
         id == null ? 'Elegir…' : (catalog[id]?.name ?? prettifyId(id));
 
-    final chosenIds = [..._drivers, ..._constructors].whereType<String>().toList();
+    final chosenIds =
+        [..._drivers, ..._constructors].whereType<String>().toList();
     final totalCost = chosenIds.fold<double>(0, (sum, id) => sum + priceOf(id));
-    final totalPoints = chosenIds.fold<double>(0, (sum, id) => sum + pointsOf(id));
+    final basePoints =
+        chosenIds.fold<double>(0, (sum, id) => sum + pointsOf(id));
     final remaining = GameRules.initialBudgetMillions - totalCost;
-    final isComplete = !_drivers.contains(null) && !_constructors.contains(null);
+    final isComplete =
+        !_drivers.contains(null) && !_constructors.contains(null);
 
     // Boost: el piloto del equipo con más puntos esperados (×2).
     String? boostId;
@@ -85,6 +96,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
         boostId = id;
       }
     }
+    final totalPoints = basePoints + boostGain;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
@@ -107,7 +119,8 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: _importing ? null : () => _importFromFantasy(catalog),
+                  onPressed:
+                      _importing ? null : () => _importFromFantasy(catalog),
                   icon: _importing
                       ? const SizedBox(
                           width: 14,
@@ -139,7 +152,8 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                   ),
                 ),
               if (isComplete) const SizedBox(height: 14),
-              Text('PILOTOS', style: AppText.mono(10, color: AppColors.textSecondary)),
+              Text('PILOTOS',
+                  style: AppText.mono(10, color: AppColors.textSecondary)),
               const SizedBox(height: 8),
               GridView.count(
                 crossAxisCount: 2,
@@ -153,7 +167,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                     AssetCard(
                       tag: _drivers[i] == null
                           ? 'Piloto ${i + 1}'
-                          : '${priceOf(_drivers[i]).toStringAsFixed(1)} M\$ · ${pointsOf(_drivers[i]).toStringAsFixed(1)} pts',
+                          : '${priceOf(_drivers[i]).toStringAsFixed(1)} M\$ · ${pointsOf(_drivers[i]).toStringAsFixed(1)} pts${_drivers[i] == boostId ? ' · X2' : ''}',
                       name: nameOf(_drivers[i]),
                       subtitle: _drivers[i] == null
                           ? 'Toca para elegir'
@@ -164,6 +178,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                               ?.teamName
                               .toLowerCase()
                               .replaceAll(' ', '_')),
+                      tagColor: _drivers[i] == boostId ? AppColors.cyan : null,
                       onTap: () => _pickDriver(i, driverPreds, catalog),
                     ),
                 ],
@@ -181,13 +196,15 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                             ? 'Constructor ${i + 1}'
                             : '${priceOf(_constructors[i]).toStringAsFixed(1)} M\$ · ${pointsOf(_constructors[i]).toStringAsFixed(1)} pts',
                         name: nameOf(_constructors[i]),
-                        subtitle:
-                            _constructors[i] == null ? 'Toca para elegir' : 'Constructor',
+                        subtitle: _constructors[i] == null
+                            ? 'Toca para elegir'
+                            : 'Constructor',
                         barColor: _constructors[i] == null
                             ? AppColors.border2
                             : teamColor(_constructors[i]),
                         tagColor: AppColors.orange,
-                        onTap: () => _pickConstructor(i, constructorPreds, catalog),
+                        onTap: () =>
+                            _pickConstructor(i, constructorPreds, catalog),
                       ),
                     ),
                     if (i < _constructorSlots - 1) const SizedBox(width: 8),
@@ -238,7 +255,8 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
             tag: 'Boost ×2 recomendado',
             color: AppColors.cyan,
             name: nameOf(boostId),
-            subtitle: 'Duplicaría ${boostGain.toStringAsFixed(1)} pts esperados',
+            subtitle:
+                'Duplicaría ${boostGain.toStringAsFixed(1)} pts esperados',
             score: '+${boostGain.toStringAsFixed(1)}',
           ),
         ],
@@ -343,7 +361,8 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
     final options = [...preds]
       ..sort((a, b) => b.expectedPoints.compareTo(a.expectedPoints));
     final available = options
-        .where((p) => !_drivers.contains(p.assetId) || _drivers[slot] == p.assetId)
+        .where(
+            (p) => !_drivers.contains(p.assetId) || _drivers[slot] == p.assetId)
         .toList();
     final chosen = await showPickerSheet<AssetPrediction>(
       context: context,
@@ -356,8 +375,8 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
       itemLabel: (p) => catalog[p.assetId]?.name ?? prettifyId(p.assetId),
       itemMeta: (p) =>
           '${catalog[p.assetId]?.teamName ?? ''} · ${p.priceMillions.toStringAsFixed(1)} M\$ · ${p.expectedPoints.toStringAsFixed(1)} pts',
-      itemColor: (p) =>
-          teamColor(catalog[p.assetId]?.teamName.toLowerCase().replaceAll(' ', '_')),
+      itemColor: (p) => teamColor(
+          catalog[p.assetId]?.teamName.toLowerCase().replaceAll(' ', '_')),
     );
     if (chosen != null) setState(() => _drivers[slot] = chosen.assetId);
   }
@@ -372,7 +391,8 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
       ..sort((a, b) => b.expectedPoints.compareTo(a.expectedPoints));
     final available = options
         .where((p) =>
-            !_constructors.contains(p.assetId) || _constructors[slot] == p.assetId)
+            !_constructors.contains(p.assetId) ||
+            _constructors[slot] == p.assetId)
         .toList();
     final chosen = await showPickerSheet<AssetPrediction>(
       context: context,
@@ -447,7 +467,8 @@ class _TransferPlans extends ConsumerWidget {
       loading: () => const Center(
         child: Padding(
           padding: EdgeInsets.all(16),
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime),
+          child:
+              CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime),
         ),
       ),
       error: (e, _) => StatusBanner(
@@ -460,7 +481,8 @@ class _TransferPlans extends ConsumerWidget {
 
   Widget _planCard(TransferPlan plan) {
     String nameOf(String id) => catalog[id]?.name ?? prettifyId(id);
-    final gainColor = plan.netExpectedGain > 0 ? AppColors.ok : AppColors.warning;
+    final gainColor =
+        plan.netExpectedGain > 0 ? AppColors.ok : AppColors.warning;
     return RefCard(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -487,17 +509,22 @@ class _TransferPlans extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(
                 children: [
-                  const Icon(Icons.logout_rounded, size: 14, color: AppColors.error),
+                  const Icon(Icons.logout_rounded,
+                      size: 14, color: AppColors.error),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(nameOf(plan.transfersOut[i]),
-                        style: AppText.body(12.5, color: AppColors.textSecondary)),
+                        style:
+                            AppText.body(12.5, color: AppColors.textSecondary)),
                   ),
-                  const Icon(Icons.login_rounded, size: 14, color: AppColors.ok),
+                  const Icon(Icons.login_rounded,
+                      size: 14, color: AppColors.ok),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      i < plan.transfersIn.length ? nameOf(plan.transfersIn[i]) : '',
+                      i < plan.transfersIn.length
+                          ? nameOf(plan.transfersIn[i])
+                          : '',
                       style: AppText.body(12.5, weight: FontWeight.w700),
                     ),
                   ),

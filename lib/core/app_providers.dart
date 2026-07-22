@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/repositories/data_repository.dart';
 import '../domain/engine/isolate_runner.dart';
 import '../domain/engine/team_optimizer.dart';
 import '../domain/models/my_team.dart';
@@ -25,6 +26,28 @@ final nextRaceProvider = FutureProvider<Race?>((ref) async {
   final repo = ref.watch(dataRepositoryProvider);
   final season = ref.watch(currentSeasonProvider);
   return repo.nextRace(season);
+});
+
+/// Calendario detallado del GP seleccionado. Jolpica incluye aquí los
+/// horarios de libres, sprint y clasificación que no se guardan en caché.
+final selectedRaceScheduleProvider = FutureProvider<Race?>((ref) async {
+  final selected = await ref.watch(selectedRaceProvider.future);
+  if (selected == null) return null;
+  try {
+    final calendar =
+        await ref.watch(jolpicaApiProvider).getSeasonCalendar(selected.season);
+    final matches = calendar.where((race) => race.round == selected.round);
+    return matches.isEmpty ? selected : matches.first;
+  } catch (_) {
+    return selected;
+  }
+});
+
+final circuitWinnersProvider = FutureProvider<List<CircuitWinner>>((ref) async {
+  ref.watch(syncControllerProvider);
+  final race = await ref.watch(selectedRaceProvider.future);
+  if (race == null) return const [];
+  return ref.watch(dataRepositoryProvider).circuitWinners(race);
 });
 
 /// ¿Los precios que mostramos son estimados (derivados de la clasificación)
@@ -390,7 +413,8 @@ final fantasySeasonSimulationProvider =
     final roundPoints = team.driverIds
             .fold<double>(0, (sum, id) => sum + (driverScores[id] ?? 0)) +
         team.constructorIds
-            .fold<double>(0, (sum, id) => sum + (constructorScores[id] ?? 0));
+            .fold<double>(0, (sum, id) => sum + (constructorScores[id] ?? 0)) +
+        (driverScores[team.boostedDriverId] ?? 0);
     cumulative += roundPoints;
     output.add(FantasySimulationRound(
       race: race,

@@ -24,6 +24,12 @@ class SyncReport {
       racesSynced == 0 && resultsSynced == 0 && pricesSynced == 0;
 }
 
+class CircuitWinner {
+  const CircuitWinner({required this.season, required this.driverId});
+  final int season;
+  final String driverId;
+}
+
 /// Puerta única entre la UI y los datos (sección 3 del plan). Política
 /// stale-while-revalidate: se devuelve la caché al instante y se refresca
 /// en segundo plano. La app debe funcionar 100% en modo lectura sin conexión
@@ -53,11 +59,16 @@ class DataRepository {
     final report = SyncReport();
     // Prioriza la temporada actual: el calendario visible no debe depender
     // de que terminen primero todas las descargas históricas.
-    final seasonsToSync = [currentSeason, currentSeason - 1, currentSeason - 2];
-    for (final season in seasonsToSync) {
-      await _trySync(report, 'temporada $season',
-          () => _syncCalendarAndResults(season, report));
-    }
+    await _trySync(report, 'temporada $currentSeason',
+        () => _syncCalendarAndResults(currentSeason, report));
+    await Future.wait([
+      for (var offset = 1; offset <= 5; offset++)
+        _trySync(
+          report,
+          'temporada ${currentSeason - offset}',
+          () => _syncCalendarAndResults(currentSeason - offset, report),
+        ),
+    ]);
     await _trySync(
         report, 'precios fantasy', () => _syncPrices(currentSeason, report));
     return report;
@@ -197,6 +208,29 @@ class DataRepository {
   Future<double?> currentPrice(String assetId, {required bool isConstructor}) =>
       _db.latestPrice(assetId, isConstructor ? 'constructor' : 'driver');
 
+  Future<List<CircuitWinner>> circuitWinners(
+    Race race, {
+    int years = 5,
+  }) async {
+    final winners = <CircuitWinner>[];
+    for (var season = race.season - 1;
+        season >= race.season - years;
+        season--) {
+      final matching = (await allRaces(season))
+          .where((item) => item.circuitId == race.circuitId);
+      if (matching.isEmpty) continue;
+      final results = await raceResults(season, matching.first.round);
+      final winner = results.where((result) => result.finishPosition == 1);
+      if (winner.isNotEmpty) {
+        winners.add(CircuitWinner(
+          season: season,
+          driverId: winner.first.driverId,
+        ));
+      }
+    }
+    return winners;
+  }
+
   /// ¿Hay precios reales de la API de F1 Fantasy en caché? Si no, la UI
   /// usa los precios estimados (y lo indica con un aviso).
   Future<bool> hasRealPrices() => _db.hasAnyPrices();
@@ -248,7 +282,7 @@ class DataRepository {
       final circuitHistory = await _db.resultsForDriverAtCircuit(
         driver.id,
         race.circuitId,
-        limit: 4,
+        limit: 5,
         beforeSeason: cutSeason,
         beforeRound: cutRound,
       );
