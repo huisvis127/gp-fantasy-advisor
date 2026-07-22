@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/league_selection_provider.dart';
 import '../../../core/theme.dart';
+import '../../../domain/services/league_snapshot_reader.dart';
 import '../../widgets/ref_widgets.dart';
 import '../login/fantasy_login_screen.dart';
 
@@ -107,7 +109,7 @@ class _LeaguesList extends ConsumerStatefulWidget {
 class _LeaguesListState extends ConsumerState<_LeaguesList> {
   late Future<Map<String, dynamic>> _request;
   Map<String, dynamic>? _snapshot;
-  String? _selectedLeagueId;
+  final Map<String, Future<Map<String, dynamic>>> _leaderboardRequests = {};
 
   @override
   void initState() {
@@ -181,12 +183,35 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
           );
         }
 
-        final selectedId = _selectedLeagueId ??
-            _first(privateLeagues.first, const [
-              'league_id',
-              'leagueid',
-              'id',
-            ])?.toString();
+        final storedSelectedId = ref.watch(selectedPrivateLeagueIdProvider);
+        final availableIds = privateLeagues
+            .map((league) =>
+                _first(league, const ['league_id', 'leagueid', 'id'])
+                    ?.toString())
+            .whereType<String>()
+            .toSet();
+        final selectedId = availableIds.contains(storedSelectedId)
+            ? storedSelectedId
+            : availableIds.firstOrNull;
+        final selectedLeague = selectedId == null
+            ? null
+            : privateLeagues.firstWhere(
+                (league) =>
+                    _first(league, const ['league_id', 'leagueid', 'id'])
+                        ?.toString() ==
+                    selectedId,
+              );
+        final selectedName = selectedLeague == null
+            ? 'Liga privada'
+            : cleanFantasyName(
+                _first(selectedLeague, const [
+                      'league_name',
+                      'leaguename',
+                      'name',
+                      'display_name',
+                    ]) ??
+                    'Liga privada',
+              );
 
         return RefreshIndicator(
           color: AppColors.lime,
@@ -220,58 +245,42 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
                           'id',
                         ]).toString(),
                         child: Text(
-                          (_first(league, const [
-                                    'league_name',
-                                    'leaguename',
-                                    'name',
-                                    'display_name',
-                                  ]) ??
-                                  'Liga')
-                              .toString(),
+                          cleanFantasyName(_first(league, const [
+                                'league_name',
+                                'leaguename',
+                                'name',
+                                'display_name',
+                              ]) ??
+                              'Liga'),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                   ],
                   onChanged: (value) {
                     if (value == null) return;
-                    setState(() => _selectedLeagueId = value);
+                    ref.read(selectedPrivateLeagueIdProvider.notifier).state =
+                        value;
                   },
                 ),
               ),
-              const SizedBox(height: 10),
-              if (selectedId != null)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      final league = privateLeagues.firstWhere(
-                        (item) =>
-                            _first(item, const [
-                              'league_id',
-                              'leagueid',
-                              'id',
-                            ]).toString() ==
-                            selectedId,
-                      );
-                      final name = _first(league, const [
-                            'league_name',
-                            'leaguename',
-                            'name',
-                            'display_name',
-                          ]) ??
-                          'Liga';
-                      _openLeaderboard(selectedId, name.toString());
-                    },
-                    icon: const Icon(Icons.query_stats_rounded, size: 18),
-                    label: const Text('VER EQUIPOS Y GRÁFICOS'),
-                  ),
-                ),
               const SizedBox(height: 8),
               TextButton.icon(
                 onPressed: widget.onRefreshSession,
                 icon: const Icon(Icons.sync_rounded, size: 17),
                 label: const Text('ACTUALIZAR DATOS DE LIGA'),
               ),
+              if (selectedId != null) ...[
+                const SizedBox(height: 14),
+                SectionHead(
+                  kicker: 'Clasificación y evolución',
+                  title: selectedName,
+                ),
+                const SizedBox(height: 10),
+                _LeaderboardSection(
+                  key: ValueKey(selectedId),
+                  request: _leaderboardRequest(selectedId),
+                ),
+              ],
             ],
           ),
         );
@@ -279,132 +288,88 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
     );
   }
 
-  Future<void> _openLeaderboard(String id, String name) async {
-    final api = ref.read(fantasyApiProvider);
-    final season = ref.read(currentSeasonProvider);
-    final cachedLeaderboards = _snapshot?['leaderboards'];
-    final cached = cachedLeaderboards is Map ? cachedLeaderboards[id] : null;
-    final request = cached is Map
-        ? Future.value(Map<String, dynamic>.from(cached))
-        : api.getLeagueLeaderboard(
-            season: season,
-            leagueId: id,
-            bearerToken: widget.token,
-          );
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface1,
-      builder: (_) => _LeaderboardSheet(name: name, request: request),
-    );
+  Future<Map<String, dynamic>> _leaderboardRequest(String id) {
+    return _leaderboardRequests.putIfAbsent(id, () {
+      final api = ref.read(fantasyApiProvider);
+      final season = ref.read(currentSeasonProvider);
+      final cachedLeaderboards = _snapshot?['leaderboards'];
+      final cached = cachedLeaderboards is Map ? cachedLeaderboards[id] : null;
+      return cached is Map
+          ? Future.value(Map<String, dynamic>.from(cached))
+          : api.getLeagueLeaderboard(
+              season: season,
+              leagueId: id,
+              bearerToken: widget.token,
+            );
+    });
   }
 }
 
-class _LeaderboardSheet extends StatefulWidget {
-  const _LeaderboardSheet({required this.name, required this.request});
+class _LeaderboardSection extends StatefulWidget {
+  const _LeaderboardSection({super.key, required this.request});
 
-  final String name;
   final Future<Map<String, dynamic>> request;
 
   @override
-  State<_LeaderboardSheet> createState() => _LeaderboardSheetState();
+  State<_LeaderboardSection> createState() => _LeaderboardSectionState();
 }
 
-class _LeaderboardSheetState extends State<_LeaderboardSheet> {
+class _LeaderboardSectionState extends State<_LeaderboardSection> {
   int? _window = 6;
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * .78,
-        child: Column(
+    return FutureBuilder<Map<String, dynamic>>(
+      future: widget.request,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.all(28),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        }
+        if (snapshot.hasError) {
+          return const StatusBanner(
+            message: 'No se pudo abrir la clasificación.',
+            isError: true,
+          );
+        }
+        final rawRows = _extractList(snapshot.data, const {
+          'leaderboards',
+          'leaderboard',
+          'entries',
+          'results',
+          'member',
+          'details',
+          'value',
+        });
+        if (rawRows.isEmpty) {
+          return const StatusBanner(
+            message: 'Sin participantes disponibles. Actualiza la liga.',
+          );
+        }
+        final enrichedRows = _enrichLeagueRows(snapshot.data, rawRows);
+        final rows = [
+          for (var index = 0; index < enrichedRows.length; index++)
+            _LeagueEntry.fromJson(enrichedRows[index], index + 1),
+        ];
+        return Column(
           children: [
-            Container(
-              width: 42,
-              height: 4,
-              margin: const EdgeInsets.only(top: 10, bottom: 14),
-              decoration: BoxDecoration(
-                color: AppColors.border2,
-                borderRadius: BorderRadius.circular(9),
-              ),
+            _PositionChart(
+              entries: rows,
+              window: _window,
+              onWindowChanged: (value) => setState(() => _window = value),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Expanded(child: Text(widget.name, style: AppText.syne(20))),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: FutureBuilder<Map<String, dynamic>>(
-                future: widget.request,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: StatusBanner(
-                        message: 'No se pudo abrir la clasificación.',
-                        isError: true,
-                      ),
-                    );
-                  }
-                  final rawRows = _extractList(snapshot.data, const {
-                    'leaderboards',
-                    'leaderboard',
-                    'entries',
-                    'results',
-                    'member',
-                    'details',
-                    'value',
-                  });
-                  if (rawRows.isEmpty) {
-                    return const Center(
-                      child: Text('Sin participantes disponibles.'),
-                    );
-                  }
-                  final enrichedRows = _enrichLeagueRows(
-                    snapshot.data,
-                    rawRows,
-                  );
-                  final rows = [
-                    for (var index = 0; index < enrichedRows.length; index++)
-                      _LeagueEntry.fromJson(enrichedRows[index], index + 1),
-                  ];
-                  return ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      _PositionChart(
-                        entries: rows,
-                        window: _window,
-                        onWindowChanged: (value) =>
-                            setState(() => _window = value),
-                      ),
-                      const SizedBox(height: 12),
-                      _PointsChart(entries: rows, window: _window),
-                      const SizedBox(height: 12),
-                      for (final entry in rows) ...[
-                        _LeagueEntryCard(entry: entry),
-                        const SizedBox(height: 7),
-                      ],
-                    ],
-                  );
-                },
-              ),
-            ),
+            const SizedBox(height: 12),
+            _PointsChart(entries: rows, window: _window),
+            const SizedBox(height: 12),
+            for (final entry in rows) ...[
+              _LeagueEntryCard(entry: entry),
+              const SizedBox(height: 7),
+            ],
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -440,15 +405,16 @@ class _LeagueEntry {
               .toString(),
         ) ??
         fallbackRank;
-    final name = (_first(json, const [
-              'team_name',
-              'entry_name',
-              'display_name',
-              'name',
-              'user_name',
-            ]) ??
-            'Participante')
-        .toString();
+    final name = cleanFantasyName(
+      _first(json, const [
+            'team_name',
+            'entry_name',
+            'display_name',
+            'name',
+            'user_name',
+          ]) ??
+          'Participante',
+    );
     final memberRows = _nestedList(
       [json, team],
       const [
@@ -463,19 +429,20 @@ class _LeagueEntry {
     );
     final members = memberRows
         .map(
-          (row) => (_first(row, const [
-                    'display_name',
-                    'displayname',
-                    'full_name',
-                    'fullname',
-                    'name',
-                    'playername',
-                    'drivername',
-                    'team_name',
-                    'teamname',
-                  ]) ??
-                  '')
-              .toString(),
+          (row) => cleanFantasyName(
+            _first(row, const [
+                  'display_name',
+                  'displayname',
+                  'full_name',
+                  'fullname',
+                  'name',
+                  'playername',
+                  'drivername',
+                  'team_name',
+                  'teamname',
+                ]) ??
+                '',
+          ),
         )
         .where((name) => name.isNotEmpty)
         .toList();
@@ -515,6 +482,12 @@ class _LeagueEntry {
     }
     history.sort((a, b) => a.round.compareTo(b.round));
     pointsHistory.sort((a, b) => a.round.compareTo(b.round));
+    var accumulatedPoints = 0.0;
+    final accumulatedHistory = <({int round, double points})>[];
+    for (final point in pointsHistory) {
+      accumulatedPoints += point.points;
+      accumulatedHistory.add((round: point.round, points: accumulatedPoints));
+    }
     return _LeagueEntry(
       rank: rank,
       name: name,
@@ -528,7 +501,7 @@ class _LeagueEntry {
       members: members,
       chipsUsed: used.where((chip) => chip.isNotEmpty).toSet(),
       history: history,
-      pointsHistory: pointsHistory,
+      pointsHistory: accumulatedHistory,
     );
   }
 }
@@ -894,7 +867,7 @@ class _PointsChart extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('PUNTOS POR CARRERA', style: AppText.mono(9)),
+          Text('PUNTOS ACUMULADOS', style: AppText.mono(9)),
           const SizedBox(height: 10),
           SizedBox(
             height: 190,

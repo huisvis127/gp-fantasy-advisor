@@ -4,9 +4,12 @@ import 'package:intl/intl.dart';
 
 import '../../../core/app_providers.dart';
 import '../../../core/fantasy_standings_provider.dart';
+import '../../../core/league_selection_provider.dart';
+import '../../../core/providers.dart';
 import '../../../core/team_colors.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/race.dart';
+import '../../../domain/services/league_snapshot_reader.dart';
 import '../../widgets/ref_widgets.dart';
 import 'countdown_widget.dart';
 
@@ -109,6 +112,8 @@ class HomeScreen extends ConsumerWidget {
             sync: sync,
             onRetry: () => ref.read(syncControllerProvider.notifier).syncNow(),
           ),
+          const SizedBox(height: 12),
+          const _LatestLeagueGpCard(),
           if (pricesEstimated) ...[
             const SizedBox(height: 8),
             const StatusBanner(
@@ -241,6 +246,98 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 }
+
+class _LatestLeagueGpCard extends ConsumerWidget {
+  const _LatestLeagueGpCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedLeagueId = ref.watch(selectedPrivateLeagueIdProvider);
+    final auth = ref.watch(fantasyAuthServiceProvider);
+    return FutureBuilder<String?>(
+      future: auth.readSessionSnapshot(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const RefCard(
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        }
+        final raw = snapshot.data;
+        LeagueLatestGp? latest;
+        if (raw != null && raw.isNotEmpty) {
+          try {
+            latest = LeagueSnapshotReader.latestGp(
+              raw,
+              selectedLeagueId: selectedLeagueId,
+            );
+          } catch (_) {
+            latest = null;
+          }
+        }
+        if (latest == null) {
+          return const StatusBanner(
+            message:
+                'Actualiza una liga privada para ver aquí la clasificación del último GP.',
+          );
+        }
+        final result = latest;
+        return RefCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('ÚLTIMO GRAN PREMIO', style: AppText.mono(9)),
+                        const SizedBox(height: 4),
+                        Text(result.leagueName, style: AppText.syne(18)),
+                      ],
+                    ),
+                  ),
+                  TagChip('R${result.round}', color: AppColors.cyan),
+                ],
+              ),
+              const SizedBox(height: 12),
+              for (var index = 0; index < result.standings.length; index++) ...[
+                if (index > 0) const Divider(height: 15),
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 32,
+                      child: Text(
+                        '#${result.standings[index].rank}',
+                        style: AppText.mono(9, color: AppColors.lime),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        result.standings[index].name,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.body(12.5, weight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${_formatLeaguePoints(result.standings[index].points)} pts',
+                      style: AppText.mono(9, color: AppColors.cyan),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+String _formatLeaguePoints(double points) => points == points.roundToDouble()
+    ? points.round().toString()
+    : points.toStringAsFixed(1);
 
 class _RaceInfo extends StatelessWidget {
   const _RaceInfo({required this.race});
