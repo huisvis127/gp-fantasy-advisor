@@ -8,6 +8,7 @@ class Race {
     required this.country,
     required this.date,
     this.hasSprint = false,
+    this.sessionTimes = const {},
   });
 
   final int season;
@@ -18,6 +19,7 @@ class Race {
   final String country;
   final DateTime date;
   final bool hasSprint;
+  final Map<String, DateTime> sessionTimes;
 
   String get objectiveKey => hasSprint ? 'sprint' : 'race';
 
@@ -31,6 +33,31 @@ class Race {
     final date = timeText == null
         ? DateTime.parse(dateText)
         : DateTime.parse('${dateText}T$timeText').toLocal();
+    DateTime? sessionDate(String key) {
+      final session = json[key];
+      if (session is! Map<String, dynamic>) return null;
+      final sessionDay = session['date']?.toString();
+      if (sessionDay == null) return null;
+      final sessionTime = session['time']?.toString();
+      return sessionTime == null
+          ? DateTime.parse(sessionDay)
+          : DateTime.parse('${sessionDay}T$sessionTime').toLocal();
+    }
+
+    final sessions = <String, DateTime>{'race': date};
+    const sessionKeys = {
+      'FirstPractice': 'fp1',
+      'SecondPractice': 'fp2',
+      'ThirdPractice': 'fp3',
+      'SprintShootout': 'sprint_qualifying',
+      'SprintQualifying': 'sprint_qualifying',
+      'Sprint': 'sprint',
+      'Qualifying': 'qualifying',
+    };
+    for (final entry in sessionKeys.entries) {
+      final value = sessionDate(entry.key);
+      if (value != null) sessions[entry.value] = value;
+    }
 
     return Race(
       season: int.parse(json['season'] as String),
@@ -41,6 +68,7 @@ class Race {
       country: location['country'] as String,
       date: date,
       hasSprint: json.containsKey('Sprint'),
+      sessionTimes: sessions,
     );
   }
 }

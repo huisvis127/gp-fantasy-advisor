@@ -1,12 +1,19 @@
 {
-  "_comment": "Pesos w1..w8 del motor de predicción. Recalibrados el 05/07/2026 con el mini-backtest sobre las rondas 2026 disputadas (tools/mini_backtest_2026.py, informe en docs/backtest_mini_2026.md): las señales de vuelta única (clasificación + gap de vuelta rápida) dominan la predicción. Calibración definitiva pendiente: tools/backtest.py sobre 2023-2025.",
-  "version": "0.2.0-minibacktest-2026",
+  "_comment": "Modelo pre-clasificación. La señal de una vuelta usa únicamente histórico de GPs anteriores y las sesiones actuales se limitan a FP1/FP2/FP3. Nunca se usan Qualifying ni Sprint Qualifying del GP que se predice.",
+  "version": "0.4.0-basic-weekend-points",
   "calibrated_on": "2026-07-05",
   "validation_spearman": 0.63,
-  "validation_note": "Spearman medio +0.63 y acierto top-10 ~72-75% prediciendo las rondas 4/5/7/8 de 2026 solo con datos anteriores (muestra pequeña: 4 carreras).",
+  "validation_note": "Señal deportiva: Spearman medio +0.63 en una muestra pequeña de 2026. Conversión a puntos: en 268 actuaciones de 2025, clasificación+carrera+Sprint correlacionó 0.750 con el total Fantasy; arrastrar extras recientes empeoró la predicción walk-forward de 0.518 a 0.439.",
+  "expected_points_formula": "qualifying + race + optional_sprint",
+  "expected_points_excluded": [
+    "overtakes",
+    "positions_gained_or_lost",
+    "fastest_lap",
+    "driver_of_the_day"
+  ],
   "feature_weights": {
     "w1_ritmo_carrera": 0.20,
-    "w2_ritmo_clasificacion": 0.32,
+    "w2_ritmo_una_vuelta_historico": 0.32,
     "w3_vuelta_rapida": 0.24,
     "w4_consistencia": 0.10,
     "w5_forma": 0.04,
@@ -15,10 +22,15 @@
     "w8_riesgo_dnf": 0.02
   },
   "session_weights_by_objective": {
-    "race": { "fp1": 0.15, "fp2": 0.35, "fp3": 0.20, "quali": 0.30 },
-    "sprint": { "fp1": 0.50, "sq": 0.50 }
+    "race": { "fp1": 0.20, "fp2": 0.45, "fp3": 0.35 },
+    "sprint": { "fp1": 1.00 }
   },
-  "pace_stint_metric": "median_top2_stints",
+  "practice_blend_by_stage": {
+    "fp1_only": { "one_lap": 0.45, "pace": 0.40 },
+    "friday": { "one_lap": 0.60, "pace": 0.60 },
+    "saturday": { "one_lap": 0.72, "pace": 0.70 }
+  },
+  "pace_stint_metric": "mean_top2_clean_consecutive_stints",
   "recent_form_window_races": 5,
   "consistency_window_races": 8,
   "circuit_affinity_window_years": 4,

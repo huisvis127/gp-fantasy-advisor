@@ -379,18 +379,27 @@ def main() -> None:
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    feature_weights = best_weights.as_dict()
+    feature_weights["w2_ritmo_una_vuelta_historico"] = feature_weights.pop(
+        "w2_ritmo_clasificacion"
+    )
     payload = {
         "version": f"backtest-{int(time.time())}",
         "calibrated_on": train_seasons,
         "validation_season": validation_season,
         "validation_spearman": validation_metrics["spearman_mean"],
         "validation_passed": passed,
-        "feature_weights": best_weights.as_dict(),
+        "feature_weights": feature_weights,
         "session_weights_by_objective": {
-            "race": {"fp1": 0.15, "fp2": 0.35, "fp3": 0.20, "quali": 0.30},
-            "sprint": {"fp1": 0.50, "sq": 0.50},
+            "race": {"fp1": 0.20, "fp2": 0.45, "fp3": 0.35},
+            "sprint": {"fp1": 1.00},
         },
-        "pace_stint_metric": "median_top2_stints",
+        "practice_blend_by_stage": {
+            "fp1_only": {"one_lap": 0.45, "pace": 0.40},
+            "friday": {"one_lap": 0.60, "pace": 0.60},
+            "saturday": {"one_lap": 0.72, "pace": 0.70},
+        },
+        "pace_stint_metric": "mean_top2_clean_consecutive_stints",
         "recent_form_window_races": 5,
         "consistency_window_races": 8,
         "circuit_affinity_window_years": 4,

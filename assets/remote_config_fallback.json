@@ -5,7 +5,8 @@
     "jolpica_base": "https://api.jolpi.ca/ergast/f1",
     "openf1_base": "https://api.openf1.org/v1",
     "fantasy_public_base": "https://fantasy.formula1.com",
-    "fantasy_login_base": "https://api.formula1.com"
+    "fantasy_login_base": "https://api.formula1.com",
+    "analytics": ""
   },
   "rate_limits": {
     "jolpica_requests_per_hour": 500,
@@ -13,6 +14,7 @@
   },
   "feature_flags": {
     "login_plan_a_enabled": true,
-    "login_plan_b_webview_enabled": true
+    "login_plan_b_webview_enabled": true,
+    "anonymous_usage_analytics": false
   }
 }

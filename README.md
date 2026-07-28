@@ -1,8 +1,8 @@
-# Fantasy Companion F1
+# Polewise
 
-Aplicación Android no oficial para consultar datos, analizar pilotos y constructores, preparar un equipo de F1 Fantasy y revisar las ligas del usuario. Mantiene la disposición y la lógica de la aplicación MotoGP de referencia, adaptadas a la identidad visual roja y oscura de Fórmula 1.
+Aplicación Android no oficial para consultar datos, analizar pilotos y constructores, preparar un equipo fantasy y revisar las ligas del usuario. Polewise utiliza una identidad visual negra y verde neón propia.
 
-No está afiliada a Formula One Licensing B.V.
+Polewise no está asociada de ninguna manera con las compañías de Formula 1.
 
 ## Navegación
 
@@ -18,6 +18,11 @@ No está afiliada a Formula One Licensing B.V.
 - Precios y catálogo de F1 Fantasy: feeds públicos oficiales actuales.
 - Cuenta, equipo y ligas: se abren dentro de la web oficial. La contraseña no pasa por la aplicación ni se guarda en ella.
 - La sesión capturada y los datos privados se almacenan cifrados en el dispositivo.
+- Las estadísticas de uso son opcionales y se desactivan por defecto. Con
+  permiso, se envían recuentos agrupados al receptor propio y eventos generales
+  a Google Analytics. No se envían datos de la cuenta fantasy ni contenido.
+- El usuario puede borrar desde Ajustes la sesión, el equipo, las ligas y las
+  estadísticas pendientes.
 - Si una fuente temporalmente no responde, se conservan los últimos datos válidos y se muestra el estado de la sincronización.
 
 ## Compilar y comprobar
@@ -31,7 +36,9 @@ flutter test
 flutter build apk --release
 ```
 
-El APK se genera en `build/app/outputs/flutter-apk/app-release.apk`.
+El APK se genera en `build/app/outputs/flutter-apk/app-release.apk`. Para una
+publicación real deben configurarse `POLEWISE_DEVELOPER_NAME`,
+`POLEWISE_SUPPORT_EMAIL` y `POLEWISE_PRIVACY_URL` mediante `--dart-define`.
 
 ## Estructura principal
 

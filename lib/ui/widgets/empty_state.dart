@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/localization.dart';
 import '../../core/theme.dart';
 
 /// Estados vacíos y de error (sección 6: "sin datos, sin conexión, login
@@ -49,16 +50,16 @@ class EmptyState extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: AppColors.textSecondary),
             const SizedBox(height: AppSpacing.md),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            Text(context.tr(title), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              message,
+              context.tr(message),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             if (onRetry != null) ...[
               const SizedBox(height: AppSpacing.md),
-              ElevatedButton(onPressed: onRetry, child: const Text('Reintentar')),
+              ElevatedButton(onPressed: onRetry, child: Text(context.tr('Reintentar'))),
             ],
           ],
         ),

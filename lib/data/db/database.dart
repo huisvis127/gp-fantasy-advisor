@@ -56,7 +56,8 @@ class AppDatabase extends _$AppDatabase {
 
   Future<RaceRow?> nextRace(int season, DateTime after) async {
     final rows = await (select(races)
-          ..where((r) => r.season.equals(season) & r.date.isBiggerOrEqualValue(after))
+          ..where((r) =>
+              r.season.equals(season) & r.date.isBiggerOrEqualValue(after))
           ..orderBy([(r) => OrderingTerm.asc(r.date)])
           ..limit(1))
         .get();
@@ -84,7 +85,8 @@ class AppDatabase extends _$AppDatabase {
   }) {
     final query = select(results)..where((r) => r.driverId.equals(driverId));
     if (beforeSeason != null && beforeRound != null) {
-      query.where((r) => _beforeCutoff(r.season, r.round, beforeSeason, beforeRound));
+      query.where(
+          (r) => _beforeCutoff(r.season, r.round, beforeSeason, beforeRound));
     }
     query
       ..orderBy([
@@ -101,9 +103,11 @@ class AppDatabase extends _$AppDatabase {
     int? beforeSeason,
     int? beforeRound,
   }) {
-    final query = select(qualifyingResults)..where((r) => r.driverId.equals(driverId));
+    final query = select(qualifyingResults)
+      ..where((r) => r.driverId.equals(driverId));
     if (beforeSeason != null && beforeRound != null) {
-      query.where((r) => _beforeCutoff(r.season, r.round, beforeSeason, beforeRound));
+      query.where(
+          (r) => _beforeCutoff(r.season, r.round, beforeSeason, beforeRound));
     }
     query
       ..orderBy([
@@ -134,6 +138,24 @@ class AppDatabase extends _$AppDatabase {
     return rows.map((row) => row.read(results.round)!).toSet();
   }
 
+  Future<Set<int>> roundsWithQualifying(int season) async {
+    final query = selectOnly(qualifyingResults, distinct: true)
+      ..addColumns([qualifyingResults.round])
+      ..where(qualifyingResults.season.equals(season));
+    final rows = await query.get();
+    return rows.map((row) => row.read(qualifyingResults.round)!).toSet();
+  }
+
+  Future<List<ResultRow>> resultsForRace(int season, int round) =>
+      (select(results)
+            ..where((r) => r.season.equals(season) & r.round.equals(round)))
+          .get();
+
+  Future<List<QualifyingResultRow>> qualifyingForRace(int season, int round) =>
+      (select(qualifyingResults)
+            ..where((r) => r.season.equals(season) & r.round.equals(round)))
+          .get();
+
   Future<bool> hasAnyPrices() async {
     final rows = await (select(fantasyPrices)..limit(1)).get();
     return rows.isNotEmpty;
@@ -141,7 +163,8 @@ class AppDatabase extends _$AppDatabase {
 
   Future<double?> latestPrice(String assetId, String assetType) async {
     final rows = await (select(fantasyPrices)
-          ..where((r) => r.assetId.equals(assetId) & r.assetType.equals(assetType))
+          ..where(
+              (r) => r.assetId.equals(assetId) & r.assetType.equals(assetType))
           ..orderBy([
             (r) => OrderingTerm.desc(r.season),
             (r) => OrderingTerm.desc(r.round),
@@ -149,6 +172,52 @@ class AppDatabase extends _$AppDatabase {
           ..limit(1))
         .get();
     return rows.isEmpty ? null : rows.first.priceMillions;
+  }
+
+  Future<Map<String, double>> fantasyPricesForRound(
+      int season, int round) async {
+    final rows = await (select(fantasyPrices)
+          ..where((row) => row.season.equals(season) & row.round.equals(round)))
+        .get();
+    return {for (final row in rows) row.assetId: row.priceMillions};
+  }
+
+  Future<Set<int>> roundsWithFantasyPrices(int season) async {
+    final query = selectOnly(fantasyPrices, distinct: true)
+      ..addColumns([fantasyPrices.round])
+      ..where(
+        fantasyPrices.season.equals(season) &
+            fantasyPrices.round.isBiggerThanValue(0),
+      );
+    final rows = await query.get();
+    return rows.map((row) => row.read(fantasyPrices.round)!).toSet();
+  }
+
+  Future<Map<String, double>> fantasyPointsForRound(
+      int season, int round) async {
+    final rows = await (select(fantasyPointsTable)
+          ..where((row) => row.season.equals(season) & row.round.equals(round)))
+        .get();
+    return {for (final row in rows) row.assetId: row.points.toDouble()};
+  }
+
+  Future<Map<String, double>> averageFantasyPointsBefore(
+      int season, int round) async {
+    final rows = await (select(fantasyPointsTable)
+          ..where((row) =>
+              row.season.equals(season) & row.round.isSmallerThanValue(round)))
+        .get();
+    final totals = <String, double>{};
+    final counts = <String, int>{};
+    for (final row in rows) {
+      totals.update(row.assetId, (value) => value + row.points,
+          ifAbsent: () => row.points.toDouble());
+      counts.update(row.assetId, (value) => value + 1, ifAbsent: () => 1);
+    }
+    return {
+      for (final entry in totals.entries)
+        entry.key: entry.value / (counts[entry.key] ?? 1),
+    };
   }
 
   Future<List<ResultRow>> resultsForDriverAtCircuit(
@@ -159,13 +228,18 @@ class AppDatabase extends _$AppDatabase {
     int? beforeRound,
   }) async {
     final query = select(results).join([
-      innerJoin(races, races.season.equalsExp(results.season) & races.round.equalsExp(results.round)),
+      innerJoin(
+          races,
+          races.season.equalsExp(results.season) &
+              races.round.equalsExp(results.round)),
     ])
-      ..where(results.driverId.equals(driverId) & races.circuitId.equals(circuitId))
+      ..where(
+          results.driverId.equals(driverId) & races.circuitId.equals(circuitId))
       ..orderBy([OrderingTerm.desc(races.season)])
       ..limit(limit);
     if (beforeSeason != null && beforeRound != null) {
-      query.where(_beforeCutoff(results.season, results.round, beforeSeason, beforeRound));
+      query.where(_beforeCutoff(
+          results.season, results.round, beforeSeason, beforeRound));
     }
     final rows = await query.get();
     return rows.map((r) => r.readTable(results)).toList();
@@ -177,9 +251,11 @@ class AppDatabase extends _$AppDatabase {
     int? beforeSeason,
     int? beforeRound,
   }) {
-    final query = select(results)..where((r) => r.constructorId.equals(constructorId));
+    final query = select(results)
+      ..where((r) => r.constructorId.equals(constructorId));
     if (beforeSeason != null && beforeRound != null) {
-      query.where((r) => _beforeCutoff(r.season, r.round, beforeSeason, beforeRound));
+      query.where(
+          (r) => _beforeCutoff(r.season, r.round, beforeSeason, beforeRound));
     }
     query
       ..orderBy([
@@ -194,7 +270,8 @@ class AppDatabase extends _$AppDatabase {
     await batch((b) => b.insertAllOnConflictUpdate(drivers, rows));
   }
 
-  Future<void> updateDriverConstructors(Map<String, String> constructorByDriver) async {
+  Future<void> updateDriverConstructors(
+      Map<String, String> constructorByDriver) async {
     await batch((b) {
       for (final entry in constructorByDriver.entries) {
         b.update(
@@ -218,7 +295,8 @@ class AppDatabase extends _$AppDatabase {
     await batch((b) => b.insertAllOnConflictUpdate(results, rows));
   }
 
-  Future<void> upsertQualifying(List<Insertable<QualifyingResultRow>> rows) async {
+  Future<void> upsertQualifying(
+      List<Insertable<QualifyingResultRow>> rows) async {
     await batch((b) => b.insertAllOnConflictUpdate(qualifyingResults, rows));
   }
 
@@ -226,14 +304,24 @@ class AppDatabase extends _$AppDatabase {
     await batch((b) => b.insertAllOnConflictUpdate(fantasyPrices, rows));
   }
 
+  Future<void> upsertFantasyPoints(
+      List<Insertable<FantasyPointsRow>> rows) async {
+    await batch((b) => b.insertAllOnConflictUpdate(fantasyPointsTable, rows));
+  }
+
   Future<void> saveMyTeam(MyTeamTableCompanion row) async {
     await into(myTeamTable).insertOnConflictUpdate(row);
   }
 
   Future<MyTeamRow?> loadMyTeam() async {
-    final rows = await (select(myTeamTable)..where((r) => r.id.equals(0))).get();
+    final rows =
+        await (select(myTeamTable)..where((r) => r.id.equals(0))).get();
     return rows.isEmpty ? null : rows.first;
   }
+
+  /// Elimina únicamente la información personal del usuario. La caché
+  /// pública de calendario, resultados y precios se conserva.
+  Future<void> clearUserData() => delete(myTeamTable).go();
 }
 
 LazyDatabase _openConnection() {

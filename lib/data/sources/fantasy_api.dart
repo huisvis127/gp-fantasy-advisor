@@ -59,28 +59,39 @@ class FantasyApi {
     return _getOfficialAssets();
   }
 
+  /// Foto oficial de precios y puntos para una jornada concreta. Los feeds
+  /// históricos conservan la puntuación completa de F1 Fantasy, incluidos
+  /// adelantamientos, pit stops, sprints y bonus que Jolpica no expone.
+  Future<List<Map<String, dynamic>>> getGameDayAssets(int gameDayId) {
+    return _getOfficialAssets(gameDayId: gameDayId);
+  }
+
   /// La web 2026 publica precios y catálogo como feeds JSON. Primero se
   /// resuelve la jornada actual desde el calendario y después se descarga
   /// `drivers/{gameday}_en.json`, que incluye pilotos y constructores.
-  Future<List<Map<String, dynamic>>> _getOfficialAssets() async {
-    final scheduleResponse = await _dio.get<Map<String, dynamic>>(
-      '$_publicBaseUrl/feeds/v2/schedule/raceday_en.json',
-    );
-    final scheduleData = scheduleResponse.data?['Data'];
-    final fixtures = scheduleData is Map
-        ? (scheduleData['fixtures'] as List<dynamic>? ?? const [])
-        : const <dynamic>[];
-    final current = fixtures.cast<Map>().firstWhere(
-          (row) => row['GDIsCurrent'] == 1 || row['GDIsCurrent'] == '1',
-          orElse: () => fixtures.cast<Map>().lastWhere(
-                (row) => row['GDIsLocked'] == 1 || row['GDIsLocked'] == '1',
-                orElse: () => const {'GamedayId': 1},
-              ),
-        );
-    final gameDayId = int.tryParse(current['GamedayId'].toString()) ?? 1;
+  Future<List<Map<String, dynamic>>> _getOfficialAssets(
+      {int? gameDayId}) async {
+    var resolvedGameDayId = gameDayId;
+    if (resolvedGameDayId == null) {
+      final scheduleResponse = await _dio.get<Map<String, dynamic>>(
+        '$_publicBaseUrl/feeds/v2/schedule/raceday_en.json',
+      );
+      final scheduleData = scheduleResponse.data?['Data'];
+      final fixtures = scheduleData is Map
+          ? (scheduleData['fixtures'] as List<dynamic>? ?? const [])
+          : const <dynamic>[];
+      final current = fixtures.cast<Map>().firstWhere(
+            (row) => row['GDIsCurrent'] == 1 || row['GDIsCurrent'] == '1',
+            orElse: () => fixtures.cast<Map>().lastWhere(
+                  (row) => row['GDIsLocked'] == 1 || row['GDIsLocked'] == '1',
+                  orElse: () => const {'GamedayId': 1},
+                ),
+          );
+      resolvedGameDayId = int.tryParse(current['GamedayId'].toString()) ?? 1;
+    }
 
     final assetsResponse = await _dio.get<Map<String, dynamic>>(
-      '$_publicBaseUrl/feeds/drivers/${gameDayId}_en.json',
+      '$_publicBaseUrl/feeds/drivers/${resolvedGameDayId}_en.json',
     );
     final data = assetsResponse.data?['Data'];
     final rawAssets = data is Map
@@ -105,7 +116,7 @@ class FantasyApi {
         'is_constructor': isConstructor,
         'position': isConstructor ? 'constructor' : 'driver',
         'price': item['Value'] ?? item['price'] ?? 0,
-        'round': gameDayId,
+        'round': resolvedGameDayId,
         'display_name': name,
         'team_name': (item['TeamName'] ?? name).toString(),
       };

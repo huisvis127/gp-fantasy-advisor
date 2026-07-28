@@ -14,3 +14,5 @@ ios/Pods/
 tools/__pycache__/
 tools/.venv/
 *.pyc
+*.apk
+*.aab

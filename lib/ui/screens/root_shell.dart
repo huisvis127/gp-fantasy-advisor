@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_providers.dart';
+import '../../core/constants.dart';
+import '../../core/localization.dart';
 import '../../core/theme.dart';
+import '../../core/usage_analytics.dart';
 import '../widgets/ref_widgets.dart';
 import 'home/home_screen.dart';
 import 'circuit/circuit_screen.dart';
@@ -10,6 +13,8 @@ import 'fantasy/fantasy_screen.dart';
 import 'league/league_screen.dart';
 import 'predictions/predictions_screen.dart';
 import 'settings/settings_screen.dart';
+import 'settings/legal_screens.dart';
+import 'standings/championship_standings_screen.dart';
 
 /// Armazón de la app replicando el shell de la referencia: cabecera fija
 /// con marca lima + etiqueta mono, y barra inferior con pestañas mono
@@ -28,6 +33,7 @@ class _RootShellState extends ConsumerState<RootShell> {
     ('RESUMEN', Icons.speed_rounded),
     ('ANÁLISIS', Icons.query_stats_rounded),
     ('FANTASY', Icons.auto_awesome_rounded),
+    ('MUNDIAL', Icons.leaderboard_rounded),
     ('CIRCUITO', Icons.route_rounded),
     ('LIGA', Icons.emoji_events_rounded),
   ];
@@ -36,9 +42,79 @@ class _RootShellState extends ConsumerState<RootShell> {
     HomeScreen(),
     PredictionsScreen(),
     FantasyScreen(),
+    ChampionshipStandingsScreen(),
     CircuitScreen(),
     LeagueScreen(),
   ];
+
+  static const _screenEvents = [
+    'screen_home',
+    'screen_analysis',
+    'screen_fantasy',
+    'screen_standings',
+    'screen_circuit',
+    'screen_league',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeUsageAnalytics();
+    });
+  }
+
+  Future<void> _initializeUsageAnalytics() async {
+    final controller = ref.read(usageAnalyticsProvider.notifier);
+    final consent = await ref.read(usageAnalyticsProvider.future);
+    if (!mounted) return;
+
+    if (consent == UsageConsent.allowed) {
+      await controller.track('app_open');
+      await controller.track(_screenEvents[_index]);
+      return;
+    }
+    if (consent == UsageConsent.denied) return;
+
+    final allowed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.tr('Ayuda a mejorar Polewise')),
+        content: Text(dialogContext.tr(
+          '¿Quieres compartir estadísticas de uso con Polewise y Google '
+          'Analytics? Solo enviamos eventos generales; nunca tu cuenta, '
+          'sesión, equipo, liga ni contenido.',
+        )),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).push(
+              MaterialPageRoute(
+                settings: const RouteSettings(name: '/privacy'),
+                builder: (_) => const PrivacyScreen(),
+              ),
+            ),
+            child: Text(dialogContext.tr('Ver privacidad')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.tr('No, gracias')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(dialogContext.tr('Permitir')),
+          ),
+        ],
+      ),
+    );
+    await controller.setConsent(
+      allowed == true ? UsageConsent.allowed : UsageConsent.denied,
+    );
+    if (allowed == true) {
+      await controller.track('app_open');
+      await controller.track(_screenEvents[_index]);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +135,7 @@ class _RootShellState extends ConsumerState<RootShell> {
                 child: Row(
                   children: [
                     Text(
-                      'Fantasy Companion',
+                      AppMeta.appName,
                       style: AppText.syne(18, color: AppColors.lime).copyWith(
                         shadows: [
                           Shadow(
@@ -70,7 +146,8 @@ class _RootShellState extends ConsumerState<RootShell> {
                       ),
                     ),
                     const SizedBox(width: 9),
-                    Text('F1', style: AppText.mono(10)),
+                    Text(context.tr('FANTASY ADVISOR'),
+                        style: AppText.mono(8.5)),
                     const Spacer(),
                     if (selectedRace != null)
                       Flexible(
@@ -84,12 +161,19 @@ class _RootShellState extends ConsumerState<RootShell> {
                       ),
                     const SizedBox(width: 8),
                     IconButton(
-                      tooltip: 'Ajustes',
+                      tooltip: context.tr('Ajustes'),
                       visualDensity: VisualDensity.compact,
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const SettingsScreen()),
-                      ),
+                      onPressed: () {
+                        ref
+                            .read(usageAnalyticsProvider.notifier)
+                            .track('screen_settings');
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            settings: const RouteSettings(name: '/settings'),
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        );
+                      },
                       icon: const Icon(
                         Icons.settings_rounded,
                         size: 19,
@@ -119,7 +203,13 @@ class _RootShellState extends ConsumerState<RootShell> {
                   Expanded(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() => _index = i),
+                      onTap: () {
+                        if (_index == i) return;
+                        setState(() => _index = i);
+                        ref
+                            .read(usageAnalyticsProvider.notifier)
+                            .track(_screenEvents[i]);
+                      },
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -152,7 +242,7 @@ class _RootShellState extends ConsumerState<RootShell> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            _tabs[i].$1,
+                            context.tr(_tabs[i].$1),
                             style: AppText.mono(
                               8,
                               color: i == _index

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../domain/models/my_team.dart';
+import '../../domain/services/fantasy_chip_parser.dart';
 import '../sources/fantasy_api.dart';
 import '../sources/fantasy_auth_service.dart';
 
@@ -43,20 +44,25 @@ class TeamImportService {
     if ((token == null || token.isEmpty) &&
         (snapshotRaw == null || snapshotRaw.isEmpty)) {
       throw TeamImportException(
-          'No hay sesión guardada. Inicia sesión primero (Ajustes).');
+        'No hay sesión guardada. Inicia sesión primero (Ajustes).',
+      );
     }
 
     // 1. Equipo elegido (privado).
     late Map<String, dynamic> pickedJson;
+    Map<String, dynamic>? snapshotJson;
+    Map<String, dynamic>? boostersJson;
     if (snapshotRaw != null && snapshotRaw.isNotEmpty) {
       try {
         final snapshot = jsonDecode(snapshotRaw) as Map<String, dynamic>;
+        snapshotJson = snapshot;
         pickedJson = Map<String, dynamic>.from(
           snapshot['teams'] as Map? ?? const <String, dynamic>{},
         );
       } catch (_) {
         throw TeamImportException(
-            'La sesión guardada está dañada. Inicia sesión de nuevo.');
+          'La sesión guardada está dañada. Inicia sesión de nuevo.',
+        );
       }
     } else {
       try {
@@ -64,18 +70,29 @@ class TeamImportService {
           season: season,
           bearerToken: token!,
         );
+        try {
+          boostersJson = await _api.getBoosters(
+            season: season,
+            bearerToken: token,
+          );
+        } catch (_) {
+          // El equipo sigue siendo importable aunque el endpoint de chips
+          // cambie o no esté disponible para esta cuenta.
+        }
       } catch (e) {
         throw TeamImportException(
-            'La API del Fantasy rechazó la petición del equipo '
-            '(¿sesión caducada?). Vuelve a iniciar sesión. Detalle: $e');
+          'La API del Fantasy rechazó la petición del equipo '
+          '(¿sesión caducada?). Vuelve a iniciar sesión. Detalle: $e',
+        );
       }
     }
 
     final pickedPlayers = _findPickedPlayerIds(pickedJson);
     if (pickedPlayers.isEmpty) {
       throw TeamImportException(
-          'Respuesta recibida pero sin equipo dentro. Claves de la respuesta: '
-          '${_describeKeys(pickedJson)}. Envíame esto para ajustar el parseo.');
+        'Respuesta recibida pero sin equipo dentro. Claves de la respuesta: '
+        '${_describeKeys(pickedJson)}. Envíame esto para ajustar el parseo.',
+      );
     }
 
     // 2. Catálogo público del juego para traducir ids internos -> nombres.
@@ -85,9 +102,10 @@ class TeamImportService {
     } catch (_) {
       // Sin players no podemos traducir ids: mejor decirlo claro.
       throw TeamImportException(
-          'Tu equipo llegó (${pickedPlayers.length} fichajes) pero el listado '
-          'público de jugadores no respondió, así que no puedo traducir los '
-          'ids. Reintenta con conexión estable.');
+        'Tu equipo llegó (${pickedPlayers.length} fichajes) pero el listado '
+        'público de jugadores no respondió, así que no puedo traducir los '
+        'ids. Reintenta con conexión estable.',
+      );
     }
     final playerById = <String, Map<String, dynamic>>{};
     for (final p in players) {
@@ -126,18 +144,28 @@ class TeamImportService {
 
     if (driverIds.isEmpty && constructorIds.isEmpty) {
       throw TeamImportException(
-          'No pude emparejar ningún fichaje con el catálogo. '
-          'Sin emparejar: ${unmatched.join(', ')}.');
+        'No pude emparejar ningún fichaje con el catálogo. '
+        'Sin emparejar: ${unmatched.join(', ')}.',
+      );
     }
 
     final budget = _findBudget(pickedJson);
+    final chipUsage = parseFantasyChipUsage([
+      pickedJson,
+      boostersJson,
+      snapshotJson?['teamHistory'],
+      snapshotJson?['teams'],
+    ]);
 
     return MyTeam(
       driverIds: driverIds,
       constructorIds: constructorIds,
       remainingBudgetMillions: budget ?? 0,
       boostedDriverId: boostedDriverId,
-      source: MyTeamSource.importedApi,
+      source: snapshotJson == null
+          ? MyTeamSource.importedApi
+          : MyTeamSource.importedWebview,
+      chipsUsed: chipUsage.keys.toSet(),
     );
   }
 
@@ -176,12 +204,16 @@ class TeamImportService {
         final id =
             (item['player_id'] ?? item['PlayerId'] ?? item['id'])?.toString();
         if (id == null) continue;
-        final boosted = item.entries.any((e) =>
-            (e.key.toLowerCase().contains('captain') ||
-                e.key.toLowerCase().contains('boost') ||
-                e.key.toLowerCase().contains('turbo') ||
-                e.key.toLowerCase().contains('mega')) &&
-            e.value == true);
+        final boosted = item.entries.any((e) {
+          final key = e.key.toLowerCase();
+          final active =
+              e.value == true || e.value == 1 || e.value?.toString() == '1';
+          return active &&
+              (key.contains('captain') ||
+                  key.contains('boost') ||
+                  key.contains('turbo') ||
+                  key.contains('mega'));
+        });
         out.add(_PickedPlayer(playerId: id, isBoosted: boosted));
       } else if (item is num || item is String) {
         out.add(_PickedPlayer(playerId: item.toString(), isBoosted: false));
@@ -195,7 +227,9 @@ class TeamImportService {
       for (final entry in node.entries) {
         final key = entry.key.toLowerCase();
         if (entry.value is num &&
-            (key.contains('budget') || key.contains('balance'))) {
+            (key.contains('budget') ||
+                key.contains('balance') ||
+                key == 'teambal')) {
           final value = (entry.value as num).toDouble();
           // Algunas versiones dan décimas de millón.
           return value > 120 ? value / 10.0 : value;

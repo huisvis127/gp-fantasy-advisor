@@ -47,10 +47,14 @@ class RemoteConfig {
       _data['endpoints']['fantasy_public_base'] as String;
   String get fantasyLoginBase =>
       _data['endpoints']['fantasy_login_base'] as String;
+  String get analyticsEndpoint =>
+      (_data['endpoints']?['analytics'] as String?) ?? '';
 
   bool get loginPlanAEnabled =>
       (_data['feature_flags']?['login_plan_a_enabled'] as bool?) ?? true;
   bool get loginPlanBEnabled =>
       (_data['feature_flags']?['login_plan_b_webview_enabled'] as bool?) ??
       true;
+  bool get analyticsEnabled =>
+      (_data['feature_flags']?['anonymous_usage_analytics'] as bool?) ?? false;
 }

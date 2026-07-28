@@ -7,7 +7,7 @@ class DriverContext {
     required this.driverId,
     required this.constructorId,
     required this.recentRaceFinishPositions, // más reciente primero, null = DNF
-    required this.recentQualifyingPositions, // más reciente primero
+    required this.recentOneLapPositions, // GPs anteriores, más reciente primero
     required this.recentFastestLapGapPercent, // 0 = vuelta rápida de la sesión
     required this.circuitHistoryFinishPositions,
     required this.constructorRecentPoints,
@@ -25,8 +25,9 @@ class DriverContext {
   /// completos para la consistencia y la tendencia de forma (sección 5.1).
   final List<int?> recentRaceFinishPositions;
 
-  /// Máximo 8 elementos, para consistencia (desviación típica).
-  final List<int> recentQualifyingPositions;
+  /// Posición a una vuelta de GPs anteriores. Es información conocida antes
+  /// del cierre; nunca contiene la clasificación del GP que se predice.
+  final List<int> recentOneLapPositions;
 
   /// Diferencia porcentual con la vuelta rápida de la sesión, por sesión
   /// reciente. 0.0 = fue la vuelta rápida.
@@ -45,6 +46,6 @@ class DriverContext {
   final int gridSize;
 
   /// Agregados de sesión del fin de semana en curso (OpenF1), clave =
-  /// "fp1"|"fp2"|"fp3"|"quali"|"sq" -> media de stint (ms), más bajo mejor.
+  /// Solo "fp1"|"fp2"|"fp3". Qualifying y Sprint Qualifying están excluidas.
   final Map<String, double> sessionAggregates;
 }

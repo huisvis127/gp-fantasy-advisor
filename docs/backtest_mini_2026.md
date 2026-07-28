@@ -17,7 +17,7 @@
 
 ## Conclusiones
 
-1. **Con menos pesos NO empeora — mejora.** Las configuraciones simples dominadas por la vuelta única (clasificación + gap de vuelta rápida) baten a la mezcla de 8 pesos con los valores antiguos.
+1. **Con menos pesos NO empeora — mejora.** Las configuraciones simples dominadas por la señal histórica a una vuelta y el gap de vuelta rápida baten a la mezcla de 8 pesos con los valores antiguos. Esa señal histórica solo usa GPs anteriores.
 2. **La clasificación es el rey.** Coincide con la literatura (correlación >0.7 parrilla→resultado) y con la app de referencia de MotoGP, cuyos pesos validados (75% vuelta rápida) funcionan bien también en F1.
 3. **Los pesos antiguos infravaloraban la vuelta única** (clasif 18 + VR 8 = 26%). Los nuevos defaults son: **clasif 32 / VR 24 / ritmo 20 / cons 10 / forma 4 / afinidad 4 / equipo 4 / DNF 2** (los avanzados se mantienen con peso pequeño: en 4 carreras no aportan, pero en temporadas completas la fiabilidad y la forma del equipo sí suelen pesar).
 

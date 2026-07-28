@@ -1,4 +1,4 @@
-package com.gpfantasyadvisor.app
+package polewise.apk
 
 import io.flutter.embedding.android.FlutterActivity
 

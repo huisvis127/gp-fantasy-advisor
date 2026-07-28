@@ -19,7 +19,8 @@ class ScoringTable {
   }
 
   /// Constructor para tests / backtesting sin cargar assets de Flutter.
-  factory ScoringTable.fromJson(Map<String, dynamic> json) => ScoringTable._(json);
+  factory ScoringTable.fromJson(Map<String, dynamic> json) =>
+      ScoringTable._(json);
 
   Map<String, int> get racePositionPoints =>
       (_data['race']['position_points'] as Map<String, dynamic>)
@@ -29,8 +30,14 @@ class ScoringTable {
       (_data['qualifying']['position_points'] as Map<String, dynamic>)
           .map((k, v) => MapEntry(k, v as int));
 
+  Map<String, int> get sprintPositionPoints =>
+      ((_data['sprint']?['position_points'] as Map<String, dynamic>?) ??
+              const <String, dynamic>{})
+          .map((k, v) => MapEntry(k, v as int));
+
   int get fastestLapPoints => _data['race']['fastest_lap'] as int;
   int get dnfPenalty => _data['race']['dnf'] as int;
+  int get sprintDnfPenalty => (_data['sprint']?['dnf'] as num?)?.toInt() ?? -10;
   int get bothCarsQ3Bonus => _data['constructor']['both_cars_q3_bonus'] as int;
 
   int pointsForRacePosition(int? position) {
@@ -42,22 +49,58 @@ class ScoringTable {
     return qualifyingPositionPoints[position.toString()] ?? 0;
   }
 
-  /// Puntos fantasy esperados a partir de una distribución de probabilidad
-  /// por posición final (índice 0 = P1), más probabilidad de vuelta rápida
-  /// y de DNF. Usado por el motor de predicción (sección 5.1).
+  int pointsForSprintPosition(int position) {
+    return sprintPositionPoints[position.toString()] ?? 0;
+  }
+
+  /// Puntos de clasificación esperados antes de que comience Qualifying.
+  double expectedQualifyingPoints({
+    required List<double> positionProbabilities,
+  }) {
+    return _expectedPositionPoints(
+      positionProbabilities,
+      pointsForQualifyingPosition,
+    );
+  }
+
+  /// Puntos de carrera esperados: posición final y riesgo de DNF.
+  ///
+  /// Los extras (adelantamientos, posiciones ganadas, vuelta rápida y DOTD)
+  /// quedan fuera deliberadamente: el backtest 2025 mostró que añadir su
+  /// media reciente empeoraba la correlación fuera de muestra.
   double expectedRacePoints({
-    required List<double> positionProbabilities, // longitud = nº de pilotos
-    required double fastestLapProbability,
+    required List<double> positionProbabilities,
     required double dnfProbability,
   }) {
-    double expected = 0;
+    final finishPoints = _expectedPositionPoints(
+      positionProbabilities,
+      (position) => pointsForRacePosition(position),
+    );
+    return finishPoints * (1 - dnfProbability) + dnfProbability * dnfPenalty;
+  }
+
+  /// Puntos de Sprint esperados en fines de semana Sprint.
+  double expectedSprintPoints({
+    required List<double> positionProbabilities,
+    required double dnfProbability,
+  }) {
+    final finishPoints = _expectedPositionPoints(
+      positionProbabilities,
+      pointsForSprintPosition,
+    );
+    return finishPoints * (1 - dnfProbability) +
+        dnfProbability * sprintDnfPenalty;
+  }
+
+  double _expectedPositionPoints(
+    List<double> positionProbabilities,
+    int Function(int position) pointsForPosition,
+  ) {
+    var expected = 0.0;
     for (var i = 0; i < positionProbabilities.length; i++) {
-      final position = i + 1;
-      final pointsIfFinished = pointsForRacePosition(position);
-      expected += positionProbabilities[i] * (1 - dnfProbability) * pointsIfFinished;
+      expected +=
+          positionProbabilities[i] * pointsForPosition(i + 1).toDouble();
     }
-    expected += dnfProbability * dnfPenalty;
-    expected += fastestLapProbability * fastestLapPoints;
     return expected;
   }
 }
@@ -70,7 +113,8 @@ class SoftmaxDistribution {
   /// `scores` en el mismo orden que los pilotos a comparar. `temperature`
   /// controla cuánto se concentra la probabilidad en los mejores (más bajo
   /// = más determinista); se calibra en el backtesting junto a w1..w8.
-  static List<double> winProbabilities(List<double> scores, {double temperature = 12.0}) {
+  static List<double> winProbabilities(List<double> scores,
+      {double temperature = 12.0}) {
     final exps = scores.map((s) => exp(s / temperature)).toList();
     final sum = exps.reduce((a, b) => a + b);
     return exps.map((e) => e / sum).toList();

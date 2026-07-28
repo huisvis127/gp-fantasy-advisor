@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 
 import '../../domain/engine/driver_context.dart';
 import '../../domain/models/my_team.dart';
+import '../../domain/models/fantasy_price.dart';
 import '../../domain/models/qualifying_result.dart';
 import '../../domain/models/race.dart';
 import '../../domain/models/race_result.dart';
@@ -22,6 +23,12 @@ class SyncReport {
 
   bool get isEmpty =>
       racesSynced == 0 && resultsSynced == 0 && pricesSynced == 0;
+}
+
+class CircuitWinner {
+  const CircuitWinner({required this.season, required this.driverId});
+  final int season;
+  final String driverId;
 }
 
 /// Puerta única entre la UI y los datos (sección 3 del plan). Política
@@ -53,13 +60,32 @@ class DataRepository {
     final report = SyncReport();
     // Prioriza la temporada actual: el calendario visible no debe depender
     // de que terminen primero todas las descargas históricas.
-    final seasonsToSync = [currentSeason, currentSeason - 1, currentSeason - 2];
-    for (final season in seasonsToSync) {
-      await _trySync(report, 'temporada $season',
-          () => _syncCalendarAndResults(season, report));
-    }
+    await _trySync(
+      report,
+      'temporada $currentSeason',
+      () => _syncCalendarAndResults(
+        currentSeason,
+        report,
+        syncCatalog: true,
+        syncQualifying: true,
+        refreshCalendar: true,
+      ),
+    );
     await _trySync(
         report, 'precios fantasy', () => _syncPrices(currentSeason, report));
+    for (var offset = 1; offset <= 5; offset++) {
+      final season = currentSeason - offset;
+      await _trySync(
+        report,
+        'temporada $season',
+        () => _syncCalendarAndResults(
+          season,
+          report,
+          syncCatalog: true,
+          syncQualifying: offset == 1,
+        ),
+      );
+    }
     return report;
   }
 
@@ -79,43 +105,72 @@ class DataRepository {
     return text.length > 120 ? '${text.substring(0, 120)}…' : text;
   }
 
-  Future<void> _syncCalendarAndResults(int season, SyncReport report) async {
-    final calendar = await _jolpica.getSeasonCalendar(season);
-    await _db.upsertRaces(calendar.map(_raceToCompanion).toList());
-    report.racesSynced += calendar.length;
+  Future<void> _syncCalendarAndResults(
+    int season,
+    SyncReport report, {
+    bool syncCatalog = false,
+    bool syncQualifying = false,
+    bool refreshCalendar = false,
+  }) async {
+    var calendar = await allRaces(season);
+    if (refreshCalendar || calendar.isEmpty) {
+      calendar = await _jolpica.getSeasonCalendar(season);
+      await _db.upsertRaces(calendar.map(_raceToCompanion).toList());
+      report.racesSynced += calendar.length;
+    }
 
-    final drivers = await _jolpica.getDrivers(season);
-    await _db.upsertDrivers(drivers
-        .map((d) => DriversCompanion.insert(
-              id: d.id,
-              code: d.code,
-              givenName: d.givenName,
-              familyName: d.familyName,
-              constructorId: d.constructorId,
-              number: Value(d.number),
-            ))
-        .toList());
+    if (syncCatalog) {
+      final drivers = await _jolpica.getDrivers(season);
+      await _db.upsertDrivers(drivers
+          .map((d) => DriversCompanion.insert(
+                id: d.id,
+                code: d.code,
+                givenName: d.givenName,
+                familyName: d.familyName,
+                constructorId: d.constructorId,
+                number: Value(d.number),
+              ))
+          .toList());
 
-    final constructorsList = await _jolpica.getConstructors(season);
-    await _db.upsertConstructors(constructorsList
-        .map((c) => ConstructorsCompanion.insert(
-              id: c.id,
-              name: c.name,
-              nationality: c.nationality,
-            ))
-        .toList());
+      final constructorsList = await _jolpica.getConstructors(season);
+      await _db.upsertConstructors(constructorsList
+          .map((c) => ConstructorsCompanion.insert(
+                id: c.id,
+                name: c.name,
+                nationality: c.nationality,
+              ))
+          .toList());
+    }
 
     // Descargas agrupadas: resultados y clasificación requieren una sola
     // petición cada uno, en lugar de dos peticiones por ronda.
-    final raceResults = await _jolpica.getSeasonResults(season);
+    final completedRounds = calendar
+        .where((race) => race.date.isBefore(DateTime.now()))
+        .map((race) => race.round)
+        .toSet();
+    final cachedResultRounds = await _db.roundsWithResults(season);
+    final needsResults =
+        completedRounds.difference(cachedResultRounds).isNotEmpty;
+    final raceResults = needsResults
+        ? await _jolpica.getSeasonResults(season)
+        : const <RaceResult>[];
     if (raceResults.isNotEmpty) {
       await _db.upsertResults(raceResults.map(_resultToCompanion).toList());
       report.resultsSynced += raceResults.length;
     }
 
-    final qualifying = await _jolpica.getSeasonQualifying(season);
-    if (qualifying.isNotEmpty) {
-      await _db.upsertQualifying(qualifying.map(_qualiToCompanion).toList());
+    if (syncQualifying) {
+      final cachedQualifyingRounds = await _db.roundsWithQualifying(season);
+      final needsQualifying =
+          completedRounds.difference(cachedQualifyingRounds).isNotEmpty;
+      if (needsQualifying) {
+        final qualifying = await _jolpica.getSeasonQualifying(season);
+        if (qualifying.isNotEmpty) {
+          await _db.upsertQualifying(
+            qualifying.map(_qualiToCompanion).toList(),
+          );
+        }
+      }
     }
 
     // Jolpica no da el constructorId en /drivers.json. Se completa con el
@@ -131,17 +186,71 @@ class DataRepository {
   }
 
   Future<void> _syncPrices(int season, SyncReport report) async {
-    final prices = await _fantasyApi.getCurrentPrices(season);
-    report.pricesSynced += prices.length;
-    await _db.upsertPrices(prices
-        .map((p) => FantasyPricesCompanion.insert(
-              assetId: p.assetId,
-              assetType: p.assetType.name,
-              season: p.season,
-              round: p.round,
-              priceMillions: p.priceMillions,
-            ))
-        .toList());
+    var currentPrices = const <FantasyPrice>[];
+    try {
+      currentPrices = await _fantasyApi.getCurrentPrices(season);
+    } catch (error) {
+      report.errors.add('precios actuales: ${_shortError(error)}');
+    }
+    final completedRounds = (await _db.roundsWithResults(season)).toList()
+      ..sort();
+    final cachedPriceRounds = await _db.roundsWithFantasyPrices(season);
+    final missingRounds = completedRounds
+        .where((round) => !cachedPriceRounds.contains(round))
+        .toList();
+    final snapshots = <List<Map<String, dynamic>>>[];
+    for (final round in missingRounds) {
+      try {
+        snapshots.add(await _fantasyApi.getGameDayAssets(round));
+      } catch (error) {
+        report.errors.add(
+          'puntos fantasy R$round: ${_shortError(error)}',
+        );
+        snapshots.add(const <Map<String, dynamic>>[]);
+      }
+    }
+    final priceRows = <FantasyPricesCompanion>[
+      for (final price in currentPrices)
+        FantasyPricesCompanion.insert(
+          assetId: price.assetId,
+          assetType: price.assetType.name,
+          season: price.season,
+          round: price.round,
+          priceMillions: price.priceMillions,
+        ),
+    ];
+    final pointRows = <FantasyPointsTableCompanion>[];
+    for (var index = 0; index < missingRounds.length; index++) {
+      final round = missingRounds[index];
+      for (final asset in snapshots[index]) {
+        final rawPrice = (asset['price'] as num?)?.toDouble() ?? 0;
+        final isConstructor = asset['is_constructor'] == true;
+        final id = asset['canonical_id']?.toString() ?? '';
+        if (id.isEmpty) continue;
+        priceRows.add(FantasyPricesCompanion.insert(
+          assetId: id,
+          assetType: isConstructor ? 'constructor' : 'driver',
+          season: season,
+          round: round,
+          priceMillions: rawPrice > 40 ? rawPrice / 10.0 : rawPrice,
+        ));
+        final points = double.tryParse(
+          (asset['GamedayPoints'] ?? asset['gameday_points'] ?? '').toString(),
+        );
+        if (points != null) {
+          pointRows.add(FantasyPointsTableCompanion.insert(
+            assetId: id,
+            assetType: isConstructor ? 'constructor' : 'driver',
+            season: season,
+            round: round,
+            points: points.round(),
+          ));
+        }
+      }
+    }
+    report.pricesSynced += priceRows.length;
+    if (priceRows.isNotEmpty) await _db.upsertPrices(priceRows);
+    if (pointRows.isNotEmpty) await _db.upsertFantasyPoints(pointRows);
   }
 
   // ---- Lecturas (siempre desde caché local; instantáneas) ----
@@ -156,8 +265,81 @@ class DataRepository {
     return rows.map(_raceRowToDomain).toList();
   }
 
+  Future<List<RaceResult>> raceResults(int season, int round) async {
+    final rows = await _db.resultsForRace(season, round);
+    return rows
+        .map((row) => RaceResult(
+              season: row.season,
+              round: row.round,
+              driverId: row.driverId,
+              constructorId: row.constructorId,
+              gridPosition: row.gridPosition,
+              finishPosition: row.finishPosition,
+              status: row.status,
+              fastestLap: row.fastestLap,
+            ))
+        .toList();
+  }
+
+  Future<List<QualifyingResult>> qualifyingResults(
+      int season, int round) async {
+    final rows = await _db.qualifyingForRace(season, round);
+    return rows
+        .map((row) => QualifyingResult(
+              season: row.season,
+              round: row.round,
+              driverId: row.driverId,
+              position: row.position,
+              q1: row.q1Millis == null
+                  ? null
+                  : Duration(milliseconds: row.q1Millis!),
+              q2: row.q2Millis == null
+                  ? null
+                  : Duration(milliseconds: row.q2Millis!),
+              q3: row.q3Millis == null
+                  ? null
+                  : Duration(milliseconds: row.q3Millis!),
+            ))
+        .toList();
+  }
+
   Future<double?> currentPrice(String assetId, {required bool isConstructor}) =>
       _db.latestPrice(assetId, isConstructor ? 'constructor' : 'driver');
+
+  Future<Map<String, double>> fantasyPricesForRound(int season, int round) =>
+      _db.fantasyPricesForRound(season, round);
+
+  Future<Map<String, double>> fantasyPointsForRound(int season, int round) =>
+      _db.fantasyPointsForRound(season, round);
+
+  Future<Map<String, double>> averageFantasyPointsBefore(
+    int season,
+    int round,
+  ) =>
+      _db.averageFantasyPointsBefore(season, round);
+
+  Future<List<CircuitWinner>> circuitWinners(
+    Race race, {
+    int years = 5,
+  }) async {
+    final winners = <CircuitWinner>[];
+    for (var season = race.season - 1;
+        season >= race.season - years;
+        season--) {
+      final matching = (await allRaces(season))
+          .where((item) => item.circuitId == race.circuitId);
+      if (matching.isEmpty) continue;
+      final results = await raceResults(season, matching.first.round);
+      final winner = results.where((result) => result.finishPosition == 1);
+      if (winner.isNotEmpty) {
+        winners.add(CircuitWinner(
+          season: season,
+          driverId: winner.first.driverId,
+        ));
+      }
+    }
+    return winners;
+  }
 
   /// ¿Hay precios reales de la API de F1 Fantasy en caché? Si no, la UI
   /// usa los precios estimados (y lo indica con un aviso).
@@ -210,7 +392,7 @@ class DataRepository {
       final circuitHistory = await _db.resultsForDriverAtCircuit(
         driver.id,
         race.circuitId,
-        limit: 4,
+        limit: 5,
         beforeSeason: cutSeason,
         beforeRound: cutRound,
       );
@@ -237,7 +419,7 @@ class DataRepository {
         // usa las 8 (sección 5.1); DriverContext lleva la ventana más ancha.
         recentRaceFinishPositions:
             recent8.map((r) => r.finishPosition).toList(),
-        recentQualifyingPositions: recentQuali.map((q) => q.position).toList(),
+        recentOneLapPositions: recentQuali.map((q) => q.position).toList(),
         // Aproximación sin OpenF1: 0 si tuvo la vuelta rápida, 1.5% si no.
         // Sustituir por el gap real de OpenF1 cuando haya sesión en curso.
         recentFastestLapGapPercent:
@@ -287,6 +469,8 @@ class DataRepository {
       chipsUsed: row.chipsUsedCsv.split(',').where((s) => s.isNotEmpty).toSet(),
     );
   }
+
+  Future<void> clearUserData() => _db.clearUserData();
 
   // ---- Mappers dominio <-> companions/rows drift ----
 

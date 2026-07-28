@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme.dart';
+import '../../../core/localization.dart';
 
 /// Cuenta atrás hasta el próximo GP, con los números en Syne y las
 /// etiquetas en mono uppercase (lenguaje visual de la referencia).
@@ -41,7 +42,7 @@ class _CountdownWidgetState extends State<CountdownWidget> {
   @override
   Widget build(BuildContext context) {
     if (_remaining.isNegative) {
-      return Text('¡EN MARCHA O FINALIZADO!', style: AppText.mono(11, color: AppColors.ok));
+      return Text(context.tr('¡EN MARCHA O FINALIZADO!'), style: AppText.mono(11, color: AppColors.ok));
     }
     final days = _remaining.inDays;
     final hours = _remaining.inHours % 24;
@@ -51,11 +52,11 @@ class _CountdownWidgetState extends State<CountdownWidget> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          _timeBlock('$days', 'DÍAS'),
+          _timeBlock('$days', context.tr('DÍAS')),
           _separator(),
-          _timeBlock('$hours', 'HORAS'),
+          _timeBlock('$hours', context.tr('HORAS')),
           _separator(),
-          _timeBlock('$minutes', 'MIN'),
+          _timeBlock('$minutes', context.tr('MIN')),
         ],
       ),
     );
