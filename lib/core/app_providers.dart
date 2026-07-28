@@ -7,6 +7,7 @@ import '../domain/models/my_team.dart';
 import '../domain/models/prediction.dart';
 import '../domain/models/race.dart';
 import '../domain/engine/driver_context.dart';
+import '../domain/engine/fantasy_budget_ledger.dart';
 import 'fantasy_standings_provider.dart';
 import 'providers.dart';
 import 'selected_gp.dart';
@@ -33,6 +34,7 @@ final nextRaceProvider = FutureProvider<Race?>((ref) async {
 final selectedRaceScheduleProvider = FutureProvider<Race?>((ref) async {
   final selected = await ref.watch(selectedRaceProvider.future);
   if (selected == null) return null;
+  if (!shouldLoadWeekendData(selected, DateTime.now())) return selected;
   try {
     final calendar =
         await ref.watch(jolpicaApiProvider).getSeasonCalendar(selected.season);
@@ -67,6 +69,7 @@ final driverPredictionsProvider =
 
   final repo = ref.watch(dataRepositoryProvider);
   final weights = await ref.watch(effectiveWeightsProvider.future);
+  final requestedWindow = ref.watch(predictionDataWindowProvider);
   final scoringJson = await ref.watch(scoringJsonProvider.future);
   var contexts = await repo.buildDriverContexts(race);
   if (contexts.isEmpty) {
@@ -77,15 +80,17 @@ final driverPredictionsProvider =
   // los gaps por sesión en los contextos y el motor los mezcla según la
   // tabla de pesos por sesión (docs/PLAN_PREDICCION_SESIONES.md).
   final weekend = await ref.watch(weekendDataProvider.future);
-  if (!weekend.isEmpty) {
+  final activeWindow = weekend.resolveWindow(requestedWindow);
+  final stagedWeekend = weekend.byDriverIdFor(activeWindow);
+  if (stagedWeekend.isNotEmpty) {
     contexts = contexts.map((c) {
-      final aggregates = weekend.byDriverId[c.driverId];
+      final aggregates = stagedWeekend[c.driverId];
       if (aggregates == null) return c;
       return DriverContext(
         driverId: c.driverId,
         constructorId: c.constructorId,
         recentRaceFinishPositions: c.recentRaceFinishPositions,
-        recentQualifyingPositions: c.recentQualifyingPositions,
+        recentOneLapPositions: c.recentOneLapPositions,
         recentFastestLapGapPercent: c.recentFastestLapGapPercent,
         circuitHistoryFinishPositions: c.circuitHistoryFinishPositions,
         constructorRecentPoints: c.constructorRecentPoints,
@@ -101,11 +106,14 @@ final driverPredictionsProvider =
   // por clasificación (fantasy_standings_provider). La UI avisa cuando son
   // estimados (pricesAreEstimatedProvider).
   final catalog = await ref.watch(fantasyAssetNameProvider.future);
+  final roundPrices = await repo.fantasyPricesForRound(race.season, race.round);
   final prices = <String, double>{};
   for (final ctx in contexts) {
     final dbPrice = await repo.currentPrice(ctx.driverId, isConstructor: false);
-    prices[ctx.driverId] =
-        dbPrice ?? catalog[ctx.driverId]?.priceMillions ?? 15.0;
+    prices[ctx.driverId] = roundPrices[ctx.driverId] ??
+        dbPrice ??
+        catalog[ctx.driverId]?.priceMillions ??
+        15.0;
   }
 
   final predictions = await PredictionIsolateRunner.predictDrivers(
@@ -115,9 +123,13 @@ final driverPredictionsProvider =
     currentPricesMillions: prices,
     isSprintWeekend: race.hasSprint,
   );
-  return predictions.isEmpty
-      ? ref.watch(fallbackDriverPredictionsProvider.future)
-      : predictions;
+  if (predictions.isEmpty) {
+    return ref.watch(fallbackDriverPredictionsProvider.future);
+  }
+  // El total ya representa E[clasificación + carrera + Sprint]. No se mezcla
+  // con la media Fantasy anterior: el backtest 2025 mostró que arrastrar los
+  // extras históricos (adelantamientos, DOTD, etc.) empeora la correlación.
+  return predictions;
 });
 
 /// Predicciones de constructores derivadas del mismo motor: suma de los
@@ -127,7 +139,6 @@ final engineConstructorPredictionsProvider =
     FutureProvider<List<AssetPrediction>>((ref) async {
   final race = await ref.watch(selectedRaceProvider.future);
   final driverPreds = await ref.watch(driverPredictionsProvider.future);
-  final catalog = await ref.watch(fantasyAssetNameProvider.future);
   final repo = ref.watch(dataRepositoryProvider);
 
   if (race == null || driverPreds.isEmpty) {
@@ -136,23 +147,26 @@ final engineConstructorPredictionsProvider =
 
   // Agrupar pilotos por constructor usando el catálogo de standings
   // (id piloto -> nombre de equipo) y el mapa de constructores.
+  final contexts = await repo.buildDriverContexts(race);
+  final constructorByDriver = <String, String>{
+    for (final context in contexts) context.driverId: context.constructorId,
+  };
   final constructorInfos =
-      (await ref.watch(fantasyConstructorAssetInfoProvider.future));
-  final driversByTeamName = <String, List<AssetPrediction>>{};
+      await ref.watch(fantasyConstructorAssetInfoProvider.future);
+  final infoById = {for (final info in constructorInfos) info.id: info};
+  final driversByConstructor = <String, List<AssetPrediction>>{};
   for (final pred in driverPreds) {
-    final teamName = catalog[pred.assetId]?.teamName ?? '';
-    if (teamName.isEmpty) continue;
-    driversByTeamName.putIfAbsent(teamName, () => []).add(pred);
+    final constructorId = constructorByDriver[pred.assetId];
+    if (constructorId == null || constructorId.isEmpty) continue;
+    driversByConstructor.putIfAbsent(constructorId, () => []).add(pred);
   }
 
   final result = <AssetPrediction>[];
-  for (final info in constructorInfos) {
-    final teamDrivers =
-        driversByTeamName[info.name] ?? const <AssetPrediction>[];
-    if (teamDrivers.isEmpty) {
-      result.add(info.toPrediction());
-      continue;
-    }
+  final roundPrices = await repo.fantasyPricesForRound(race.season, race.round);
+  for (final entry in driversByConstructor.entries) {
+    final constructorId = entry.key;
+    final info = infoById[constructorId];
+    final teamDrivers = entry.value;
     teamDrivers.sort((a, b) => b.expectedPoints.compareTo(a.expectedPoints));
     final top2 = teamDrivers.take(2).toList();
     final sumPoints = top2.fold<double>(0, (sum, p) => sum + p.expectedPoints);
@@ -161,17 +175,22 @@ final engineConstructorPredictionsProvider =
     final bothTop10 = top2.length == 2
         ? top2[0].top10Probability * top2[1].top10Probability
         : 0.0;
-    final expected = sumPoints + bothTop10 * 10;
-    final dbPrice = await repo.currentPrice(info.id, isConstructor: true);
+    final modeledExpected = sumPoints + bothTop10 * 10;
+    final dbPrice = await repo.currentPrice(constructorId, isConstructor: true);
     result.add(AssetPrediction(
-      assetId: info.id,
-      expectedPoints: expected,
+      assetId: constructorId,
+      expectedPoints: modeledExpected,
       winProbability: top2.first.winProbability,
       podiumProbability: top2.first.podiumProbability,
       top10Probability: bothTop10,
-      priceMillions: dbPrice ?? info.priceMillions,
+      priceMillions:
+          roundPrices[constructorId] ?? dbPrice ?? info?.priceMillions ?? 12.0,
       breakdown: {
         for (final p in top2) p.assetId: p.expectedPoints,
+      },
+      pointBreakdown: {
+        'pilotos': sumPoints,
+        'bonus_clasificacion': bothTop10 * 10,
       },
     ));
   }
@@ -194,13 +213,42 @@ class MyTeamNotifier extends AsyncNotifier<MyTeam?> {
     await repo.saveMyTeam(team);
     state = AsyncData(team);
   }
+
+  Future<void> clear() async {
+    final repo = ref.read(dataRepositoryProvider);
+    await repo.clearUserData();
+    state = const AsyncData(null);
+  }
 }
 
 final teamOptimizerProvider =
     Provider<TeamOptimizer>((ref) => const TeamOptimizer());
 
+final myTeamPurchasingPowerProvider = FutureProvider<double?>((ref) async {
+  final team = await ref.watch(myTeamProvider.future);
+  if (team == null || !team.isComplete) return null;
+
+  final drivers = await ref.watch(driverPredictionsProvider.future);
+  final constructors =
+      await ref.watch(engineConstructorPredictionsProvider.future);
+  final prices = <String, double>{
+    for (final prediction in [...drivers, ...constructors])
+      prediction.assetId: prediction.priceMillions,
+  };
+  final assetIds = [...team.driverIds, ...team.constructorIds];
+  if (assetIds.any((id) => !prices.containsKey(id))) return null;
+
+  final teamValue = assetIds.fold<double>(
+    0,
+    (sum, id) => sum + prices[id]!,
+  );
+  return teamValue + team.remainingBudgetMillions;
+});
+
+typedef OptimalTeamRequest = ({TeamPriority priority, double budgetMillions});
+
 final optimalTeamProvider =
-    FutureProvider.family<TeamCombo, TeamPriority>((ref, priority) async {
+    FutureProvider.family<TeamCombo, OptimalTeamRequest>((ref, request) async {
   final driverPredictions = await ref.watch(driverPredictionsProvider.future);
   final constructorPredictions =
       await ref.watch(engineConstructorPredictionsProvider.future);
@@ -216,8 +264,8 @@ final optimalTeamProvider =
   return optimizer.findOptimalTeam(
     driverPredictions: driverPredictions,
     constructorPredictions: constructorPredictions,
-    totalBudgetMillions: 100,
-    priority: priority,
+    totalBudgetMillions: request.budgetMillions,
+    priority: request.priority,
   );
 });
 
@@ -229,6 +277,11 @@ class FantasySimulationRound {
     required this.transfersIn,
     required this.points,
     required this.cumulativePoints,
+    required this.budgetMillions,
+    required this.budgetChangeMillions,
+    required this.teamValueMillions,
+    required this.cashMillions,
+    required this.hasOfficialPrices,
   });
 
   final Race race;
@@ -237,6 +290,11 @@ class FantasySimulationRound {
   final List<String> transfersIn;
   final double points;
   final double cumulativePoints;
+  final double budgetMillions;
+  final double budgetChangeMillions;
+  final double teamValueMillions;
+  final double cashMillions;
+  final bool hasOfficialPrices;
 }
 
 class FantasySeasonSimulation {
@@ -266,23 +324,28 @@ final fantasySeasonSimulationProvider =
   final output = <FantasySimulationRound>[];
   TeamCombo? currentTeam;
   var cumulative = 0.0;
+  FantasyBudgetLedger? budgetLedger;
 
   for (final race in races) {
     final results = await repo.raceResults(season, race.round);
     final contexts = await repo.buildDriverContexts(race);
     if (results.isEmpty || contexts.isEmpty) continue;
 
+    final roundPrices = await repo.fantasyPricesForRound(season, race.round);
     final prices = <String, double>{
       for (final context in contexts)
-        context.driverId: catalog[context.driverId]?.priceMillions ?? 15,
+        context.driverId: roundPrices[context.driverId] ??
+            catalog[context.driverId]?.priceMillions ??
+            15,
     };
-    final driverPredictions = await PredictionIsolateRunner.predictDrivers(
+    final rawDriverPredictions = await PredictionIsolateRunner.predictDrivers(
       weights: weights,
       scoringJson: scoringJson,
       drivers: contexts,
       currentPricesMillions: prices,
       isSprintWeekend: race.hasSprint,
     );
+    final driverPredictions = rawDriverPredictions;
     final contextByDriver = {
       for (final context in contexts) context.driverId: context
     };
@@ -306,8 +369,13 @@ final fantasySeasonSimulationProvider =
               (best, p) =>
                   p.podiumProbability > best ? p.podiumProbability : best),
           top10Probability: 1,
-          priceMillions: catalog[group.key]?.priceMillions ?? 12,
+          priceMillions:
+              roundPrices[group.key] ?? catalog[group.key]?.priceMillions ?? 12,
           breakdown: const {},
+          pointBreakdown: {
+            'pilotos':
+                group.value.fold<double>(0, (sum, p) => sum + p.expectedPoints),
+          },
         ),
     ];
     if (driverPredictions.length < 5 || constructorPredictions.length < 2) {
@@ -316,11 +384,16 @@ final fantasySeasonSimulationProvider =
 
     var transfersOut = const <String>[];
     var transfersIn = const <String>[];
+    var budgetBefore = 100.0;
     if (currentTeam == null) {
       currentTeam = optimizer.findOptimalTeam(
         driverPredictions: driverPredictions,
         constructorPredictions: constructorPredictions,
         totalBudgetMillions: 100,
+      );
+      budgetLedger = FantasyBudgetLedger.initial(
+        startingBudgetMillions: 100,
+        teamCostMillions: currentTeam.totalCostMillions,
       );
     } else {
       final driverById = {
@@ -335,13 +408,13 @@ final fantasySeasonSimulationProvider =
               0, (sum, id) => sum + (driverById[id]?.priceMillions ?? 0)) +
           currentTeam.constructorIds.fold<double>(
               0, (sum, id) => sum + (constructorById[id]?.priceMillions ?? 0));
+      budgetBefore = budgetLedger!.purchasingPower(currentCost);
       final plans = optimizer.suggestTransfers(
         currentDriverIds: currentTeam.driverIds,
         currentConstructorIds: currentTeam.constructorIds,
         driverPredictions: driverPredictions,
         constructorPredictions: constructorPredictions,
-        remainingBudgetMillions:
-            (100 - currentCost).clamp(0.0, 100.0).toDouble(),
+        remainingBudgetMillions: budgetLedger.cashMillions,
         maxTransfersToConsider: 2,
       );
       final best = plans.isEmpty ? null : plans.first;
@@ -349,7 +422,20 @@ final fantasySeasonSimulationProvider =
         currentTeam = best.resultingTeam;
         transfersOut = best.transfersOut;
         transfersIn = best.transfersIn;
+      } else {
+        TransferPlan? unchanged;
+        for (final plan in plans) {
+          if (plan.numberOfTransfers == 0) {
+            unchanged = plan;
+            break;
+          }
+        }
+        if (unchanged != null) currentTeam = unchanged.resultingTeam;
       }
+      budgetLedger = budgetLedger.afterTransfers(
+        currentTeamValueMillions: currentCost,
+        resultingTeamCostMillions: currentTeam.totalCostMillions,
+      );
     }
     final team = currentTeam;
     if (team.driverIds.length != 5 || team.constructorIds.length != 2) {
@@ -410,12 +496,24 @@ final fantasySeasonSimulationProvider =
       }
       constructorScores[id] = score;
     }
-    final roundPoints = team.driverIds
+    var roundPoints = team.driverIds
             .fold<double>(0, (sum, id) => sum + (driverScores[id] ?? 0)) +
         team.constructorIds
             .fold<double>(0, (sum, id) => sum + (constructorScores[id] ?? 0)) +
         (driverScores[team.boostedDriverId] ?? 0);
+    final officialPoints = await repo.fantasyPointsForRound(season, race.round);
+    final teamAssets = [...team.driverIds, ...team.constructorIds];
+    if (teamAssets.every(officialPoints.containsKey) &&
+        team.boostedDriverId != null) {
+      roundPoints = teamAssets.fold<double>(
+            0,
+            (sum, id) => sum + officialPoints[id]!,
+          ) +
+          officialPoints[team.boostedDriverId]!;
+    }
     cumulative += roundPoints;
+    final previousBudget = output.isEmpty ? 100.0 : output.last.budgetMillions;
+    final teamAssetIds = [...team.driverIds, ...team.constructorIds];
     output.add(FantasySimulationRound(
       race: race,
       team: team,
@@ -423,6 +521,11 @@ final fantasySeasonSimulationProvider =
       transfersIn: transfersIn,
       points: roundPoints,
       cumulativePoints: cumulative,
+      budgetMillions: budgetBefore,
+      budgetChangeMillions: budgetBefore - previousBudget,
+      teamValueMillions: team.totalCostMillions,
+      cashMillions: budgetLedger.cashMillions,
+      hasOfficialPrices: teamAssetIds.every(roundPrices.containsKey),
     ));
   }
   return FantasySeasonSimulation(rounds: output);

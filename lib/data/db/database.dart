@@ -138,6 +138,14 @@ class AppDatabase extends _$AppDatabase {
     return rows.map((row) => row.read(results.round)!).toSet();
   }
 
+  Future<Set<int>> roundsWithQualifying(int season) async {
+    final query = selectOnly(qualifyingResults, distinct: true)
+      ..addColumns([qualifyingResults.round])
+      ..where(qualifyingResults.season.equals(season));
+    final rows = await query.get();
+    return rows.map((row) => row.read(qualifyingResults.round)!).toSet();
+  }
+
   Future<List<ResultRow>> resultsForRace(int season, int round) =>
       (select(results)
             ..where((r) => r.season.equals(season) & r.round.equals(round)))
@@ -164,6 +172,52 @@ class AppDatabase extends _$AppDatabase {
           ..limit(1))
         .get();
     return rows.isEmpty ? null : rows.first.priceMillions;
+  }
+
+  Future<Map<String, double>> fantasyPricesForRound(
+      int season, int round) async {
+    final rows = await (select(fantasyPrices)
+          ..where((row) => row.season.equals(season) & row.round.equals(round)))
+        .get();
+    return {for (final row in rows) row.assetId: row.priceMillions};
+  }
+
+  Future<Set<int>> roundsWithFantasyPrices(int season) async {
+    final query = selectOnly(fantasyPrices, distinct: true)
+      ..addColumns([fantasyPrices.round])
+      ..where(
+        fantasyPrices.season.equals(season) &
+            fantasyPrices.round.isBiggerThanValue(0),
+      );
+    final rows = await query.get();
+    return rows.map((row) => row.read(fantasyPrices.round)!).toSet();
+  }
+
+  Future<Map<String, double>> fantasyPointsForRound(
+      int season, int round) async {
+    final rows = await (select(fantasyPointsTable)
+          ..where((row) => row.season.equals(season) & row.round.equals(round)))
+        .get();
+    return {for (final row in rows) row.assetId: row.points.toDouble()};
+  }
+
+  Future<Map<String, double>> averageFantasyPointsBefore(
+      int season, int round) async {
+    final rows = await (select(fantasyPointsTable)
+          ..where((row) =>
+              row.season.equals(season) & row.round.isSmallerThanValue(round)))
+        .get();
+    final totals = <String, double>{};
+    final counts = <String, int>{};
+    for (final row in rows) {
+      totals.update(row.assetId, (value) => value + row.points,
+          ifAbsent: () => row.points.toDouble());
+      counts.update(row.assetId, (value) => value + 1, ifAbsent: () => 1);
+    }
+    return {
+      for (final entry in totals.entries)
+        entry.key: entry.value / (counts[entry.key] ?? 1),
+    };
   }
 
   Future<List<ResultRow>> resultsForDriverAtCircuit(
@@ -250,6 +304,11 @@ class AppDatabase extends _$AppDatabase {
     await batch((b) => b.insertAllOnConflictUpdate(fantasyPrices, rows));
   }
 
+  Future<void> upsertFantasyPoints(
+      List<Insertable<FantasyPointsRow>> rows) async {
+    await batch((b) => b.insertAllOnConflictUpdate(fantasyPointsTable, rows));
+  }
+
   Future<void> saveMyTeam(MyTeamTableCompanion row) async {
     await into(myTeamTable).insertOnConflictUpdate(row);
   }
@@ -259,6 +318,10 @@ class AppDatabase extends _$AppDatabase {
         await (select(myTeamTable)..where((r) => r.id.equals(0))).get();
     return rows.isEmpty ? null : rows.first;
   }
+
+  /// Elimina únicamente la información personal del usuario. La caché
+  /// pública de calendario, resultados y precios se conserva.
+  Future<void> clearUserData() => delete(myTeamTable).go();
 }
 
 LazyDatabase _openConnection() {

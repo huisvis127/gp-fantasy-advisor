@@ -32,7 +32,8 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 /// Se sobreescribe en main.dart una vez cargada la config remota real;
 /// este valor por defecto solo evita crashear si algún test no lo overridea.
 final remoteConfigProvider = Provider<RemoteConfig>((ref) {
-  throw UnimplementedError('remoteConfigProvider debe sobreescribirse en main()');
+  throw UnimplementedError(
+      'remoteConfigProvider debe sobreescribirse en main()');
 });
 
 final jolpicaApiProvider = Provider<JolpicaApi>((ref) {
@@ -47,12 +48,12 @@ final openF1ApiProvider = Provider<OpenF1Api>((ref) {
 
 final fantasyApiProvider = Provider<FantasyApi>((ref) {
   final config = ref.watch(remoteConfigProvider);
-  return FantasyApi(ref.watch(dioProvider), publicBaseUrl: config.fantasyPublicBase);
+  return FantasyApi(ref.watch(dioProvider),
+      publicBaseUrl: config.fantasyPublicBase);
 });
 
 final fantasyAuthServiceProvider = Provider<FantasyAuthService>((ref) {
-  final config = ref.watch(remoteConfigProvider);
-  return FantasyAuthService(ref.watch(dioProvider), loginBaseUrl: config.fantasyLoginBase);
+  return FantasyAuthService();
 });
 
 final teamImportServiceProvider = Provider<TeamImportService>((ref) {

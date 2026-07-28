@@ -6,18 +6,46 @@ import 'fantasy_standings_provider.dart';
 import 'providers.dart';
 import 'selected_gp.dart';
 
-/// Datos del fin de semana en curso (o del finde de un GP pasado) desde
-/// OpenF1, agregados por sesión (docs/PLAN_PREDICCION_SESIONES.md).
-/// Es lo que hace que la predicción mejore por etapas: pre-finde -> con FP1
-/// -> con FP1+FP2 -> ... -> con quali.
+enum PredictionDataWindow { preWeekend, friday, saturday }
+
+extension PredictionDataWindowLabel on PredictionDataWindow {
+  String get shortLabel => switch (this) {
+        PredictionDataWindow.preWeekend => 'Pre-finde',
+        PredictionDataWindow.friday => 'Viernes',
+        PredictionDataWindow.saturday => 'Viernes + sáb.',
+      };
+}
+
+class PredictionDataWindowNotifier extends Notifier<PredictionDataWindow?> {
+  @override
+  PredictionDataWindow? build() {
+    // Cada GP empieza en automático: se usa la última ventana disponible.
+    ref.watch(selectedSeasonProvider);
+    ref.watch(selectedRoundProvider);
+    return null;
+  }
+
+  void select(PredictionDataWindow window) => state = window;
+  void useLatestAvailable() => state = null;
+}
+
+final predictionDataWindowProvider =
+    NotifierProvider<PredictionDataWindowNotifier, PredictionDataWindow?>(
+  PredictionDataWindowNotifier.new,
+);
+
+/// Datos de libres del fin de semana en curso desde OpenF1.
+/// La predicción tiene tres ventanas pre-clasificación: histórico, viernes
+/// (FP1+FP2) y viernes+sábados (FP1+FP2+FP3).
 class WeekendData {
   const WeekendData({
     this.sessions = const <String>{},
     this.byDriverId = const {},
     this.error,
+    this.isSprintWeekend = false,
   });
 
-  /// Sesiones terminadas con datos: subconjunto de {fp1, fp2, fp3, sq, quali}.
+  /// Sesiones terminadas con datos: subconjunto de {fp1, fp2, fp3}.
   final Set<String> sessions;
 
   /// driverId -> { 'onelap:fp1': gap%, 'pace:fp1': gap%, ... }.
@@ -27,23 +55,72 @@ class WeekendData {
   /// Error visible (nunca silencioso); si hay error, sessions queda vacío
   /// y la predicción sigue en modo pre-finde.
   final String? error;
+  final bool isSprintWeekend;
 
   bool get isEmpty => sessions.isEmpty;
 
-  /// Etiqueta de etapa para la UI.
-  String get stageLabel {
-    if (sessions.isEmpty) return 'PRE-FINDE';
-    const order = ['fp1', 'fp2', 'fp3', 'sq', 'quali'];
+  PredictionDataWindow get latestAvailableWindow {
+    if (!isSprintWeekend && sessions.contains('fp3')) {
+      return PredictionDataWindow.saturday;
+    }
+    if (sessions.contains('fp1') || sessions.contains('fp2')) {
+      return PredictionDataWindow.friday;
+    }
+    return PredictionDataWindow.preWeekend;
+  }
+
+  bool isWindowAvailable(PredictionDataWindow window) => switch (window) {
+        PredictionDataWindow.preWeekend => true,
+        PredictionDataWindow.friday =>
+          sessions.contains('fp1') || sessions.contains('fp2'),
+        PredictionDataWindow.saturday =>
+          !isSprintWeekend && sessions.contains('fp3'),
+      };
+
+  PredictionDataWindow resolveWindow(PredictionDataWindow? requested) {
+    if (requested == null) return latestAvailableWindow;
+    return isWindowAvailable(requested) ? requested : latestAvailableWindow;
+  }
+
+  Set<String> sessionsFor(PredictionDataWindow window) {
+    final allowed = switch (window) {
+      PredictionDataWindow.preWeekend => const <String>{},
+      PredictionDataWindow.friday => const {'fp1', 'fp2'},
+      PredictionDataWindow.saturday => const {'fp1', 'fp2', 'fp3'},
+    };
+    return sessions.where(allowed.contains).toSet();
+  }
+
+  Map<String, Map<String, double>> byDriverIdFor(
+    PredictionDataWindow window,
+  ) {
+    final allowed = sessionsFor(window);
+    if (allowed.isEmpty) return const {};
+    return {
+      for (final driver in byDriverId.entries)
+        driver.key: {
+          for (final metric in driver.value.entries)
+            if (allowed.contains(metric.key.split(':').last))
+              metric.key: metric.value,
+        },
+    };
+  }
+
+  String labelFor(PredictionDataWindow window) {
+    final selectedSessions = sessionsFor(window);
+    if (selectedSessions.isEmpty) return 'PRE-FINDE';
+    const order = ['fp1', 'fp2', 'fp3'];
     const labels = {
       'fp1': 'FP1',
       'fp2': 'FP2',
       'fp3': 'FP3',
-      'sq': 'SQ',
-      'quali': 'QUALI',
     };
-    final present = order.where(sessions.contains).map((s) => labels[s]!).toList();
+    final present =
+        order.where(selectedSessions.contains).map((s) => labels[s]!).toList();
     return 'CON ${present.join('+')}';
   }
+
+  String get stageLabel => labelFor(latestAvailableWindow);
 }
 
 /// Nombres de país Jolpica -> OpenF1 cuando difieren.
@@ -54,7 +131,7 @@ const _countryNameMap = {
   'UAE': 'United Arab Emirates',
 };
 
-String? _sessionKeyOf(String sessionName) {
+String? practiceSessionKeyOf(String sessionName) {
   switch (sessionName) {
     case 'Practice 1':
       return 'fp1';
@@ -62,13 +139,10 @@ String? _sessionKeyOf(String sessionName) {
       return 'fp2';
     case 'Practice 3':
       return 'fp3';
-    case 'Sprint Qualifying':
-    case 'Sprint Shootout':
-      return 'sq';
-    case 'Qualifying':
-      return 'quali';
     default:
-      return null; // Race / Sprint: no alimentan la predicción de ese GP
+      // Race, Sprint, Qualifying y Sprint Qualifying nunca alimentan una
+      // recomendación que debe estar lista antes del cierre de Fantasy.
+      return null;
   }
 }
 
@@ -88,10 +162,8 @@ final weekendDataProvider = FutureProvider<WeekendData>((ref) async {
   final race = await ref.watch(selectedRaceProvider.future);
   if (race == null) return const WeekendData();
 
-  // Solo tiene sentido si el finde ya empezó (o el GP es pasado): las
-  // sesiones existen desde ~2 días antes de la carrera.
   final now = DateTime.now();
-  if (race.date.subtract(const Duration(days: 3)).isAfter(now)) {
+  if (!shouldLoadWeekendData(race, now)) {
     return const WeekendData();
   }
 
@@ -102,9 +174,19 @@ final weekendDataProvider = FutureProvider<WeekendData>((ref) async {
     return WeekendData(
       error: 'OpenF1 no respondió (${e.toString().split('\n').first}). '
           'Predicción en modo pre-finde.',
+      isSprintWeekend: race.hasSprint,
     );
   }
 });
+
+/// OpenF1 solo debe consultarse durante el fin de semana seleccionado.
+///
+/// Además de evitar ráfagas de peticiones al navegar por carreras anteriores,
+/// impide que un backtest incorpore datos del propio fin de semana que todavía
+/// no existían cuando se habría tomado la decisión.
+bool shouldLoadWeekendData(Race race, DateTime now) {
+  return !race.date.subtract(const Duration(days: 3)).isAfter(now);
+}
 
 Future<WeekendData> _loadWeekend(
   OpenF1Api api,
@@ -120,26 +202,37 @@ Future<WeekendData> _loadWeekend(
   // quedarnos con las sesiones terminadas que alimentan la predicción.
   final windowStart = race.date.subtract(const Duration(days: 5));
   final completed = <String, int>{}; // sessionKey lógico -> session_key OpenF1
+  int? latestCompletedSessionKey;
+  DateTime? latestCompletedEnd;
   for (final s in sessions) {
-    final key = _sessionKeyOf(s['session_name']?.toString() ?? '');
+    final key = practiceSessionKeyOf(s['session_name']?.toString() ?? '');
     if (key == null) continue;
     final start = DateTime.tryParse(s['date_start']?.toString() ?? '');
     final end = DateTime.tryParse(s['date_end']?.toString() ?? '');
     if (start == null || end == null) continue;
     if (start.isBefore(windowStart) || start.isAfter(race.date)) continue;
     if (end.isAfter(now)) continue; // aún no terminada
-    completed[key] = (s['session_key'] as num).toInt();
+    final openF1SessionKey = (s['session_key'] as num).toInt();
+    completed[key] = openF1SessionKey;
+    if (latestCompletedEnd == null || end.isAfter(latestCompletedEnd)) {
+      latestCompletedEnd = end;
+      latestCompletedSessionKey = openF1SessionKey;
+    }
   }
-  if (completed.isEmpty) return const WeekendData();
+  if (completed.isEmpty) {
+    return WeekendData(isSprintWeekend: race.hasSprint);
+  }
 
   // Mapa dorsal -> driverId usando los nombres del catálogo.
   final catalog = await ref.watch(fantasyAssetNameProvider.future);
   final driverNames = <String, String>{
     for (final e in catalog.entries)
-      if (e.value.kind == FantasyAssetKind.driver) e.key: _normalize(e.value.name),
+      if (e.value.kind == FantasyAssetKind.driver)
+        e.key: _normalize(e.value.name),
   };
-  final openF1Drivers =
-      await api.getSessionDrivers(completed.values.first);
+  final openF1Drivers = await api.getSessionDrivers(
+    latestCompletedSessionKey ?? completed.values.first,
+  );
   final numberToDriverId = <String, String>{};
   for (final d in openF1Drivers) {
     final number = d['driver_number']?.toString();
@@ -181,9 +274,14 @@ Future<WeekendData> _loadWeekend(
       if (driverId == null) return;
       final map = byDriverId.putIfAbsent(driverId, () => <String, double>{});
       map['onelap:${entry.key}'] = (a.bestLapMs - bestLap) / bestLap * 100.0;
-      map['pace:${entry.key}'] = (a.top2StintsAvgMs - bestPace) / bestPace * 100.0;
+      map['pace:${entry.key}'] =
+          (a.top2StintsAvgMs - bestPace) / bestPace * 100.0;
     });
   }
 
-  return WeekendData(sessions: withData, byDriverId: byDriverId);
+  return WeekendData(
+    sessions: withData,
+    byDriverId: byDriverId,
+    isSprintWeekend: race.hasSprint,
+  );
 }

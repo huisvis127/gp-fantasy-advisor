@@ -5,10 +5,12 @@ import 'package:intl/intl.dart';
 import '../../../core/app_providers.dart';
 import '../../../core/fantasy_standings_provider.dart';
 import '../../../core/league_selection_provider.dart';
+import '../../../core/localization.dart';
 import '../../../core/providers.dart';
 import '../../../core/team_colors.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/race.dart';
+import '../../../domain/models/prediction.dart';
 import '../../../domain/services/league_snapshot_reader.dart';
 import '../../widgets/ref_widgets.dart';
 import 'countdown_widget.dart';
@@ -30,6 +32,9 @@ class HomeScreen extends ConsumerWidget {
         ref.watch(pricesAreEstimatedProvider).valueOrNull ?? true;
 
     final weekend = ref.watch(weekendDataProvider).valueOrNull;
+    final requestedWindow = ref.watch(predictionDataWindowProvider);
+    final activeWindow = weekend?.resolveWindow(requestedWindow) ??
+        PredictionDataWindow.preWeekend;
 
     return RefreshIndicator(
       color: AppColors.lime,
@@ -46,10 +51,10 @@ class HomeScreen extends ConsumerWidget {
               children: [
                 const Kicker('F1 Fantasy'),
                 const SizedBox(height: 6),
-                Text('Resumen', style: AppText.syne(34)),
+                Text(context.tr('Resumen'), style: AppText.syne(34)),
                 const SizedBox(height: 4),
                 Text(
-                  'Elige temporada y Gran Premio para analizar.',
+                  context.tr('Elige temporada y Gran Premio para analizar.'),
                   style: AppText.body(13, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 14),
@@ -58,7 +63,7 @@ class HomeScreen extends ConsumerWidget {
                     Expanded(
                       flex: 2,
                       child: NeonSelect<int>(
-                        label: 'Temporada',
+                        label: context.tr('Temporada'),
                         value: selectedSeason,
                         items: seasons,
                         itemLabel: (s) => '$s',
@@ -70,7 +75,7 @@ class HomeScreen extends ConsumerWidget {
                     Expanded(
                       flex: 3,
                       child: NeonSelect<Race>(
-                        label: 'Gran Premio',
+                        label: context.tr('Gran Premio'),
                         value: raceAsync.valueOrNull,
                         items: racesAsync.valueOrNull ?? const <Race>[],
                         itemLabel: (r) => 'R${r.round} · ${r.raceName}',
@@ -85,7 +90,7 @@ class HomeScreen extends ConsumerWidget {
                 raceAsync.when(
                   data: (race) => race == null
                       ? Text(
-                          'Sin calendario todavia. Desliza para sincronizar.',
+                          context.tr('Sin calendario todavia. Desliza para sincronizar.'),
                           style:
                               AppText.body(12, color: AppColors.textTertiary),
                         )
@@ -100,7 +105,7 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                   error: (_, __) => Text(
-                    'No se pudo cargar el calendario guardado.',
+                    context.tr('No se pudo cargar el calendario guardado.'),
                     style: AppText.body(12, color: AppColors.error),
                   ),
                 ),
@@ -118,7 +123,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             const StatusBanner(
               message:
-                  'Precios estimados a partir de la clasificacion. Se actualizaran cuando responda F1 Fantasy.',
+                  'Precios estimados a partir de la tabla del Mundial. Se actualizarán cuando responda F1 Fantasy.',
             ),
           ],
           const SizedBox(height: 16),
@@ -126,8 +131,8 @@ class HomeScreen extends ConsumerWidget {
             kicker: 'Recomendacion',
             title: 'Picks del GP',
             trailing: TagChip(
-              weekend?.stageLabel ?? 'PRE-FINDE',
-              color: (weekend?.isEmpty ?? true)
+              weekend?.labelFor(activeWindow) ?? 'PRE-FINDE',
+              color: activeWindow == PredictionDataWindow.preWeekend
                   ? AppColors.textSecondary
                   : AppColors.cyan,
             ),
@@ -156,63 +161,61 @@ class HomeScreen extends ConsumerWidget {
                   .toList()
                 ..sort((a, b) => a.pointsPerValue.compareTo(b.pointsPerValue));
 
-              final pick = byPoints.first;
-              final captain = byWin.first;
-              final value = byValue.first;
-              final avoid = expensive.isEmpty ? byPoints.last : expensive.first;
+              final used = <String>{};
+              AssetPrediction distinct(List<AssetPrediction> ordered) {
+                final available = ordered.where(
+                  (prediction) => !used.contains(prediction.assetId),
+                );
+                final selected =
+                    available.isEmpty ? ordered.first : available.first;
+                used.add(selected.assetId);
+                return selected;
+              }
+
+              final pick = distinct(byPoints);
+              final captain = distinct(byWin);
+              final value = distinct(byValue);
+              final avoid = distinct(
+                expensive.isEmpty ? byPoints.reversed.toList() : expensive,
+              );
               final topConstructor = constructorsAsync.valueOrNull?.firstOrNull;
 
               return Column(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RecCard(
-                          tag: 'Pick',
-                          color: AppColors.lime,
-                          name: nameOf(pick.assetId),
-                          subtitle: teamOf(pick.assetId),
-                          score: pick.expectedPoints.toStringAsFixed(1),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: RecCard(
-                          tag: 'Capitan x2',
-                          color: AppColors.cyan,
-                          name: nameOf(captain.assetId),
-                          subtitle:
-                              '${(captain.winProbability * 100).toStringAsFixed(0)}% victoria',
-                          score: captain.expectedPoints.toStringAsFixed(1),
-                        ),
-                      ),
-                    ],
+                  RecCard(
+                    tag: 'Pick principal',
+                    color: AppColors.lime,
+                    name: nameOf(pick.assetId),
+                    subtitle:
+                        '${teamOf(pick.assetId)} · Mejor puntuacion esperada',
+                    score: pick.expectedPoints.toStringAsFixed(1),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RecCard(
-                          tag: 'Valor',
-                          color: AppColors.violet,
-                          name: nameOf(value.assetId),
-                          subtitle:
-                              '${value.pointsPerValue.toStringAsFixed(2)} pts/M · ${value.priceMillions.toStringAsFixed(1)} M',
-                          score: value.expectedPoints.toStringAsFixed(1),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: RecCard(
-                          tag: 'Evitar',
-                          color: AppColors.error,
-                          name: nameOf(avoid.assetId),
-                          subtitle:
-                              '${avoid.pointsPerValue.toStringAsFixed(2)} pts/M · ${avoid.priceMillions.toStringAsFixed(1)} M',
-                          score: avoid.expectedPoints.toStringAsFixed(1),
-                        ),
-                      ),
-                    ],
+                  RecCard(
+                    tag: 'Capitan x2 alternativo',
+                    color: AppColors.cyan,
+                    name: nameOf(captain.assetId),
+                    subtitle:
+                        '${teamOf(captain.assetId)} · ${(captain.winProbability * 100).toStringAsFixed(0)}% victoria',
+                    score: captain.expectedPoints.toStringAsFixed(1),
+                  ),
+                  const SizedBox(height: 12),
+                  RecCard(
+                    tag: 'Mejor valor',
+                    color: AppColors.violet,
+                    name: nameOf(value.assetId),
+                    subtitle:
+                        '${teamOf(value.assetId)} · ${value.pointsPerValue.toStringAsFixed(2)} pts/M · ${value.priceMillions.toStringAsFixed(1)} M',
+                    score: value.expectedPoints.toStringAsFixed(1),
+                  ),
+                  const SizedBox(height: 12),
+                  RecCard(
+                    tag: 'Evitar por valor',
+                    color: AppColors.error,
+                    name: nameOf(avoid.assetId),
+                    subtitle:
+                        '${teamOf(avoid.assetId)} · ${avoid.pointsPerValue.toStringAsFixed(2)} pts/M · ${avoid.priceMillions.toStringAsFixed(1)} M',
+                    score: avoid.expectedPoints.toStringAsFixed(1),
                   ),
                   if (topConstructor != null) ...[
                     const SizedBox(height: 12),
@@ -275,9 +278,10 @@ class _LatestLeagueGpCard extends ConsumerWidget {
           }
         }
         if (latest == null) {
-          return const StatusBanner(
-            message:
-                'Actualiza una liga privada para ver aquí la clasificación del último GP.',
+          return StatusBanner(
+            message: context.tr(
+              'Actualiza una liga privada para ver aquí la clasificación del último GP.',
+            ),
           );
         }
         final result = latest;
@@ -291,7 +295,7 @@ class _LatestLeagueGpCard extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('ÚLTIMO GRAN PREMIO', style: AppText.mono(9)),
+                        Text(context.tr('ÚLTIMO GRAN PREMIO'), style: AppText.mono(9)),
                         const SizedBox(height: 4),
                         Text(result.leagueName, style: AppText.syne(18)),
                       ],

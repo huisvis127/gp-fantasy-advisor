@@ -14,7 +14,7 @@ import '../domain/engine/model_weights.dart';
 
 const kWeightKeys = [
   'ritmo_carrera',
-  'ritmo_clasificacion',
+  'ritmo_una_vuelta',
   'vuelta_rapida',
   'consistencia',
   'forma',
@@ -25,8 +25,8 @@ const kWeightKeys = [
 
 const kWeightLabels = {
   'ritmo_carrera': 'Ritmo de carrera',
-  'ritmo_clasificacion': 'Clasificación',
-  'vuelta_rapida': 'Vuelta rápida',
+  'ritmo_una_vuelta': 'Ritmo a una vuelta (hist.)',
+  'vuelta_rapida': 'Vuelta rápida / pico de ritmo',
   'consistencia': 'Consistencia',
   'forma': 'Forma (tendencia)',
   'afinidad_circuito': 'Afinidad al circuito',
@@ -40,7 +40,7 @@ const kWeightLabels = {
 /// calibrado y el reparto se hace solo dentro del grupo principal.
 const kMainWeightKeys = [
   'ritmo_carrera',
-  'ritmo_clasificacion',
+  'ritmo_una_vuelta',
   'vuelta_rapida',
   'consistencia',
 ];
@@ -52,7 +52,7 @@ const kAdvancedWeightKeys = [
   'riesgo_dnf',
 ];
 
-const _prefsKey = 'user_model_weights_v1';
+const _prefsKey = 'user_model_weights_v2_prequal';
 const _modePrefsKey = 'user_weights_mode_v1';
 
 /// Modo de la interfaz de pesos: Aficionado (4 sliders, avanzados fijos)
@@ -95,13 +95,12 @@ class UserWeightsNotifier extends Notifier<Map<String, double>> {
 
   /// Valores calibrados por defecto (model_weights.json), en % que suman 100.
   /// Recalibrados el 05/07/2026 con el mini-backtest de 2026 (ver
-  /// docs/backtest_mini_2026.md): la vuelta única (clasificación + vuelta
-  /// rápida) domina; los avanzados aportan poco en muestra corta pero se
-  /// mantienen con peso pequeño.
+  /// La señal de una vuelta procede de GPs anteriores y, cuando existen,
+  /// de FP1/FP2/FP3. La clasificación del GP actual nunca entra.
   static Map<String, double> defaultPercentages() {
     return {
       'ritmo_carrera': 20,
-      'ritmo_clasificacion': 32,
+      'ritmo_una_vuelta': 32,
       'vuelta_rapida': 24,
       'consistencia': 10,
       'forma': 4,
@@ -179,7 +178,8 @@ class UserWeightsNotifier extends Notifier<Map<String, double>> {
 }
 
 final userWeightsProvider =
-    NotifierProvider<UserWeightsNotifier, Map<String, double>>(UserWeightsNotifier.new);
+    NotifierProvider<UserWeightsNotifier, Map<String, double>>(
+        UserWeightsNotifier.new);
 
 /// `ModelWeights` efectivos: la estructura calibrada del asset, con los
 /// pesos w1..w8 sustituidos por los porcentajes elegidos por el usuario.
@@ -189,7 +189,7 @@ final effectiveWeightsProvider = FutureProvider<ModelWeights>((ref) async {
   double w(String key) => (pct[key] ?? 0) / 100.0;
   return ModelWeights(
     w1RitmoCarrera: w('ritmo_carrera'),
-    w2RitmoClasificacion: w('ritmo_clasificacion'),
+    w2RitmoUnaVueltaHistorico: w('ritmo_una_vuelta'),
     w3VueltaRapida: w('vuelta_rapida'),
     w4Consistencia: w('consistencia'),
     w5Forma: w('forma'),
@@ -198,5 +198,6 @@ final effectiveWeightsProvider = FutureProvider<ModelWeights>((ref) async {
     w8RiesgoDnf: w('riesgo_dnf'),
     sessionWeightsRace: base.sessionWeightsRace,
     sessionWeightsSprint: base.sessionWeightsSprint,
+    practiceBlendByStage: base.practiceBlendByStage,
   );
 });

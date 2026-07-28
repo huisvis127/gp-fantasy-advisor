@@ -95,6 +95,55 @@ void main() {
       expect(result.boostedDriverId, 'd1');
       expect(result.totalExpectedPoints, 140); // 110 base + 30 del X2.
     });
+
+    test('cada perfil prioriza realmente su grupo sin dividir el presupuesto',
+        () {
+      final drivers = [
+        _fakePrediction('estrella', 100, 40),
+        _fakePrediction('d2', 10, 10),
+        _fakePrediction('d3', 10, 10),
+        _fakePrediction('d4', 10, 10),
+        _fakePrediction('d5', 10, 10),
+        _fakePrediction('barato', 0, 0),
+      ];
+      final constructors = [
+        _fakePrediction('top1', 100, 30),
+        _fakePrediction('top2', 90, 30),
+        _fakePrediction('barato', 0, 0),
+      ];
+      const optimizer = TeamOptimizer();
+
+      TeamCombo optimize(TeamPriority priority) => optimizer.findOptimalTeam(
+            driverPredictions: drivers,
+            constructorPredictions: constructors,
+            totalBudgetMillions: 100,
+            priority: priority,
+          );
+
+      final driverTeam = optimize(TeamPriority.drivers);
+      final balancedTeam = optimize(TeamPriority.balanced);
+      final constructorTeam = optimize(TeamPriority.constructors);
+      final constructorPoints = {
+        for (final prediction in constructors)
+          prediction.assetId: prediction.expectedPoints,
+      };
+      double subtotal(TeamCombo team) => team.constructorIds.fold(
+            0,
+            (sum, id) => sum + (constructorPoints[id] ?? 0),
+          );
+
+      expect(driverTeam.driverIds, contains('estrella'));
+      expect(subtotal(constructorTeam),
+          greaterThanOrEqualTo(subtotal(balancedTeam)));
+      expect(
+          subtotal(balancedTeam), greaterThanOrEqualTo(subtotal(driverTeam)));
+      expect(constructorTeam.constructorIds, containsAll(['top1', 'top2']));
+      for (final team in [driverTeam, balancedTeam, constructorTeam]) {
+        expect(team.driverIds, hasLength(5));
+        expect(team.constructorIds, hasLength(2));
+        expect(team.totalCostMillions, lessThanOrEqualTo(100));
+      }
+    });
   });
 
   group('TeamOptimizer.recommendBoost', () {
@@ -107,6 +156,41 @@ void main() {
       const optimizer = TeamOptimizer();
       final boosted = optimizer.recommendBoost(['d1', 'd2', 'd3'], drivers);
       expect(boosted, 'd2');
+    });
+  });
+
+  group('TeamOptimizer.suggestTransfers', () {
+    test('encuentra la mejor pareja asequible aunque el activo top no quepa',
+        () {
+      final drivers = [
+        _fakePrediction('d1', 50, 10),
+        _fakePrediction('d2', 20, 10),
+        _fakePrediction('d3', 15, 10),
+        _fakePrediction('d4', 10, 10),
+        _fakePrediction('d5', 9, 10),
+        _fakePrediction('caro', 50, 25),
+        _fakePrediction('pareja_a', 35, 15),
+        _fakePrediction('pareja_b', 34, 15),
+      ];
+      final constructors = [
+        _fakePrediction('c1', 20, 10),
+        _fakePrediction('c2', 18, 10),
+      ];
+
+      const optimizer = TeamOptimizer();
+      final plans = optimizer.suggestTransfers(
+        currentDriverIds: const ['d1', 'd2', 'd3', 'd4', 'd5'],
+        currentConstructorIds: const ['c1', 'c2'],
+        driverPredictions: drivers,
+        constructorPredictions: constructors,
+        remainingBudgetMillions: 10,
+        maxTransfersToConsider: 2,
+      );
+      final best = plans.first;
+
+      expect(best.numberOfTransfers, 2);
+      expect(best.transfersIn, containsAll(['pareja_a', 'pareja_b']));
+      expect(best.resultingTeam.totalCostMillions, lessThanOrEqualTo(80));
     });
   });
 }

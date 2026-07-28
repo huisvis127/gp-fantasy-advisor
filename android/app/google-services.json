@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "196630420653",
+    "project_id": "polewise",
+    "storage_bucket": "polewise.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:196630420653:android:e7a4c64c3861d648d93a24",
+        "android_client_info": {
+          "package_name": "polewise.apk"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCx56CnIiZtXKmG24tSAYwLmqrJy0-u4KI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,7 +1,11 @@
 {
-  "_comment": "Tabla de puntuación F1 Fantasy 2026. Verificar y completar contra fantasy.formula1.com al inicio del proyecto (sección 2 del plan). Placeholder con la estructura que consume domain/engine/scoring.dart.",
+  "_comment": "Tabla de puntuación F1 Fantasy 2026. La predicción básica de Polewise solo proyecta clasificación, carrera y Sprint; los demás campos se conservan para mostrar reglas y calcular históricos.",
   "season": 2026,
-  "last_verified": "2026-07-04",
+  "last_verified": "2026-07-24",
+  "sources": [
+    "https://www.formula1.com/en/latest/article/boost-the-fun-with-friends-and-family-this-season-f1-fantasy-is-back.2xVBBN90riZiaYXeYhOe0Z",
+    "https://www.formula1.com/en/latest/article/f1-fantasy-strategist-preview-kimi-antonellis-league-and-what-you-need-to.1QBfWcUFoYXr0pHNgLA5Z2"
+  ],
   "race": {
     "position_points": {
       "1": 25, "2": 18, "3": 15, "4": 12, "5": 10,
@@ -9,7 +13,7 @@
     },
     "positions_gained_per_place": 1,
     "positions_lost_per_place": -1,
-    "fastest_lap": 5,
+    "fastest_lap": 10,
     "driver_of_the_day": 10,
     "dnf": -20,
     "disqualified": -20
@@ -21,14 +25,18 @@
     },
     "q1_elimination": -1,
     "q2_elimination": 0,
-    "q3_appearance": 1
+    "q3_appearance": 1,
+    "not_classified": -5
   },
   "sprint": {
     "position_points": {
       "1": 8, "2": 7, "3": 6, "4": 5, "5": 4,
       "6": 3, "7": 2, "8": 1
     },
-    "dnf": -10
+    "fastest_lap": 5,
+    "dnf": -10,
+    "not_classified": -10,
+    "disqualified": -10
   },
   "constructor": {
     "both_cars_q3_bonus": 10,

@@ -34,6 +34,7 @@ class _FeedAdapter implements HttpClientAdapter {
                   'Value': 30.0,
                   'FUllName': 'Andrea Kimi Antonelli',
                   'TeamName': 'Mercedes',
+                  'GamedayPoints': 52,
                 },
                 {
                   'PlayerId': '101',
@@ -42,6 +43,7 @@ class _FeedAdapter implements HttpClientAdapter {
                   'Value': 28.0,
                   'FUllName': 'Mercedes',
                   'TeamName': 'Mercedes',
+                  'GamedayPoints': 115,
                 },
               ],
             },
@@ -87,5 +89,20 @@ void main() {
     expect(assets.first['canonical_id'], 'antonelli');
     expect(assets.last['is_constructor'], isTrue);
     expect(assets.last['price'], 28.0);
+  });
+
+  test('lee directamente los puntos oficiales de una jornada histórica',
+      () async {
+    final adapter = _FeedAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = FantasyApi(dio, publicBaseUrl: 'https://fantasy.formula1.com');
+
+    final assets = await api.getGameDayAssets(7);
+
+    expect(adapter.paths, hasLength(1));
+    expect(adapter.paths.single, endsWith('/feeds/drivers/7_en.json'));
+    expect(assets.first['canonical_id'], 'antonelli');
+    expect(assets.first['GamedayPoints'], 52);
+    expect(assets.last['GamedayPoints'], 115);
   });
 }

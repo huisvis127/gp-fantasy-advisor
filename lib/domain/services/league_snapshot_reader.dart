@@ -80,13 +80,16 @@ class LeagueSnapshotReader {
     for (var index = 0; index < rows.length; index++) {
       final row = rows[index];
       final points = double.tryParse(
-        (_first(row, const ['cur_points', 'points', 'score']) ?? '0')
+        (row['event_points'] ?? row['points'] ?? row['cur_points'] ?? '0')
             .toString(),
       );
       standings.add(
         LeagueGpStanding(
           rank: int.tryParse(
-                (_first(row, const ['cur_rank', 'rank', 'position']) ??
+                (row['race_rank'] ??
+                        row['rank'] ??
+                        row['cur_rank'] ??
+                        row['position'] ??
                         index + 1)
                     .toString(),
               ) ??
@@ -161,10 +164,12 @@ class LeagueSnapshotReader {
   }
 
   static dynamic _first(Map<String, dynamic> map, List<String> keys) {
-    final wanted = keys.map((key) => key.toLowerCase()).toSet();
-    for (final entry in map.entries) {
-      if (wanted.contains(entry.key.toLowerCase()) && entry.value != null) {
-        return entry.value;
+    for (final key in keys) {
+      for (final entry in map.entries) {
+        if (entry.key.toLowerCase() == key.toLowerCase() &&
+            entry.value != null) {
+          return entry.value;
+        }
       }
     }
     return null;

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../domain/models/my_team.dart';
+import '../../domain/services/fantasy_chip_parser.dart';
 import '../sources/fantasy_api.dart';
 import '../sources/fantasy_auth_service.dart';
 
@@ -25,8 +26,8 @@ class TeamImportException implements Exception {
 /// nuestro catálogo (ids de Jolpica) -> MyTeam listo para guardar.
 class TeamImportService {
   TeamImportService({required FantasyApi api, required FantasyAuthService auth})
-    : _api = api,
-      _auth = auth;
+      : _api = api,
+        _auth = auth;
 
   final FantasyApi _api;
   final FantasyAuthService _auth;
@@ -49,9 +50,12 @@ class TeamImportService {
 
     // 1. Equipo elegido (privado).
     late Map<String, dynamic> pickedJson;
+    Map<String, dynamic>? snapshotJson;
+    Map<String, dynamic>? boostersJson;
     if (snapshotRaw != null && snapshotRaw.isNotEmpty) {
       try {
         final snapshot = jsonDecode(snapshotRaw) as Map<String, dynamic>;
+        snapshotJson = snapshot;
         pickedJson = Map<String, dynamic>.from(
           snapshot['teams'] as Map? ?? const <String, dynamic>{},
         );
@@ -66,6 +70,15 @@ class TeamImportService {
           season: season,
           bearerToken: token!,
         );
+        try {
+          boostersJson = await _api.getBoosters(
+            season: season,
+            bearerToken: token,
+          );
+        } catch (_) {
+          // El equipo sigue siendo importable aunque el endpoint de chips
+          // cambie o no esté disponible para esta cuenta.
+        }
       } catch (e) {
         throw TeamImportException(
           'La API del Fantasy rechazó la petición del equipo '
@@ -137,13 +150,22 @@ class TeamImportService {
     }
 
     final budget = _findBudget(pickedJson);
+    final chipUsage = parseFantasyChipUsage([
+      pickedJson,
+      boostersJson,
+      snapshotJson?['teamHistory'],
+      snapshotJson?['teams'],
+    ]);
 
     return MyTeam(
       driverIds: driverIds,
       constructorIds: constructorIds,
       remainingBudgetMillions: budget ?? 0,
       boostedDriverId: boostedDriverId,
-      source: MyTeamSource.importedApi,
+      source: snapshotJson == null
+          ? MyTeamSource.importedApi
+          : MyTeamSource.importedWebview,
+      chipsUsed: chipUsage.keys.toSet(),
     );
   }
 
@@ -179,8 +201,8 @@ class TeamImportService {
     final out = <_PickedPlayer>[];
     for (final item in raw) {
       if (item is Map<String, dynamic>) {
-        final id = (item['player_id'] ?? item['PlayerId'] ?? item['id'])
-            ?.toString();
+        final id =
+            (item['player_id'] ?? item['PlayerId'] ?? item['id'])?.toString();
         if (id == null) continue;
         final boosted = item.entries.any((e) {
           final key = e.key.toLowerCase();
@@ -236,13 +258,12 @@ class TeamImportService {
   }
 
   String _playerName(Map<String, dynamic> player) {
-    final display =
-        (player['display_name'] ??
-                player['full_name'] ??
-                player['team_name'] ??
-                '${player['first_name'] ?? ''} ${player['last_name'] ?? ''}')
-            .toString()
-            .trim();
+    final display = (player['display_name'] ??
+            player['full_name'] ??
+            player['team_name'] ??
+            '${player['first_name'] ?? ''} ${player['last_name'] ?? ''}')
+        .toString()
+        .trim();
     return display.isEmpty ? player.toString() : display;
   }
 

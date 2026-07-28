@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_providers.dart';
 import '../../../core/fantasy_standings_provider.dart';
+import '../../../core/localization.dart';
 import '../../../core/team_colors.dart';
 import '../../../core/theme.dart';
 import '../../widgets/ref_widgets.dart';
@@ -23,7 +24,7 @@ class FantasyHistoryScreen extends ConsumerWidget {
       error: (error, _) => Padding(
         padding: const EdgeInsets.all(14),
         child: StatusBanner(
-          message: 'No se pudo reconstruir la temporada: $error',
+          message: context.tr('Error: {error}', values: {'error': error}),
           isError: true,
           onRetry: () => ref.invalidate(fantasySeasonSimulationProvider),
         ),
@@ -50,14 +51,14 @@ class FantasyHistoryScreen extends ConsumerWidget {
                         title: 'Fantasy de la app'),
                     const SizedBox(height: 7),
                     Text(
-                        'La estrategia conserva el equipo o usa hasta dos cambios gratuitos si mejoran la proyección. No usa chips.',
+                        context.tr('La estrategia conserva el equipo o usa hasta dos cambios gratuitos. El presupuesto evoluciona con el valor real de pilotos y constructores de cada GP. Los puntos son los oficiales completos; los chips no se simulan.'),
                         style:
                             AppText.body(12, color: AppColors.textSecondary)),
                     const SizedBox(height: 14),
                     Center(
                         child: TotalPill(
                             value: simulation.totalPoints.toStringAsFixed(0),
-                            label: 'pts sin chips')),
+                        label: context.tr('pts sin chips'))),
                   ]),
             ),
             const SizedBox(height: 12),
@@ -67,7 +68,7 @@ class FantasyHistoryScreen extends ConsumerWidget {
                   children: [
                     const Kicker('Alineación simulada actual'),
                     const SizedBox(height: 12),
-                    Text('PILOTOS',
+                    Text(context.tr('PILOTOS'),
                         style:
                             AppText.mono(10, color: AppColors.textSecondary)),
                     const SizedBox(height: 8),
@@ -77,7 +78,7 @@ class FantasyHistoryScreen extends ConsumerWidget {
                       physics: const NeverScrollableScrollPhysics(),
                       mainAxisSpacing: 8,
                       crossAxisSpacing: 8,
-                      childAspectRatio: 2.1,
+                      mainAxisExtent: 96,
                       children: [
                         for (final id in team.driverIds)
                           AssetCard(
@@ -96,7 +97,7 @@ class FantasyHistoryScreen extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text('CONSTRUCTORES',
+                    Text(context.tr('CONSTRUCTORES'),
                         style:
                             AppText.mono(10, color: AppColors.textSecondary)),
                     const SizedBox(height: 8),
@@ -107,7 +108,7 @@ class FantasyHistoryScreen extends ConsumerWidget {
                             tag:
                                 '${catalog[team.constructorIds[i]]?.priceMillions.toStringAsFixed(1) ?? '--'} M\$',
                             name: nameOf(team.constructorIds[i]),
-                            subtitle: 'Constructor',
+                            subtitle: context.tr('Constructor'),
                             barColor: teamColor(team.constructorIds[i]),
                             tagColor: AppColors.orange,
                           ),
@@ -119,7 +120,7 @@ class FantasyHistoryScreen extends ConsumerWidget {
                   ]),
             ),
             const SizedBox(height: 14),
-            Text('CARRERA A CARRERA',
+            Text(context.tr('CARRERA A CARRERA'),
                 style: AppText.mono(10, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             for (final round in simulation.rounds.reversed)
@@ -155,15 +156,88 @@ class FantasyHistoryScreen extends ConsumerWidget {
                             style: AppText.mono(7)),
                       ]),
                   children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'X2 · ${nameOf(round.team.boostedDriverId ?? '')}',
-                        style: AppText.body(10.5,
-                            color: AppColors.cyan, weight: FontWeight.w700),
+                    TransferNote(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Tope ${round.budgetMillions.toStringAsFixed(1)} M\$'
+                              ' · equipo ${round.teamValueMillions.toStringAsFixed(1)} M\$'
+                              ' · libre ${round.cashMillions.toStringAsFixed(1)} M\$',
+                              style: AppText.body(10.5),
+                            ),
+                          ),
+                          if (round.budgetChangeMillions.abs() >= .05)
+                            Text(
+                              '${round.budgetChangeMillions >= 0 ? '+' : ''}'
+                              '${round.budgetChangeMillions.toStringAsFixed(1)} M\$',
+                              style: AppText.mono(
+                                8,
+                                color: round.budgetChangeMillions >= 0
+                                    ? AppColors.lime
+                                    : AppColors.warning,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(context.tr('PILOTOS ELEGIDOS'), style: AppText.mono(8)),
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final id in round.team.driverIds)
+                            _HistoryAssetPill(
+                              name: nameOf(id),
+                              changed: round.transfersIn.contains(id),
+                              boosted: round.team.boostedDriverId == id,
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(context.tr('CONSTRUCTORES ELEGIDOS'),
+                          style: AppText.mono(8)),
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final id in round.team.constructorIds)
+                            _HistoryAssetPill(
+                              name: nameOf(id),
+                              changed: round.transfersIn.contains(id),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (!round.hasOfficialPrices)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Algún precio de esta ronda no estaba en caché; se usó el mejor dato disponible.',
+                            style: AppText.body(
+                              9.5,
+                              color: AppColors.warning,
+                            ),
+                          ),
+                        ),
+                      ),
                     if (round.transfersIn.isEmpty)
                       Align(
                           alignment: Alignment.centerLeft,
@@ -177,7 +251,11 @@ class FantasyHistoryScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(top: 5),
                           child: Text(
                               '${nameOf(round.transfersOut[i])}  →  ${nameOf(round.transfersIn[i])}',
-                              style: AppText.body(11)),
+                              style: AppText.body(
+                                11,
+                                color: AppColors.cyan,
+                                weight: FontWeight.w700,
+                              )),
                         ),
                   ],
                 ),
@@ -185,6 +263,68 @@ class FantasyHistoryScreen extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _HistoryAssetPill extends StatelessWidget {
+  const _HistoryAssetPill({
+    required this.name,
+    this.changed = false,
+    this.boosted = false,
+  });
+
+  final String name;
+  final bool changed;
+  final bool boosted;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = changed ? AppColors.lime : AppColors.textSecondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: changed ? .12 : .06),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: color.withValues(alpha: changed ? .9 : .35),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+              boxShadow: changed
+                  ? [
+                      BoxShadow(
+                          color: color.withValues(alpha: .5), blurRadius: 6)
+                    ]
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            name,
+            style: AppText.body(
+              10,
+              color: changed ? AppColors.textPrimary : AppColors.textSecondary,
+              weight: changed ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+          if (boosted) ...[
+            const SizedBox(width: 5),
+            Text(
+              'X2',
+              style: AppText.mono(8, color: AppColors.cyan),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

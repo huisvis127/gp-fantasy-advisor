@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/app_providers.dart';
 import '../../../core/fantasy_standings_provider.dart';
+import '../../../core/localization.dart';
 import '../../../core/team_colors.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/prediction.dart';
@@ -18,6 +19,8 @@ class CircuitScreen extends ConsumerWidget {
     final raceAsync = ref.watch(selectedRaceScheduleProvider);
     final winnersAsync = ref.watch(circuitWinnersProvider);
     final predictions = ref.watch(driverPredictionsProvider);
+    final calendarAsync = ref.watch(seasonRacesProvider);
+    final selectedRound = ref.watch(selectedRoundProvider);
     final catalog = ref.watch(fantasyAssetNameProvider).valueOrNull ?? const {};
 
     return ListView(
@@ -47,13 +50,16 @@ class CircuitScreen extends ConsumerWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      TagChip('Ronda ${race.round}', color: AppColors.lime),
+                      TagChip(context.tr('Ronda {round}', values: {'round': race.round}), color: AppColors.lime),
                       TagChip(
-                        DateFormat('dd MMM · HH:mm', 'es').format(race.date),
+                        DateFormat(
+                          'dd MMM · HH:mm',
+                          Localizations.localeOf(context).languageCode,
+                        ).format(race.date),
                         color: AppColors.cyan,
                       ),
                       if (race.hasSprint)
-                        const TagChip('Sprint', color: AppColors.orange),
+                        TagChip(context.tr('Sprint'), color: AppColors.orange),
                     ],
                   ),
                 ],
@@ -122,7 +128,7 @@ class CircuitScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 5),
         Text(
-          'La nota combina historial, forma y rendimiento del equipo.',
+          context.tr('La nota combina historial, forma y rendimiento del equipo.'),
           style: AppText.body(12, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 10),
@@ -208,7 +214,129 @@ class CircuitScreen extends ConsumerWidget {
             isError: true,
           ),
         ),
+        const SizedBox(height: 16),
+        const SectionHead(
+          kicker: 'Temporada completa',
+          title: 'Calendario 2026',
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'Toca un Gran Premio para consultar su circuito, horarios y análisis.',
+          style: AppText.body(12, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 10),
+        calendarAsync.when(
+          data: (races) => races.isEmpty
+              ? const StatusBanner(
+                  message: 'El calendario aparecerá después de sincronizar.',
+                )
+              : _SeasonCalendar(
+                  races: races,
+                  selectedRound: selectedRound ?? raceAsync.valueOrNull?.round,
+                  onSelected: (round) {
+                    ref.read(selectedRoundProvider.notifier).state = round;
+                  },
+                ),
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          error: (_, __) => const StatusBanner(
+            message: 'No se pudo cargar el calendario completo.',
+            isError: true,
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _SeasonCalendar extends StatelessWidget {
+  const _SeasonCalendar({
+    required this.races,
+    required this.selectedRound,
+    required this.onSelected,
+  });
+
+  final List<Race> races;
+  final int? selectedRound;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    return RefCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (var i = 0; i < races.length; i++) ...[
+            InkWell(
+              onTap: () => onSelected(races[i].round),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 11,
+                ),
+                color: races[i].round == selectedRound
+                    ? AppColors.lime.withValues(alpha: .08)
+                    : Colors.transparent,
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 34,
+                      child: Text(
+                        'R${races[i].round}',
+                        style: AppText.mono(
+                          8,
+                          color: races[i].round == selectedRound
+                              ? AppColors.lime
+                              : AppColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            races[i].raceName,
+                            style: AppText.body(11.5, weight: FontWeight.w700),
+                          ),
+                          Text(
+                            races[i].country,
+                            style: AppText.body(9.5,
+                                color: AppColors.textTertiary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (races[i].hasSprint)
+                      Padding(
+                        padding: EdgeInsets.only(right: 7),
+                        child: TagChip(context.tr('Sprint'), color: AppColors.orange),
+                      ),
+                    Text(
+                      DateFormat(
+                        'dd MMM',
+                        Localizations.localeOf(context).languageCode,
+                      ).format(races[i].date),
+                      style: AppText.mono(
+                        8,
+                        color: races[i].date.isBefore(now)
+                            ? AppColors.textTertiary
+                            : AppColors.cyan,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (i < races.length - 1) const Divider(height: 1),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -243,11 +371,11 @@ class _WeekendSchedule extends StatelessWidget {
               for (var i = 0; i < sessions.length; i++) ...[
                 Row(children: [
                   Expanded(
-                    child: Text(labels[sessions[i].key] ?? sessions[i].key,
+                    child: Text(context.tr(labels[sessions[i].key] ?? sessions[i].key),
                         style: AppText.body(11.5, weight: FontWeight.w700)),
                   ),
                   Text(
-                    DateFormat('EEE dd MMM · HH:mm', 'es')
+                    DateFormat('EEE dd MMM · HH:mm', Localizations.localeOf(context).languageCode)
                         .format(sessions[i].value),
                     style: AppText.mono(8.5,
                         color: sessions[i].key == 'race'

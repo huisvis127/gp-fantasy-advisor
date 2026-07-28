@@ -1,0 +1,1413 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="Explicación completa del cálculo de puntos esperados de Polewise para la pestaña Análisis.">
+  <title>Cómo calcula Polewise los puntos esperados</title>
+  <style>
+    :root {
+      --bg: #080a0b;
+      --panel: #111416;
+      --panel-2: #171b1e;
+      --text: #f4f7f8;
+      --muted: #9ca7ab;
+      --line: #2a3135;
+      --accent: #dfff00;
+      --accent-soft: rgba(223, 255, 0, .12);
+      --accent-ink: #101300;
+      --blue: #60d8ff;
+      --orange: #ffaf45;
+      --red: #ff6b75;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .35);
+      --radius: 22px;
+    }
+
+    html[data-theme="light"] {
+      --bg: #f2f4ed;
+      --panel: #ffffff;
+      --panel-2: #e9ece4;
+      --text: #111413;
+      --muted: #5f6965;
+      --line: #cfd5cd;
+      --accent: #b8db00;
+      --accent-soft: rgba(142, 170, 0, .13);
+      --accent-ink: #151a00;
+      --blue: #007fa9;
+      --orange: #a95b00;
+      --red: #bc3140;
+      --shadow: 0 24px 70px rgba(24, 34, 28, .10);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--bg);
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 86% 2%, var(--accent-soft), transparent 26rem),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    a { color: inherit; }
+    button { font: inherit; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: .8rem max(1.2rem, calc((100vw - 1180px) / 2));
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      font-weight: 850;
+      letter-spacing: -.03em;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 2rem;
+      height: 2rem;
+      place-items: center;
+      border-radius: .62rem;
+      color: var(--accent-ink);
+      background: var(--accent);
+      box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 42%, transparent);
+      font-style: italic;
+      font-weight: 950;
+    }
+
+    .actions { display: flex; gap: .55rem; }
+
+    .icon-button,
+    .action-button,
+    .tab-button {
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: var(--panel);
+      cursor: pointer;
+      transition: transform .2s ease, border-color .2s ease, background .2s ease;
+    }
+
+    .icon-button {
+      min-width: 2.5rem;
+      min-height: 2.5rem;
+      padding: .55rem .8rem;
+      border-radius: 999px;
+    }
+
+    .icon-button:hover,
+    .action-button:hover,
+    .tab-button:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    button:focus-visible,
+    a:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent);
+      outline-offset: 3px;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 2.4rem));
+      margin: 0 auto;
+      padding-bottom: 5rem;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(300px, .75fr);
+      gap: 2rem;
+      align-items: end;
+      min-height: 620px;
+      padding: 6rem 0 4rem;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: .55rem;
+      margin: 0 0 1.25rem;
+      color: var(--accent);
+      font-size: .76rem;
+      font-weight: 850;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 1.8rem;
+      height: 2px;
+      background: currentColor;
+      content: "";
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      max-width: 840px;
+      margin-bottom: 1.4rem;
+      font-size: clamp(3.1rem, 7.2vw, 7.1rem);
+      line-height: .91;
+      letter-spacing: -.075em;
+    }
+
+    h1 span {
+      display: block;
+      color: var(--accent);
+      text-shadow: 0 0 30px color-mix(in srgb, var(--accent) 22%, transparent);
+    }
+
+    .hero-copy {
+      max-width: 700px;
+      margin-bottom: 1.8rem;
+      color: var(--muted);
+      font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem;
+    }
+
+    .badge,
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .5rem .72rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--panel);
+      font-size: .78rem;
+      font-weight: 750;
+    }
+
+    .status::before {
+      width: .5rem;
+      height: .5rem;
+      border-radius: 50%;
+      background: currentColor;
+      content: "";
+    }
+
+    .status.good {
+      border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .formula-card {
+      position: relative;
+      overflow: hidden;
+      padding: 1.6rem;
+      border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--line));
+      border-radius: var(--radius);
+      background: linear-gradient(155deg, var(--panel-2), var(--panel));
+      box-shadow: var(--shadow);
+    }
+
+    .formula-card::after {
+      position: absolute;
+      right: -2rem;
+      bottom: -5rem;
+      width: 12rem;
+      height: 12rem;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: .08;
+      filter: blur(4px);
+      content: "";
+    }
+
+    .formula-label {
+      margin-bottom: 1rem;
+      color: var(--muted);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .formula {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 1.2rem;
+      font-size: clamp(1.45rem, 2.4vw, 2.25rem);
+      font-weight: 900;
+      line-height: 1.2;
+      letter-spacing: -.04em;
+    }
+
+    .formula strong { color: var(--accent); }
+
+    .formula-note {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .section {
+      padding: 4.5rem 0;
+      border-top: 1px solid var(--line);
+      scroll-margin-top: 5rem;
+    }
+
+    .section-heading {
+      display: grid;
+      grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+      gap: 2rem;
+      align-items: start;
+      margin-bottom: 2rem;
+    }
+
+    .section-heading h2 {
+      margin-bottom: 0;
+      font-size: clamp(2rem, 4vw, 3.7rem);
+      line-height: 1;
+      letter-spacing: -.055em;
+    }
+
+    .section-heading p {
+      max-width: 660px;
+      margin: .2rem 0 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .process-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .8rem;
+    }
+
+    .step,
+    .feature,
+    .metric,
+    .score-card,
+    .sheet,
+    .callout,
+    .timeline-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .step {
+      min-height: 245px;
+      padding: 1.35rem;
+    }
+
+    .step-number {
+      display: grid;
+      width: 2.4rem;
+      height: 2.4rem;
+      margin-bottom: 2.8rem;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--accent-ink);
+      background: var(--accent);
+      font-weight: 900;
+    }
+
+    .step h3 {
+      margin-bottom: .55rem;
+      font-size: 1.12rem;
+      letter-spacing: -.02em;
+    }
+
+    .step p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .callout {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      margin-top: 1rem;
+      padding: 1.25rem;
+      border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+      background: var(--accent-soft);
+    }
+
+    .callout-symbol {
+      flex: 0 0 auto;
+      color: var(--accent);
+      font-size: 1.45rem;
+      font-weight: 950;
+    }
+
+    .callout p { margin: 0; }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: .8rem;
+    }
+
+    .feature {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 1rem;
+      padding: 1.2rem;
+    }
+
+    .feature h3 {
+      margin-bottom: .35rem;
+      font-size: 1rem;
+    }
+
+    .feature p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    .weight {
+      min-width: 3.25rem;
+      color: var(--accent);
+      font-size: 1.35rem;
+      font-weight: 900;
+      text-align: right;
+    }
+
+    .weight.negative { color: var(--red); }
+
+    .weight small {
+      display: block;
+      color: var(--muted);
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .technical-formula {
+      margin-top: 1rem;
+      padding: 1.3rem;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--text);
+      background: var(--panel-2);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: .86rem;
+      white-space: nowrap;
+    }
+
+    .timeline-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .8rem;
+    }
+
+    .timeline-card {
+      padding: 1.3rem;
+    }
+
+    .timeline-card.featured {
+      border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+      box-shadow: inset 0 4px 0 var(--accent);
+    }
+
+    .timeline-card h3 {
+      margin-bottom: .35rem;
+      font-size: 1.1rem;
+    }
+
+    .timeline-card > p {
+      min-height: 2.8rem;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    .bar-group {
+      display: grid;
+      gap: .75rem;
+      margin-top: 1.5rem;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 3rem minmax(0, 1fr) 3.2rem;
+      gap: .6rem;
+      align-items: center;
+      font-size: .78rem;
+      font-weight: 750;
+    }
+
+    .bar-track {
+      height: .55rem;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--panel-2);
+    }
+
+    .bar-fill {
+      width: var(--value);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent);
+      box-shadow: 0 0 13px color-mix(in srgb, var(--accent) 34%, transparent);
+    }
+
+    .bar-row span:last-child {
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: .8rem;
+    }
+
+    .score-card {
+      padding: 1.5rem;
+    }
+
+    .score-card h3 {
+      margin-bottom: .45rem;
+      font-size: 1.35rem;
+      letter-spacing: -.03em;
+    }
+
+    .score-card > p {
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .score-list {
+      display: grid;
+      gap: .6rem;
+      margin: 1.5rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .score-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding-top: .6rem;
+      border-top: 1px solid var(--line);
+      font-size: .84rem;
+    }
+
+    .score-list strong { color: var(--accent); }
+
+    .points-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .8rem;
+    }
+
+    .points-table {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .points-table h3 {
+      margin: 0;
+      padding: 1.15rem;
+      border-bottom: 1px solid var(--line);
+      font-size: 1rem;
+    }
+
+    .points-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+      padding: 1.15rem;
+    }
+
+    .point-pill {
+      min-width: 3rem;
+      padding: .48rem .55rem;
+      border-radius: .6rem;
+      color: var(--muted);
+      background: var(--panel-2);
+      font-size: .72rem;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .point-pill strong {
+      display: block;
+      color: var(--text);
+      font-size: .95rem;
+    }
+
+    .math-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      align-items: center;
+      margin-top: 1rem;
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .math-box strong {
+      font-size: clamp(1.45rem, 3vw, 2.4rem);
+      line-height: 1.1;
+      letter-spacing: -.04em;
+    }
+
+    .math-box p {
+      margin: 0;
+      font-size: .9rem;
+      font-weight: 650;
+    }
+
+    .example-shell {
+      padding: 1.5rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .tabs {
+      display: inline-flex;
+      gap: .35rem;
+      margin-bottom: 1.3rem;
+      padding: .3rem;
+      border-radius: 999px;
+      background: var(--panel-2);
+    }
+
+    .tab-button {
+      padding: .55rem .9rem;
+      border-color: transparent;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+      font-size: .82rem;
+      font-weight: 800;
+    }
+
+    .tab-button[aria-selected="true"] {
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .calculation {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .8rem;
+    }
+
+    .calc-part {
+      padding: 1rem;
+      border-radius: 16px;
+      background: var(--panel-2);
+    }
+
+    .calc-part span {
+      display: block;
+      margin-bottom: .3rem;
+      color: var(--muted);
+      font-size: .72rem;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .calc-part strong {
+      font-size: 1.5rem;
+      letter-spacing: -.04em;
+    }
+
+    .calc-part.total {
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .calc-part.total span { color: color-mix(in srgb, var(--accent-ink) 65%, transparent); }
+
+    .example-detail {
+      margin: 1rem 0 0;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    .exclusion-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .55rem;
+      margin: 1.2rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .exclusion-list li {
+      padding: .55rem .75rem;
+      border: 1px solid color-mix(in srgb, var(--red) 34%, var(--line));
+      border-radius: 999px;
+      color: var(--red);
+      background: color-mix(in srgb, var(--red) 7%, var(--panel));
+      font-size: .8rem;
+      font-weight: 750;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .8rem;
+    }
+
+    .metric {
+      padding: 1.4rem;
+    }
+
+    .metric-value {
+      margin-bottom: .35rem;
+      color: var(--accent);
+      font-size: clamp(2.1rem, 4vw, 3.7rem);
+      font-weight: 950;
+      line-height: 1;
+      letter-spacing: -.06em;
+    }
+
+    .metric h3 {
+      margin-bottom: .45rem;
+      font-size: .95rem;
+    }
+
+    .metric p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    .sheet {
+      margin-top: 1rem;
+      overflow: hidden;
+    }
+
+    .sheet-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+      padding: 1.2rem 1.4rem;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-2);
+    }
+
+    .sheet-header h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .sheet-column {
+      padding: 1.35rem;
+    }
+
+    .sheet-column + .sheet-column { border-left: 1px solid var(--line); }
+
+    .sheet-column h4 {
+      margin: 0 0 1rem;
+      color: var(--muted);
+      font-size: .72rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: .65rem 0;
+      border-bottom: 1px solid var(--line);
+      font-size: .86rem;
+    }
+
+    .data-row:last-child { border-bottom: 0; }
+    .data-row span { color: var(--muted); }
+    .data-row strong.placeholder { color: var(--orange); }
+
+    .limitations {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .8rem;
+      margin-top: 1rem;
+    }
+
+    .limitations article {
+      padding: 1rem 1.1rem;
+      border-left: 3px solid var(--orange);
+      background: var(--panel);
+    }
+
+    .limitations h3 {
+      margin-bottom: .3rem;
+      font-size: .9rem;
+    }
+
+    .limitations p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .78rem;
+    }
+
+    .action-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      padding: .75rem 1rem;
+      border-radius: 999px;
+      font-weight: 800;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .section-heading,
+      .math-box {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 4rem;
+      }
+
+      .process-grid,
+      .calculation {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .timeline-grid,
+      .points-grid,
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline-card > p { min-height: 0; }
+    }
+
+    @media (max-width: 620px) {
+      main { width: min(100% - 1.4rem, 1180px); }
+      .topbar { padding-inline: .75rem; }
+      .print-label { display: none; }
+
+      h1 { font-size: clamp(3rem, 15vw, 4.5rem); }
+
+      .process-grid,
+      .feature-grid,
+      .score-grid,
+      .calculation,
+      .sheet-grid,
+      .limitations {
+        grid-template-columns: 1fr;
+      }
+
+      .sheet-column + .sheet-column {
+        border-top: 1px solid var(--line);
+        border-left: 0;
+      }
+
+      footer { flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; }
+    }
+
+    @media print {
+      :root,
+      html[data-theme="light"],
+      html[data-theme="dark"] {
+        --bg: #fff;
+        --panel: #fff;
+        --panel-2: #f0f1ed;
+        --text: #111;
+        --muted: #555;
+        --line: #bbb;
+        --accent: #a8c900;
+        --accent-soft: #f2f7d8;
+        --accent-ink: #111;
+        --red: #a51d2d;
+        --orange: #8a4b00;
+      }
+
+      .topbar { display: none; }
+      body { background: #fff; }
+      main { width: 100%; }
+      .hero { min-height: auto; padding-top: 2rem; }
+      .section { break-inside: avoid; padding: 2.2rem 0; }
+      .formula-card, .step, .feature, .metric, .score-card, .sheet { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand" aria-label="Polewise">
+      <span class="brand-mark" aria-hidden="true">P</span>
+      <span>Polewise</span>
+    </div>
+    <div class="actions">
+      <button class="icon-button" id="themeToggle" type="button" aria-label="Cambiar tema" title="Cambiar tema">☀</button>
+      <button class="icon-button" id="printButton" type="button" aria-label="Imprimir o guardar como PDF" title="Imprimir o guardar como PDF">
+        <span aria-hidden="true">↗</span>
+        <span class="print-label">PDF</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Metodología del análisis</p>
+        <h1 id="page-title">De ritmo a <span>puntos esperados.</span></h1>
+        <p class="hero-copy">
+          Así transforma Polewise la información disponible antes de la clasificación en una previsión de puntos para cada piloto. No es una opinión ni la puntuación oficial ya conseguida: es una esperanza matemática.
+        </p>
+        <div class="badge-row" aria-label="Datos del modelo">
+          <span class="status good">Preclasificación</span>
+          <span class="badge">Modelo 0.4.0</span>
+          <span class="badge">2.000 simulaciones</span>
+          <span class="badge">Actualizado para 2026</span>
+        </div>
+      </div>
+
+      <aside class="formula-card" aria-label="Fórmula principal">
+        <p class="formula-label">La cifra que aparece en Análisis</p>
+        <p class="formula">
+          <strong>E[puntos]</strong> = E[clasificación] + E[carrera] + E[Sprint]
+        </p>
+        <p class="formula-note">
+          El Sprint solo se suma cuando forma parte del fin de semana. Cada término es un promedio ponderado por la probabilidad de acabar en cada posición.
+        </p>
+      </aside>
+    </section>
+
+    <section class="section" id="recorrido">
+      <div class="section-heading">
+        <h2>El recorrido del dato</h2>
+        <p>
+          La app no asigna una nota arbitraria. Sigue el mismo proceso para todos los pilotos y utiliza únicamente información que puede conocerse antes del cierre de equipos.
+        </p>
+      </div>
+
+      <div class="process-grid">
+        <article class="step">
+          <span class="step-number">1</span>
+          <h3>Recoge rendimiento</h3>
+          <p>Histórico reciente, afinidad con el circuito, forma del equipo y entrenamientos ya disputados.</p>
+        </article>
+        <article class="step">
+          <span class="step-number">2</span>
+          <h3>Normaliza</h3>
+          <p>Convierte cada señal a una escala común de 0 a 100 para que puedan combinarse de forma coherente.</p>
+        </article>
+        <article class="step">
+          <span class="step-number">3</span>
+          <h3>Construye dos ritmos</h3>
+          <p>Calcula por separado el potencial de clasificación y el potencial de carrera.</p>
+        </article>
+        <article class="step">
+          <span class="step-number">4</span>
+          <h3>Simula el fin de semana</h3>
+          <p>Ejecuta 2.000 escenarios, obtiene probabilidades por posición y las convierte en puntos esperados.</p>
+        </article>
+      </div>
+
+      <div class="callout">
+        <span class="callout-symbol" aria-hidden="true">!</span>
+        <p>
+          <strong>La clasificación real del GP objetivo nunca entra en la predicción.</strong> Cuando empieza la clasificación, los equipos ya deberían estar cerrados; usarla sería mirar el resultado después de tomar la decisión.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="variables">
+      <div class="section-heading">
+        <h2>Qué mide el modelo</h2>
+        <p>
+          Estas son las ocho señales que forman el ritmo de carrera. Los porcentajes son los pesos predeterminados; el usuario puede ajustarlos en la app.
+        </p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature">
+          <div>
+            <h3>Ritmo a una vuelta</h3>
+            <p>Media de hasta ocho clasificaciones anteriores. Con entrenamientos, se combina con las vueltas rápidas de las sesiones disponibles.</p>
+          </div>
+          <div class="weight">32%<small>peso</small></div>
+        </article>
+        <article class="feature">
+          <div>
+            <h3>Vuelta rápida</h3>
+            <p>Convierte la diferencia porcentual respecto a la mejor vuelta en una nota de 0 a 100. Un 3% o más equivale a cero.</p>
+          </div>
+          <div class="weight">24%<small>peso</small></div>
+        </article>
+        <article class="feature">
+          <div>
+            <h3>Ritmo de carrera</h3>
+            <p>Últimos cinco resultados, con más peso para los más recientes: 5, 4, 3, 2 y 1. Un abandono se trata como última posición.</p>
+          </div>
+          <div class="weight">20%<small>peso</small></div>
+        </article>
+        <article class="feature">
+          <div>
+            <h3>Consistencia</h3>
+            <p>Penaliza la dispersión de los últimos ocho resultados. Cuanto menos varían, mayor es la puntuación.</p>
+          </div>
+          <div class="weight">10%<small>peso</small></div>
+        </article>
+        <article class="feature">
+          <div>
+            <h3>Forma reciente</h3>
+            <p>Compara el nivel de las tres pruebas más recientes con las tres anteriores, tomando 50 como situación estable.</p>
+          </div>
+          <div class="weight">4%<small>peso</small></div>
+        </article>
+        <article class="feature">
+          <div>
+            <h3>Afinidad con el circuito</h3>
+            <p>Hasta cinco resultados anteriores en ese trazado, ponderados del más reciente al más antiguo. Sin datos, parte de 50.</p>
+          </div>
+          <div class="weight">4%<small>peso</small></div>
+        </article>
+        <article class="feature">
+          <div>
+            <h3>Forma del equipo</h3>
+            <p>Rendimiento reciente del constructor, calculado sobre sus seis resultados más próximos.</p>
+          </div>
+          <div class="weight">4%<small>peso</small></div>
+        </article>
+        <article class="feature">
+          <div>
+            <h3>Riesgo de abandono</h3>
+            <p>Combina el 60% del riesgo reciente del piloto y el 40% del riesgo del constructor. Es una penalización.</p>
+          </div>
+          <div class="weight negative">−2%<small>peso</small></div>
+        </article>
+      </div>
+
+      <div class="technical-formula" role="region" aria-label="Fórmula técnica del ritmo de carrera" tabindex="0">
+        Carrera = 0,20·ritmo + 0,32·una_vuelta + 0,24·vuelta_rápida + 0,10·consistencia + 0,04·forma + 0,04·circuito + 0,04·equipo − 0,02·riesgo_DNF
+      </div>
+    </section>
+
+    <section class="section" id="ventanas">
+      <div class="section-heading">
+        <h2>Viernes o sábado</h2>
+        <p>
+          El modelo se adapta a lo que ya ha ocurrido. La previsión del viernes permite decidir pronto; la del sábado incorpora FP3 si todavía hay margen antes de la clasificación.
+        </p>
+      </div>
+
+      <div class="timeline-grid">
+        <article class="timeline-card">
+          <h3>Antes de los libres</h3>
+          <p>Solo utiliza el histórico disponible antes del fin de semana.</p>
+          <div class="bar-group">
+            <div class="bar-row">
+              <span>Hist.</span>
+              <div class="bar-track"><div class="bar-fill" style="--value: 100%"></div></div>
+              <span>100%</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="timeline-card featured">
+          <h3>Previsión del viernes</h3>
+          <p>Combina FP1 y FP2. Es la ventana principal para decidir con tiempo.</p>
+          <div class="bar-group">
+            <div class="bar-row">
+              <span>FP1</span>
+              <div class="bar-track"><div class="bar-fill" style="--value: 30.8%"></div></div>
+              <span>30,8%</span>
+            </div>
+            <div class="bar-row">
+              <span>FP2</span>
+              <div class="bar-track"><div class="bar-fill" style="--value: 69.2%"></div></div>
+              <span>69,2%</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="timeline-card">
+          <h3>Previsión del sábado</h3>
+          <p>Añade FP3. En fin de semana Sprint solo existe FP1 y recibe el 100%.</p>
+          <div class="bar-group">
+            <div class="bar-row">
+              <span>FP1</span>
+              <div class="bar-track"><div class="bar-fill" style="--value: 20%"></div></div>
+              <span>20%</span>
+            </div>
+            <div class="bar-row">
+              <span>FP2</span>
+              <div class="bar-track"><div class="bar-fill" style="--value: 45%"></div></div>
+              <span>45%</span>
+            </div>
+            <div class="bar-row">
+              <span>FP3</span>
+              <div class="bar-track"><div class="bar-fill" style="--value: 35%"></div></div>
+              <span>35%</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="dos-ritmos">
+      <div class="section-heading">
+        <h2>Dos puntuaciones internas</h2>
+        <p>
+          La nota de 0 a 100 sirve para ordenar el rendimiento probable; todavía no son puntos. Se crean dos notas diferentes porque clasificar bien y correr bien no son exactamente lo mismo.
+        </p>
+      </div>
+
+      <div class="score-grid">
+        <article class="score-card">
+          <p class="eyebrow">Potencial de clasificación</p>
+          <h3>Prioriza la velocidad pura</h3>
+          <p>Reutiliza los pesos activos, pero solo entre las variables relevantes para una vuelta y vuelve a normalizarlos.</p>
+          <ul class="score-list">
+            <li><span>Ritmo a una vuelta</span><strong>50%</strong></li>
+            <li><span>Vuelta rápida</span><strong>37,5%</strong></li>
+            <li><span>Forma reciente</span><strong>6,25%</strong></li>
+            <li><span>Forma del equipo</span><strong>6,25%</strong></li>
+          </ul>
+        </article>
+
+        <article class="score-card">
+          <p class="eyebrow">Potencial de carrera</p>
+          <h3>Combina las ocho señales</h3>
+          <p>Incluye ritmo en tanda, consistencia, circuito y riesgo de abandono, además de la velocidad a una vuelta.</p>
+          <ul class="score-list">
+            <li><span>Velocidad: una vuelta + vuelta rápida</span><strong>56%</strong></li>
+            <li><span>Ritmo y consistencia</span><strong>30%</strong></li>
+            <li><span>Forma, circuito y equipo</span><strong>12%</strong></li>
+            <li><span>Penalización máxima por peso DNF</span><strong>−2%</strong></li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="conversion">
+      <div class="section-heading">
+        <h2>De posiciones a puntos</h2>
+        <p>
+          Las 2.000 simulaciones indican la probabilidad de que cada piloto termine en cada posición. Polewise multiplica cada probabilidad por los puntos básicos de esa posición y suma los resultados.
+        </p>
+      </div>
+
+      <div class="points-grid">
+        <article class="points-table">
+          <h3>Clasificación</h3>
+          <div class="points-row">
+            <span class="point-pill">P1<strong>10</strong></span>
+            <span class="point-pill">P2<strong>9</strong></span>
+            <span class="point-pill">P3<strong>8</strong></span>
+            <span class="point-pill">…<strong>…</strong></span>
+            <span class="point-pill">P10<strong>1</strong></span>
+            <span class="point-pill">P11+<strong>0</strong></span>
+          </div>
+        </article>
+
+        <article class="points-table">
+          <h3>Carrera</h3>
+          <div class="points-row">
+            <span class="point-pill">P1<strong>25</strong></span>
+            <span class="point-pill">P2<strong>18</strong></span>
+            <span class="point-pill">P3<strong>15</strong></span>
+            <span class="point-pill">P4<strong>12</strong></span>
+            <span class="point-pill">P10<strong>1</strong></span>
+            <span class="point-pill">DNF<strong>−20</strong></span>
+          </div>
+        </article>
+
+        <article class="points-table">
+          <h3>Sprint, si existe</h3>
+          <div class="points-row">
+            <span class="point-pill">P1<strong>8</strong></span>
+            <span class="point-pill">P2<strong>7</strong></span>
+            <span class="point-pill">P3<strong>6</strong></span>
+            <span class="point-pill">…<strong>…</strong></span>
+            <span class="point-pill">P8<strong>1</strong></span>
+            <span class="point-pill">DNF<strong>−10</strong></span>
+          </div>
+        </article>
+      </div>
+
+      <div class="math-box">
+        <strong>E[puntos] = Σ probabilidad × puntos</strong>
+        <p>
+          En carrera se aplica además la probabilidad de abandono. En Sprint, el riesgo estimado se reduce a la mitad y la penalización es de −10.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="ejemplo">
+      <div class="section-heading">
+        <h2>Un cálculo completo</h2>
+        <p>
+          Ejemplo didáctico para entender la operación. No corresponde a un piloto ni a un GP real.
+        </p>
+      </div>
+
+      <div class="example-shell">
+        <div class="tabs" role="tablist" aria-label="Tipo de fin de semana">
+          <button class="tab-button" id="normalTab" type="button" role="tab" aria-selected="true" aria-controls="examplePanel">GP normal</button>
+          <button class="tab-button" id="sprintTab" type="button" role="tab" aria-selected="false" aria-controls="examplePanel">GP con Sprint</button>
+        </div>
+
+        <div class="calculation" id="examplePanel" role="tabpanel" aria-live="polite">
+          <div class="calc-part">
+            <span>Clasificación esperada</span>
+            <strong>6,80</strong>
+          </div>
+          <div class="calc-part">
+            <span>Carrera esperada</span>
+            <strong>13,39</strong>
+          </div>
+          <div class="calc-part">
+            <span>Sprint esperada</span>
+            <strong id="sprintValue">—</strong>
+          </div>
+          <div class="calc-part total">
+            <span>Total esperado</span>
+            <strong id="totalValue">20,19</strong>
+          </div>
+        </div>
+
+        <p class="example-detail" id="exampleDetail">
+          La carrera parte de 17,10 puntos por posición y un 10% de riesgo DNF: 0,90 × 17,10 + 0,10 × (−20) = 13,39 puntos.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="exclusiones">
+      <div class="section-heading">
+        <h2>Lo que no se suma</h2>
+        <p>
+          La predicción actual se mantiene deliberadamente sencilla y comprobable. No intenta adivinar bonificaciones que han mostrado poco poder predictivo o cuya regla puede cambiar.
+        </p>
+      </div>
+
+      <ul class="exclusion-list" aria-label="Factores excluidos">
+        <li>Adelantamientos</li>
+        <li>Posiciones ganadas o perdidas</li>
+        <li>Vuelta rápida de carrera</li>
+        <li>Piloto del día</li>
+        <li>Promedio Fantasy histórico mezclado</li>
+        <li>Clasificación ya disputada</li>
+      </ul>
+
+      <div class="callout">
+        <span class="callout-symbol" aria-hidden="true">≈</span>
+        <p>
+          El resultado es una <strong>media probable</strong>, no una promesa. Dos pilotos separados por pocas décimas deberían interpretarse como prácticamente empatados.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="validacion">
+      <div class="section-heading">
+        <h2>Qué se ha comprobado</h2>
+        <p>
+          Las pruebas miden si el orden predicho se parece al orden real. Una correlación de 1 sería un orden perfecto; 0 significaría que no existe relación.
+        </p>
+      </div>
+
+      <div class="metric-grid">
+        <article class="metric">
+          <div class="metric-value">0,63</div>
+          <h3>Correlación 2026</h3>
+          <p>Miniestudio con cuatro carreras objetivo. Compara el ranking previo con el resultado, no puntos individuales congelados.</p>
+        </article>
+        <article class="metric">
+          <div class="metric-value">75%</div>
+          <h3>Acierto del top 10</h3>
+          <p>Mejor configuración probada en la muestra 2026, combinando una vuelta, vuelta rápida y ritmo de carrera.</p>
+        </article>
+        <article class="metric">
+          <div class="metric-value">0,750</div>
+          <h3>Relación con puntos 2025</h3>
+          <p>Correlación entre clasificación + carrera + Sprint reales y el total Fantasy, sobre 268 actuaciones piloto-GP.</p>
+        </article>
+      </div>
+
+      <div class="callout">
+        <span class="callout-symbol" aria-hidden="true">↘</span>
+        <p>
+          En una validación progresiva de 2025, el modelo básico obtuvo <strong>0,518</strong>. Añadir extras como adelantamientos lo redujo a <strong>0,439</strong>. Por eso Polewise usa ahora la base más estable.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="ficha">
+      <div class="section-heading">
+        <h2>Calculado frente a obtenido</h2>
+        <p>
+          Esta será la ficha individual de control por piloto y GP. Para que la comparación sea honesta, la previsión debe guardarse antes del cierre y no volver a modificarse.
+        </p>
+      </div>
+
+      <article class="sheet">
+        <div class="sheet-header">
+          <h3>Ficha de validación · Temporada 2026</h3>
+          <span class="status" style="color: var(--orange)">Pendiente de snapshots</span>
+        </div>
+        <div class="sheet-grid">
+          <div class="sheet-column">
+            <h4>Previsión congelada antes del cierre</h4>
+            <div class="data-row"><span>GP / piloto</span><strong class="placeholder">Sin registro histórico</strong></div>
+            <div class="data-row"><span>Ventana usada</span><strong class="placeholder">Viernes o sábado</strong></div>
+            <div class="data-row"><span>E[clasificación]</span><strong class="placeholder">—</strong></div>
+            <div class="data-row"><span>E[carrera]</span><strong class="placeholder">—</strong></div>
+            <div class="data-row"><span>E[Sprint]</span><strong class="placeholder">—</strong></div>
+            <div class="data-row"><span>Total esperado</span><strong class="placeholder">—</strong></div>
+          </div>
+          <div class="sheet-column">
+            <h4>Resultado una vez terminado el GP</h4>
+            <div class="data-row"><span>Puntos de clasificación</span><strong class="placeholder">—</strong></div>
+            <div class="data-row"><span>Puntos de carrera</span><strong class="placeholder">—</strong></div>
+            <div class="data-row"><span>Puntos de Sprint</span><strong class="placeholder">—</strong></div>
+            <div class="data-row"><span>Total básico obtenido</span><strong class="placeholder">—</strong></div>
+            <div class="data-row"><span>Error absoluto</span><strong class="placeholder">—</strong></div>
+            <div class="data-row"><span>Modelo y hora</span><strong class="placeholder">—</strong></div>
+          </div>
+        </div>
+      </article>
+
+      <div class="callout">
+        <span class="callout-symbol" aria-hidden="true">✓</span>
+        <p>
+          <strong>Por qué no aparecen cifras piloto a piloto de 2026:</strong> hasta ahora no se conservaron instantáneas inmutables de cada previsión antes de la clasificación. Reconstruirlas hoy mezclaría información posterior y falsearía la comparación. La ficha queda preparada para empezar a medirlo correctamente.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="limites">
+      <div class="section-heading">
+        <h2>Límites conocidos</h2>
+        <p>
+          Mostrar las limitaciones forma parte del cálculo: permite saber cuánto confiar en la cifra y qué partes deben seguir mejorándose.
+        </p>
+      </div>
+
+      <div class="limitations">
+        <article>
+          <h3>Muestra 2026 todavía pequeña</h3>
+          <p>El miniestudio disponible contiene cuatro carreras objetivo; las métricas pueden variar al añadir más pruebas.</p>
+        </article>
+        <article>
+          <h3>Riesgo del constructor provisional</h3>
+          <p>Mientras no haya una serie completa, la parte del constructor usa una base del 10%; el riesgo reciente del piloto sí se calcula.</p>
+        </article>
+        <article>
+          <h3>Cobertura de entrenamientos</h3>
+          <p>La calidad de la actualización depende de que existan vueltas y tandas limpias suficientes en las sesiones.</p>
+        </article>
+        <article>
+          <h3>Simulación, no certeza</h3>
+          <p>Las 2.000 ejecuciones aproximan probabilidades. Incidentes, clima o averías pueden apartar mucho el resultado de la media.</p>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      <span>Polewise · Metodología del modelo 0.4.0</span>
+      <span>Aplicación independiente y no oficial. No está afiliada a Formula 1 ni a sus titulares de derechos.</span>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var themeToggle = document.getElementById("themeToggle");
+      var savedTheme = localStorage.getItem("polewise-doc-theme");
+      var preferredLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+
+      function setTheme(theme) {
+        root.setAttribute("data-theme", theme);
+        themeToggle.textContent = theme === "dark" ? "☀" : "☾";
+        themeToggle.setAttribute("aria-label", theme === "dark" ? "Activar modo claro" : "Activar modo oscuro");
+      }
+
+      setTheme(savedTheme || (preferredLight ? "light" : "dark"));
+
+      themeToggle.addEventListener("click", function () {
+        var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        setTheme(next);
+        localStorage.setItem("polewise-doc-theme", next);
+      });
+
+      document.getElementById("printButton").addEventListener("click", function () {
+        window.print();
+      });
+
+      var normalTab = document.getElementById("normalTab");
+      var sprintTab = document.getElementById("sprintTab");
+      var sprintValue = document.getElementById("sprintValue");
+      var totalValue = document.getElementById("totalValue");
+      var detail = document.getElementById("exampleDetail");
+
+      function setWeekend(hasSprint) {
+        normalTab.setAttribute("aria-selected", String(!hasSprint));
+        sprintTab.setAttribute("aria-selected", String(hasSprint));
+        sprintValue.textContent = hasSprint ? "4,44" : "—";
+        totalValue.textContent = hasSprint ? "24,63" : "20,19";
+        detail.textContent = hasSprint
+          ? "La Sprint parte de 5,20 puntos por posición. El riesgo DNF se reduce al 5%: 0,95 × 5,20 + 0,05 × (−10) = 4,44 puntos."
+          : "La carrera parte de 17,10 puntos por posición y un 10% de riesgo DNF: 0,90 × 17,10 + 0,10 × (−20) = 13,39 puntos.";
+      }
+
+      normalTab.addEventListener("click", function () { setWeekend(false); });
+      sprintTab.addEventListener("click", function () { setWeekend(true); });
+    }());
+  </script>
+</body>
+</html>

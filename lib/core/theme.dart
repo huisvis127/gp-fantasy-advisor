@@ -10,7 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 ///   --t1:#f9f9fb --t2:#a0a0b0 --t3:#606070
 ///   --b1:rgba(255,255,255,.08) --b2:rgba(255,255,255,.14)
 /// La estructura visual conserva la referencia de MotoGP, pero la identidad
-/// de esta app usa rojo racing como acento principal.
+/// de Polewise usa verde lima eléctrico como acento principal.
 ///   --ok:#00e096 --warn:#ffb833 --err:#ff4466
 ///   Radios: 7 / 10 / 14 / 20 / 26 px
 ///   Fuentes: Syne 800 (títulos), DM Sans (cuerpo), JetBrains Mono (etiquetas).
@@ -33,10 +33,9 @@ class AppColors {
   static const Color glassFill = Color(0x0AFFFFFF); // --glass .04
   static const Color glassStrong = Color(0x12FFFFFF); // --glass-strong .07
 
-  // Se conservan los nombres internos `lime`/`lime2` para no romper widgets
-  // existentes; visualmente son ahora el rojo principal de la app F1.
-  static const Color lime = Color(0xFFFF1838);
-  static const Color lime2 = Color(0xFFFF5268);
+  // Identidad Polewise: verde lima eléctrico sobre carbón.
+  static const Color lime = Color(0xFFB6FF00);
+  static const Color lime2 = Color(0xFFD8FF70);
   static const Color cyan = Color(0xFF00E5FF);
   static const Color magenta = Color(0xFFFF3CB8);
   static const Color violet = Color(0xFF9B5CFF);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/localization.dart';
 import '../../core/theme.dart';
 
 /// Componentes traducidos 1:1 del index.html de la app de referencia
@@ -35,7 +36,8 @@ class RefCard extends StatelessWidget {
         border: Border.all(color: borderColor ?? AppColors.border1),
         borderRadius: BorderRadius.circular(AppRadii.lg),
         boxShadow: const [
-          BoxShadow(color: Color(0x2E000000), blurRadius: 50, offset: Offset(0, 18)),
+          BoxShadow(
+              color: Color(0x2E000000), blurRadius: 50, offset: Offset(0, 18)),
         ],
       ),
       child: child,
@@ -92,13 +94,15 @@ class Kicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text.toUpperCase(), style: AppText.mono(11, color: color));
+    return Text(context.tr(text).toUpperCase(),
+        style: AppText.mono(11, color: color));
   }
 }
 
 /// Cabecera de sección: kicker + título Syne (`.section-head`).
 class SectionHead extends StatelessWidget {
-  const SectionHead({super.key, required this.kicker, required this.title, this.trailing});
+  const SectionHead(
+      {super.key, required this.kicker, required this.title, this.trailing});
 
   final String kicker;
   final String title;
@@ -115,7 +119,7 @@ class SectionHead extends StatelessWidget {
             children: [
               Kicker(kicker, color: AppColors.textTertiary),
               const SizedBox(height: 4),
-              Text(title, style: AppText.syne(17)),
+              Text(context.tr(title), style: AppText.syne(21)),
             ],
           ),
         ),
@@ -150,8 +154,9 @@ class NeonSelect<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(),
-            style: AppText.body(11, color: AppColors.textSecondary, weight: FontWeight.w600)
+        Text(context.tr(label).toUpperCase(),
+            style: AppText.body(11,
+                    color: AppColors.textSecondary, weight: FontWeight.w600)
                 .copyWith(letterSpacing: 0.6)),
         const SizedBox(height: 5),
         GestureDetector(
@@ -189,7 +194,8 @@ class NeonSelect<T> extends StatelessWidget {
                     style: AppText.body(14, weight: FontWeight.w600),
                   ),
                 ),
-                const Icon(Icons.arrow_drop_down_rounded, color: AppColors.lime, size: 26),
+                const Icon(Icons.arrow_drop_down_rounded,
+                    color: AppColors.lime, size: 26),
               ],
             ),
           ),
@@ -216,7 +222,8 @@ Future<T?> showPickerSheet<T>({
     builder: (ctx) {
       return Container(
         margin: const EdgeInsets.all(14),
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.76),
+        constraints:
+            BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.76),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topCenter,
@@ -236,7 +243,8 @@ Future<T?> showPickerSheet<T>({
                   Expanded(child: Text(title, style: AppText.syne(16))),
                   IconButton(
                     onPressed: () => Navigator.of(ctx).pop(),
-                    icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
+                    icon: const Icon(Icons.close_rounded,
+                        color: AppColors.textPrimary),
                   ),
                 ],
               ),
@@ -285,19 +293,22 @@ Future<T?> showPickerSheet<T>({
                               children: [
                                 Text(itemLabel(item),
                                     overflow: TextOverflow.ellipsis,
-                                    style: AppText.body(14, weight: FontWeight.w800)),
+                                    style: AppText.body(14,
+                                        weight: FontWeight.w800)),
                                 if (itemMeta != null)
                                   Text(itemMeta(item),
                                       overflow: TextOverflow.ellipsis,
-                                      style:
-                                          AppText.body(11, color: AppColors.textTertiary)),
+                                      style: AppText.body(11,
+                                          color: AppColors.textTertiary)),
                               ],
                             ),
                           ),
                           if (isActive)
                             Padding(
                               padding: const EdgeInsets.only(right: 12),
-                              child: Text('✓', style: AppText.mono(14, color: AppColors.lime)),
+                              child: Text('✓',
+                                  style:
+                                      AppText.mono(14, color: AppColors.lime)),
                             ),
                         ],
                       ),
@@ -338,7 +349,8 @@ class SliderBox extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: AppText.body(12.5, color: AppColors.textSecondary)),
+            Text(label,
+                style: AppText.body(12.5, color: AppColors.textSecondary)),
             Text('${value.round()}%',
                 style: AppText.body(12.5, weight: FontWeight.w800)),
           ],
@@ -384,8 +396,8 @@ class RecCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 76),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      constraints: const BoxConstraints(minHeight: 98),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
         border: Border.all(color: color),
@@ -397,26 +409,26 @@ class RecCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(tag.toUpperCase(), style: AppText.mono(9.5, color: color)),
-              const SizedBox(height: 6),
+              Text(context.tr(tag).toUpperCase(), style: AppText.mono(9.5, color: color)),
+              const SizedBox(height: 8),
               Padding(
-                padding: const EdgeInsets.only(right: 44),
+                padding: const EdgeInsets.only(right: 64),
                 child: Text(name,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppText.syne(13.5)),
+                    style: AppText.syne(17)),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 5),
               Text(subtitle,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.body(11, color: AppColors.textTertiary)),
+                  style: AppText.body(12.5, color: AppColors.textSecondary)),
             ],
           ),
           Positioned(
             top: 0,
             right: 0,
-            child: Text(score, style: AppText.syne(16, color: AppColors.textPrimary)),
+            child: Text(score, style: AppText.syne(21, color: color)),
           ),
         ],
       ),
@@ -436,10 +448,12 @@ class TagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        border: Border.all(color: color == AppColors.textSecondary ? AppColors.border1 : color),
+        border: Border.all(
+            color:
+                color == AppColors.textSecondary ? AppColors.border1 : color),
         borderRadius: BorderRadius.circular(99),
       ),
-      child: Text(label.toUpperCase(), style: AppText.mono(8.5, color: color)),
+      child: Text(context.tr(label).toUpperCase(), style: AppText.mono(8.5, color: color)),
     );
   }
 }
@@ -465,7 +479,8 @@ class ScoreBar extends StatelessWidget {
         widthFactor: fraction.clamp(0.02, 1.0),
         child: Container(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [AppColors.cyan, AppColors.lime]),
+            gradient:
+                const LinearGradient(colors: [AppColors.cyan, AppColors.lime]),
             borderRadius: BorderRadius.circular(99),
           ),
         ),
@@ -476,7 +491,8 @@ class ScoreBar extends StatelessWidget {
 
 /// `.vpill` — precio y puntos-por-millón.
 class ValuePill extends StatelessWidget {
-  const ValuePill({super.key, required this.priceMillions, required this.pointsPerMillion});
+  const ValuePill(
+      {super.key, required this.priceMillions, required this.pointsPerMillion});
 
   final double priceMillions;
   final double pointsPerMillion;
@@ -492,7 +508,8 @@ class ValuePill extends StatelessWidget {
             style: AppText.syne(12, color: AppColors.textSecondary)),
         const SizedBox(width: 6),
         Text('${pointsPerMillion.toStringAsFixed(2)} pts/M',
-            style: AppText.body(10, color: AppColors.cyan, weight: FontWeight.w700)),
+            style: AppText.body(10,
+                color: AppColors.cyan, weight: FontWeight.w700)),
       ],
     );
   }
@@ -553,7 +570,9 @@ class RankingRow extends StatelessWidget {
                         child: Text(
                           '$rank',
                           style: AppText.syne(16,
-                              color: rank <= 3 ? AppColors.lime : AppColors.textSecondary),
+                              color: rank <= 3
+                                  ? AppColors.lime
+                                  : AppColors.textSecondary),
                         ),
                       ),
                     ),
@@ -567,11 +586,13 @@ class RankingRow extends StatelessWidget {
                             Text(name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: AppText.body(14.5, weight: FontWeight.w600)),
+                                style: AppText.body(14.5,
+                                    weight: FontWeight.w600)),
                             Text(teamName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: AppText.body(11, color: AppColors.textTertiary)),
+                                style: AppText.body(11,
+                                    color: AppColors.textTertiary)),
                             if (chips.isNotEmpty) ...[
                               const SizedBox(height: 5),
                               Wrap(spacing: 5, runSpacing: 4, children: chips),
@@ -586,9 +607,18 @@ class RankingRow extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(score.toStringAsFixed(1), style: AppText.syne(19)),
+                          Text(score.toStringAsFixed(1),
+                              style: AppText.syne(19)),
+                          Text(
+                            context.tr('PTS ESP.'),
+                            style: AppText.mono(
+                              8,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          ScoreBar(fraction: maxScore <= 0 ? 0 : score / maxScore),
+                          ScoreBar(
+                              fraction: maxScore <= 0 ? 0 : score / maxScore),
                           const SizedBox(height: 4),
                           ValuePill(
                             priceMillions: priceMillions,
@@ -631,7 +661,7 @@ class FeatureBarRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 118,
-            child: Text(label,
+            child: Text(context.tr(label),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppText.body(11, color: AppColors.textSecondary)),
@@ -649,8 +679,8 @@ class FeatureBarRow extends StatelessWidget {
                 widthFactor: (value / 100).clamp(0.02, 1.0),
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient:
-                        const LinearGradient(colors: [AppColors.cyan, AppColors.lime]),
+                    gradient: const LinearGradient(
+                        colors: [AppColors.cyan, AppColors.lime]),
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
@@ -686,7 +716,8 @@ class TotalPill extends StatelessWidget {
         border: Border.all(color: AppColors.lime),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: AppColors.lime.withValues(alpha: 0.14), blurRadius: 24),
+          BoxShadow(
+              color: AppColors.lime.withValues(alpha: 0.14), blurRadius: 24),
         ],
       ),
       child: Row(
@@ -696,7 +727,8 @@ class TotalPill extends StatelessWidget {
         children: [
           Text(value, style: AppText.syne(21, color: AppColors.lime)),
           const SizedBox(width: 8),
-          Text(label.toUpperCase(), style: AppText.mono(9, color: AppColors.textSecondary)),
+          Text(context.tr(label).toUpperCase(),
+              style: AppText.mono(9, color: AppColors.textSecondary)),
         ],
       ),
     );
@@ -727,7 +759,7 @@ class AssetCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 82,
+        height: 96,
         decoration: BoxDecoration(
           color: AppColors.surface3,
           border: Border.all(color: AppColors.border1),
@@ -744,20 +776,22 @@ class AssetCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(tag.toUpperCase(),
+                    Text(context.tr(tag).toUpperCase(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.mono(8, color: tagColor ?? AppColors.textSecondary)),
-                    const SizedBox(height: 3),
+                        style: AppText.mono(9,
+                            color: tagColor ?? AppColors.textSecondary)),
+                    const SizedBox(height: 5),
                     Text(name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.syne(12)),
-                    const SizedBox(height: 2),
-                    Text(subtitle,
+                        style: AppText.syne(15)),
+                    const SizedBox(height: 4),
+                    Text(context.tr(subtitle),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.body(9.5, color: AppColors.textTertiary)),
+                        style:
+                            AppText.body(11, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
@@ -824,16 +858,19 @@ class SubTabs extends StatelessWidget {
                       ? AppColors.lime.withValues(alpha: 0.07)
                       : AppColors.surface3,
                   border: Border.all(
-                    color: i == selectedIndex ? AppColors.lime : AppColors.border1,
+                    color:
+                        i == selectedIndex ? AppColors.lime : AppColors.border1,
                   ),
                   borderRadius: BorderRadius.circular(AppRadii.sm),
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  labels[i],
+                  context.tr(labels[i]),
                   style: AppText.body(13,
                       weight: FontWeight.w600,
-                      color: i == selectedIndex ? AppColors.lime : AppColors.textSecondary),
+                      color: i == selectedIndex
+                          ? AppColors.lime
+                          : AppColors.textSecondary),
                 ),
               ),
             ),
@@ -865,8 +902,11 @@ class StatusBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: isError ? AppColors.error.withValues(alpha: 0.08) : AppColors.surface2,
-        border: Border.all(color: isError ? AppColors.error : AppColors.border1),
+        color: isError
+            ? AppColors.error.withValues(alpha: 0.08)
+            : AppColors.surface2,
+        border:
+            Border.all(color: isError ? AppColors.error : AppColors.border1),
         borderRadius: BorderRadius.circular(AppRadii.sm),
       ),
       child: Row(
@@ -875,24 +915,29 @@ class StatusBanner extends StatelessWidget {
             const SizedBox(
               width: 14,
               height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime),
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.lime),
             )
           else
             Icon(
-              isError ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
+              isError
+                  ? Icons.warning_amber_rounded
+                  : Icons.check_circle_outline_rounded,
               size: 16,
               color: isError ? AppColors.error : AppColors.ok,
             ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(message,
+            child: Text(context.tr(message),
                 style: AppText.body(12,
-                    color: isError ? AppColors.error : AppColors.textSecondary)),
+                    color:
+                        isError ? AppColors.error : AppColors.textSecondary)),
           ),
           if (onRetry != null)
             TextButton(
               onPressed: onRetry,
-              child: Text('Reintentar', style: AppText.body(12, color: AppColors.cyan)),
+              child: Text(context.tr('Reintentar'),
+                  style: AppText.body(12, color: AppColors.cyan)),
             ),
         ],
       ),
@@ -922,7 +967,10 @@ class AppBackground extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [AppColors.lime.withValues(alpha: 0.10), Colors.transparent],
+                  colors: [
+                    AppColors.lime.withValues(alpha: 0.10),
+                    Colors.transparent
+                  ],
                 ),
               ),
             ),
@@ -936,7 +984,10 @@ class AppBackground extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [AppColors.cyan.withValues(alpha: 0.09), Colors.transparent],
+                  colors: [
+                    AppColors.cyan.withValues(alpha: 0.09),
+                    Colors.transparent
+                  ],
                 ),
               ),
             ),

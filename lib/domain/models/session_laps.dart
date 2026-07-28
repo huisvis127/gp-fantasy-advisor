@@ -6,7 +6,7 @@ class SessionLapsAggregate {
   const SessionLapsAggregate({
     required this.season,
     required this.round,
-    required this.sessionKey, // "fp1" | "fp2" | "fp3" | "quali" | "sq"
+    required this.sessionKey, // "fp1" | "fp2" | "fp3"
     required this.driverId,
     required this.bestStintAvgMs,
     required this.top2StintsAvgMs,

@@ -19,7 +19,7 @@ class GameRules {
   static const List<String> chipNames = [
     'Limitless',
     'Wildcard',
-    'Triple Boost',
+    '3x Boost',
     'No Negative',
     'Final Fix',
     'Autopilot',
@@ -31,15 +31,35 @@ class AssetPaths {
 
   static const String scoringTable = 'assets/scoring_2026.json';
   static const String modelWeights = 'assets/model_weights.json';
-  static const String remoteConfigFallback = 'assets/remote_config_fallback.json';
-  static const String driverStandingsFallback = 'assets/driver_standings_2026.json';
-  static const String constructorStandingsFallback = 'assets/constructor_standings_2026.json';
+  static const String remoteConfigFallback =
+      'assets/remote_config_fallback.json';
+  static const String driverStandingsFallback =
+      'assets/driver_standings_2026.json';
+  static const String constructorStandingsFallback =
+      'assets/constructor_standings_2026.json';
 }
 
 class AppMeta {
   AppMeta._();
 
-  static const String appName = 'GP Fantasy Advisor';
+  static const String appName = 'Polewise';
+  static const String appVersion = '1.3.1';
+  static const String developerName = String.fromEnvironment(
+    'POLEWISE_DEVELOPER_NAME',
+    defaultValue: 'Polewise',
+  );
+  static const String supportEmail = String.fromEnvironment(
+    'POLEWISE_SUPPORT_EMAIL',
+    defaultValue: '',
+  );
+  static const String privacyPolicyUrl = String.fromEnvironment(
+    'POLEWISE_PRIVACY_URL',
+    defaultValue:
+        'https://huisvis127.github.io/gp-fantasy-advisor/privacy-policy.html',
+  );
   static const String disclaimer =
-      'App no oficial. No afiliada a Formula One Licensing B.V.';
+      'Polewise es una aplicación no oficial y no está asociada de ninguna '
+      'manera con las compañías de Formula 1. F1, FORMULA ONE, FORMULA 1, '
+      'FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX y las marcas '
+      'relacionadas son marcas comerciales de Formula One Licensing B.V.';
 }

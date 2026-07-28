@@ -6,6 +6,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
+import '../../../core/localization.dart';
 
 /// Login Plan B (sección 3.1 del plan): el usuario se loguea en la web
 /// oficial dentro de un WebView (el anti-bot ve un navegador real) y la app
@@ -100,12 +101,14 @@ class _FantasyLoginWebViewScreenState
         setState(
           () => _status =
               'Comprobando la sesión con la web oficial. Si acabas de entrar, '
-              'espera unos segundos y vuelve a pulsar "Capturar sesión".',
+                  'espera unos segundos y vuelve a pulsar "Capturar sesión".',
         );
       }
     } catch (e) {
       if (!silent && mounted) {
-        setState(() => _status = 'Error al inspeccionar la página: $e');
+        setState(
+          () => _status = context.tr('Error: {error}', values: {'error': e}),
+        );
       }
     }
   }
@@ -214,6 +217,7 @@ class _FantasyLoginWebViewScreenState
 
     const findArray = node => {
       if (!node || typeof node !== 'object') return [];
+      if (Array.isArray(node)) return node;
       for (const key of ['user_leagues','leaderboard','Details','leagues','Leagues','Value','results','userTeam']) {
         if (Array.isArray(node[key])) return node[key];
       }
@@ -264,16 +268,34 @@ class _FantasyLoginWebViewScreenState
         };
       });
     };
+    const firstValue = (row, keys) => {
+      if (!row || typeof row !== 'object') return null;
+      const wanted = new Set(keys.map(key => String(key).toLowerCase().replace(/[^a-z0-9]/g, '')));
+      for (const [key, value] of Object.entries(row)) {
+        const normalized = String(key).toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (wanted.has(normalized) && value !== undefined && value !== null) return value;
+      }
+      for (const value of Object.values(row)) {
+        if (value && typeof value === 'object') {
+          const found = firstValue(value, keys);
+          if (found !== null) return found;
+        }
+      }
+      return null;
+    };
     const usedChips = history => {
       const value = valueOf(history) || {};
-      const chips = [];
-      if (Number(value.iswildcardtaken || 0) === 1) chips.push('wildcard');
-      if (Number(value.islimitlesstaken || 0) === 1) chips.push('limitless');
-      if (Number(value.isfinalfixtaken || 0) === 1) chips.push('final_fix');
-      if (Number(value.isextradrstaken || 0) === 1) chips.push('extra_drs');
-      if (Number(value.isnonigativetaken || 0) === 1) chips.push('no_negative');
-      if (Number(value.isautopilottaken || 0) === 1) chips.push('autopilot');
-      return chips;
+      const definitions = [
+        ['wildcard', ['isWildcardtaken','iswildcardtaken'], ['wildCardtakengd','wildcardtakengd']],
+        ['limitless', ['isLimitlesstaken','islimitlesstaken'], ['limitLesstakengd','limitlesstakengd']],
+        ['final_fix', ['isFinalfixtaken','isfinalfixtaken'], ['finalFixtakengd','finalfixtakengd']],
+        ['triple_boost', ['isExtradrstaken','isextradrstaken'], ['extraDrstakengd','extradrstakengd']],
+        ['no_negative', ['isNonigativetaken','isnonigativetaken'], ['noNigativetakengd','nonigativetakengd']],
+        ['autopilot', ['isAutopilottaken','isautopilottaken'], ['isAutopilottakengd','autopilottakengd']]
+      ];
+      return definitions
+        .filter(item => Number(firstValue(value, item[1]) || 0) === 1)
+        .map(item => ({name:item[0], round:Number(firstValue(value, item[2]) || 0)}));
     };
     const leaderboards = {};
     for (const league of leagueRows) {
@@ -284,45 +306,60 @@ class _FantasyLoginWebViewScreenState
         const currentBoard = await readJson(
           '/feeds/leaderboard/privateleague/list_1_' + id + '_0_1.json'
         );
-        for (let round = 1; round <= gameDay; round++) {
-          try {
-            const board = await readJson(
-              '/feeds/leaderboard/privateleague/list_2_' + id + '_' + round + '_1.json'
-            );
-            rounds[String(round)] = board;
-          } catch (_) {}
-        }
 
         const memberTeams = {};
         const currentRows = findArray(valueOf(currentBoard));
         for (const member of currentRows.slice(0, 20)) {
-          const memberKey = member.user_team || member.UserTeam || '';
-          if (!memberKey) continue;
+          const memberGuid = member.user_guid || member.UserGuid || member.UserGUID || member.guid || '';
+          if (!memberGuid) continue;
           try {
             const history = await readJson(
-              '/services/user/opponentteam/opponentgamedayget/1/' + memberKey + '/1'
+              '/services/user/opponentteam/opponentgamedayget/1/' + memberGuid + '/1'
             );
             let roster = null;
             try {
               roster = await readJson(
-                '/services/user/opponentteam/opponentgamedayplayerteamget/1/' + memberKey + '/1/' + gameDay + '/1'
+                '/services/user/opponentteam/opponentgamedayplayerteamget/1/' + memberGuid + '/1/' + gameDay + '/1'
               );
             } catch (_) {
               for (let round = gameDay - 1; round >= 1 && !roster; round--) {
                 try {
                   roster = await readJson(
-                    '/services/user/opponentteam/opponentgamedayplayerteamget/1/' + memberKey + '/1/' + round + '/1'
+                    '/services/user/opponentteam/opponentgamedayplayerteamget/1/' + memberGuid + '/1/' + round + '/1'
                   );
                 } catch (_) {}
               }
             }
-            memberTeams[String(memberKey)] = {
+            memberTeams[String(memberGuid)] = {
               history:history,
               roster:roster,
               players:normalizedPlayers(roster),
               chipsUsed:usedChips(history)
             };
           } catch (_) {}
+        }
+        const cumulative = new Map();
+        for (let round = 1; round <= gameDay; round++) {
+          const eventRows = currentRows.map(member => {
+            const memberGuid = String(member.user_guid || member.UserGuid || member.UserGUID || member.guid || '');
+            const teamData = memberTeams[memberGuid] || {};
+            const historyValue = valueOf(teamData.history) || {};
+            const details = historyValue.mdDetails || historyValue.MdDetails || {};
+            const detail = details[String(round)] || details[round] || {};
+            const eventPoints = Number(detail.pts || detail.Points || 0);
+            const total = (cumulative.get(memberGuid) || 0) + eventPoints;
+            cumulative.set(memberGuid, total);
+            return {...member, event_points:eventPoints, cumulative_points:total, _has_event:Object.keys(detail).length > 0};
+          });
+          if (!eventRows.some(row => row._has_event)) continue;
+          const byEvent = [...eventRows].sort((a,b) => b.event_points - a.event_points);
+          const eventRank = new Map(byEvent.map((row,index) => [String(row.user_guid || row.UserGuid || row.guid || ''), index + 1]));
+          const byTotal = [...eventRows].sort((a,b) => b.cumulative_points - a.cumulative_points);
+          const totalRank = new Map(byTotal.map((row,index) => [String(row.user_guid || row.UserGuid || row.guid || ''), index + 1]));
+          rounds[String(round)] = {Value:{leaderboard:eventRows.map(row => {
+            const key = String(row.user_guid || row.UserGuid || row.guid || '');
+            return {...row, points:row.event_points, rank:totalRank.get(key), race_rank:eventRank.get(key)};
+          })}};
         }
         leaderboards[String(id)] = {current:currentBoard, rounds:rounds, teams:memberTeams};
       } catch (_) {}
@@ -369,7 +406,7 @@ class _FantasyLoginWebViewScreenState
     } catch (error) {
       if (mounted) {
         setState(
-          () => _status = 'La web respondió con datos no válidos: $error',
+          () => _status = context.tr('Error: {error}', values: {'error': error}),
         );
       }
     }
@@ -403,14 +440,14 @@ class _FantasyLoginWebViewScreenState
     text = text.replaceAll(r'\"', '"');
     final match =
         RegExp('"subscriptionToken"\\s*:\\s*"([^"]+)"').firstMatch(text) ??
-        RegExp('subscriptionToken=([A-Za-z0-9._-]+)').firstMatch(text);
+            RegExp('subscriptionToken=([A-Za-z0-9._-]+)').firstMatch(text);
     return match?.group(1);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Iniciar sesión (navegador)')),
+      appBar: AppBar(title: Text(context.tr('Iniciar sesión (navegador)'))),
       body: Column(
         children: [
           Container(
@@ -421,14 +458,14 @@ class _FantasyLoginWebViewScreenState
               children: [
                 Expanded(
                   child: Text(
-                    _status,
+                    context.tr(_status),
                     style: AppText.body(12, color: AppColors.textSecondary),
                   ),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: () => _tryCapture(silent: false),
-                  child: const Text('CAPTURAR SESIÓN'),
+                  child: Text(context.tr('CAPTURAR SESIÓN')),
                 ),
               ],
             ),

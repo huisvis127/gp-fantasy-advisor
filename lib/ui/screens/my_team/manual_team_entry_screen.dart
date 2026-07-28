@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_providers.dart';
 import '../../../core/constants.dart';
 import '../../../core/fantasy_standings_provider.dart';
+import '../../../core/localization.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/my_team.dart';
 import '../../../domain/models/prediction.dart';
@@ -28,7 +29,7 @@ class _ManualTeamEntryScreenState extends ConsumerState<ManualTeamEntryScreen> {
     final names = ref.watch(fantasyAssetNameProvider).valueOrNull ?? const <String, FantasyAssetInfo>{};
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Introducir mi equipo')),
+      appBar: AppBar(title: Text(context.tr('Introducir mi equipo'))),
       body: driversAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => EmptyState.apiDown(onRetry: () => ref.invalidate(driverPredictionsProvider)),
@@ -66,7 +67,7 @@ class _ManualTeamEntryScreenState extends ConsumerState<ManualTeamEntryScreen> {
                   child: ListView(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                     children: [
-                      Text('Pilotos', style: Theme.of(context).textTheme.titleMedium),
+                      Text(context.tr('Pilotos'), style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: AppSpacing.sm),
                       ..._sorted(drivers).map((p) => _PickTile(
                             prediction: p,
@@ -81,7 +82,7 @@ class _ManualTeamEntryScreenState extends ConsumerState<ManualTeamEntryScreen> {
                             ),
                           )),
                       const SizedBox(height: AppSpacing.md),
-                      Text('Constructores', style: Theme.of(context).textTheme.titleMedium),
+                      Text(context.tr('Constructores'), style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: AppSpacing.sm),
                       ..._sorted(constructors).map((p) => _PickTile(
                             prediction: p,
@@ -104,7 +105,7 @@ class _ManualTeamEntryScreenState extends ConsumerState<ManualTeamEntryScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _canSave(remaining) ? () => _save(remaining) : null,
-                      child: const Text('Guardar mi equipo'),
+                      child: Text(context.tr('Guardar mi equipo')),
                     ),
                   ),
                 ),

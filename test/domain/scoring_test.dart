@@ -5,14 +5,26 @@ Map<String, dynamic> _sampleScoringJson() {
   return {
     'race': {
       'position_points': {
-        '1': 25, '2': 18, '3': 15, '4': 12, '5': 10,
-        '6': 8, '7': 6, '8': 4, '9': 2, '10': 1,
+        '1': 25,
+        '2': 18,
+        '3': 15,
+        '4': 12,
+        '5': 10,
+        '6': 8,
+        '7': 6,
+        '8': 4,
+        '9': 2,
+        '10': 1,
       },
       'fastest_lap': 5,
       'dnf': -20,
     },
     'qualifying': {
       'position_points': {'1': 10, '2': 9, '3': 8},
+    },
+    'sprint': {
+      'position_points': {'1': 8, '2': 7, '3': 6},
+      'dnf': -10,
     },
     'constructor': {'both_cars_q3_bonus': 10},
   };
@@ -33,7 +45,6 @@ void main() {
       final probs = [1.0, 0.0, 0.0];
       final expected = table.expectedRacePoints(
         positionProbabilities: probs,
-        fastestLapProbability: 0,
         dnfProbability: 0,
       );
       expect(expected, 25.0);
@@ -44,11 +55,41 @@ void main() {
       final probs = [1.0, 0.0, 0.0];
       final expected = table.expectedRacePoints(
         positionProbabilities: probs,
-        fastestLapProbability: 0,
         dnfProbability: 0.5,
       );
       // 50% de posibilidades de acabar P1 (25 pts) + 50% de DNF (-20 pts).
       expect(expected, closeTo(0.5 * 25 + 0.5 * -20, 0.001));
+    });
+
+    test('suma clasificación, carrera y Sprint como bloques separados', () {
+      final table = ScoringTable.fromJson(_sampleScoringJson());
+      final probs = [1.0, 0.0, 0.0];
+
+      final qualifying = table.expectedQualifyingPoints(
+        positionProbabilities: probs,
+      );
+      final race = table.expectedRacePoints(
+        positionProbabilities: probs,
+        dnfProbability: 0,
+      );
+      final sprint = table.expectedSprintPoints(
+        positionProbabilities: probs,
+        dnfProbability: 0,
+      );
+
+      expect(qualifying, 10);
+      expect(race, 25);
+      expect(sprint, 8);
+      expect(qualifying + race + sprint, 43);
+    });
+
+    test('Sprint usa la penalización DNF reducida de 2026', () {
+      final table = ScoringTable.fromJson(_sampleScoringJson());
+      final expected = table.expectedSprintPoints(
+        positionProbabilities: [1.0, 0.0, 0.0],
+        dnfProbability: .5,
+      );
+      expect(expected, closeTo(.5 * 8 + .5 * -10, .001));
     });
   });
 

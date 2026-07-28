@@ -6,8 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/league_selection_provider.dart';
+import '../../../core/localization.dart';
+import '../../../core/fantasy_standings_provider.dart';
+import '../../../core/team_colors.dart';
 import '../../../core/theme.dart';
 import '../../../domain/services/league_snapshot_reader.dart';
+import '../../../domain/services/fantasy_chip_parser.dart';
 import '../../widgets/ref_widgets.dart';
 import '../login/fantasy_login_screen.dart';
 
@@ -69,10 +73,10 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
             children: [
               const Kicker('Clasificación privada'),
               const SizedBox(height: 6),
-              Text('Tu liga', style: AppText.syne(32)),
+              Text(context.tr('Tu liga'), style: AppText.syne(32)),
               const SizedBox(height: 8),
               Text(
-                'Accede con tu cuenta para ver tus ligas, posiciones y diferencias con el líder.',
+                context.tr('Accede con tu cuenta para ver tus ligas, posiciones y diferencias con el líder.'),
                 style: AppText.body(13, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
@@ -80,7 +84,7 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.login_rounded, size: 18),
-                  label: const Text('INICIAR SESIÓN'),
+                  label: Text(context.tr('INICIAR SESIÓN')),
                   onPressed: () async {
                     await Navigator.of(context).push(
                       MaterialPageRoute(
@@ -275,7 +279,7 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
               TextButton.icon(
                 onPressed: widget.onRefreshSession,
                 icon: const Icon(Icons.sync_rounded, size: 17),
-                label: const Text('ACTUALIZAR DATOS DE LIGA'),
+                label: Text(context.tr('ACTUALIZAR DATOS DE LIGA')),
               ),
               if (selectedId != null) ...[
                 const SizedBox(height: 14),
@@ -313,20 +317,24 @@ class _LeaguesListState extends ConsumerState<_LeaguesList> {
   }
 }
 
-class _LeaderboardSection extends StatefulWidget {
+class _LeaderboardSection extends ConsumerStatefulWidget {
   const _LeaderboardSection({super.key, required this.request});
 
   final Future<Map<String, dynamic>> request;
 
   @override
-  State<_LeaderboardSection> createState() => _LeaderboardSectionState();
+  ConsumerState<_LeaderboardSection> createState() =>
+      _LeaderboardSectionState();
 }
 
-class _LeaderboardSectionState extends State<_LeaderboardSection> {
+class _LeaderboardSectionState extends ConsumerState<_LeaderboardSection> {
   int? _window = 6;
+  int _view = 0;
 
   @override
   Widget build(BuildContext context) {
+    final catalog = ref.watch(fantasyAssetNameProvider).valueOrNull ??
+        const <String, FantasyAssetInfo>{};
     return FutureBuilder<Map<String, dynamic>>(
       future: widget.request,
       builder: (context, snapshot) {
@@ -361,8 +369,24 @@ class _LeaderboardSectionState extends State<_LeaderboardSection> {
           for (var index = 0; index < enrichedRows.length; index++)
             _LeagueEntry.fromJson(enrichedRows[index], index + 1),
         ];
-        return Column(
-          children: [
+        return Column(children: [
+          SubTabs(
+            labels: const ['Clasificación', 'Equipos'],
+            selectedIndex: _view,
+            onSelected: (value) => setState(() => _view = value),
+          ),
+          const SizedBox(height: 12),
+          if (_view == 0) ...[
+            for (var i = 0; i < rows.length; i++) ...[
+              _LeagueEntryCard(
+                entry: rows[i],
+                color: _leagueColors[i % _leagueColors.length],
+                catalog: catalog,
+                showChips: false,
+              ),
+              const SizedBox(height: 7),
+            ],
+            const SizedBox(height: 5),
             _PositionChart(
               entries: rows,
               window: _window,
@@ -372,16 +396,19 @@ class _LeaderboardSectionState extends State<_LeaderboardSection> {
             _PointsChart(entries: rows, window: _window),
             const SizedBox(height: 12),
             _RacePositionTable(entries: rows),
-            const SizedBox(height: 12),
+          ] else ...[
             for (var i = 0; i < rows.length; i++) ...[
               _LeagueEntryCard(
                 entry: rows[i],
                 color: _leagueColors[i % _leagueColors.length],
+                catalog: catalog,
+                initiallyOpen: true,
+                showChips: true,
               ),
-              const SizedBox(height: 7),
+              const SizedBox(height: 8),
             ],
           ],
-        );
+        ]);
       },
     );
   }
@@ -394,16 +421,20 @@ class _LeagueEntry {
     required this.points,
     required this.members,
     required this.chipsUsed,
+    required this.chipRounds,
     required this.history,
     required this.pointsHistory,
+    required this.raceHistory,
   });
   final int rank;
   final String name;
   final String? points;
-  final List<String> members;
+  final List<_LeagueMember> members;
   final Set<String> chipsUsed;
+  final Map<String, int> chipRounds;
   final List<({int round, int rank})> history;
   final List<({int round, double points})> pointsHistory;
+  final List<({int round, int rank})> raceHistory;
 
   factory _LeagueEntry.fromJson(Map<String, dynamic> json, int fallbackRank) {
     final team = _map(_first(json, const ['team', 'entry', 'fantasy_team']));
@@ -441,8 +472,8 @@ class _LeagueEntry {
       ],
     );
     final members = memberRows
-        .map(
-          (row) => cleanFantasyName(
+        .map((row) {
+          final name = cleanFantasyName(
             _first(row, const [
                   'display_name',
                   'displayname',
@@ -455,13 +486,33 @@ class _LeagueEntry {
                   'teamname',
                 ]) ??
                 '',
-          ),
-        )
-        .where((name) => name.isNotEmpty)
+          );
+          final position = (_first(row, const [
+                    'position_name',
+                    'positionname',
+                    'position',
+                    'skill',
+                  ]) ??
+                  '')
+              .toString()
+              .toLowerCase();
+          final boosted = _first(row, const [
+                    'is_captain',
+                    'iscaptain',
+                    'is_boosted',
+                    'isboosted',
+                  ]) ==
+                  true ||
+              _first(row, const ['is_captain', 'iscaptain'])?.toString() == '1';
+          return _LeagueMember(
+            name: name,
+            isConstructor: position.contains('constructor') || position == '2',
+            isBoosted: boosted,
+          );
+        })
+        .where((member) => member.name.isNotEmpty)
         .toList();
-    final used = <String>{};
-    _collectUsedChips(json, used);
-    _collectUsedChips(team, used);
+    final chipUsage = parseFantasyChipUsage([json, team]);
     final historyRows = _nestedList(
       [json, team],
       const [
@@ -474,6 +525,7 @@ class _LeagueEntry {
     );
     final history = <({int round, int rank})>[];
     final pointsHistory = <({int round, double points})>[];
+    final raceHistory = <({int round, int rank})>[];
     for (var index = 0; index < historyRows.length; index++) {
       final row = historyRows[index];
       final position = int.tryParse(
@@ -488,6 +540,13 @@ class _LeagueEntry {
           ) ??
           index + 1;
       history.add((round: round, rank: position));
+      final raceRank = int.tryParse(
+        (_first(row, const ['race_rank', 'gameday_rank', 'gp_rank']) ?? '')
+            .toString(),
+      );
+      if (raceRank != null && raceRank > 0) {
+        raceHistory.add((round: round, rank: raceRank));
+      }
       final points = double.tryParse(
         (_first(row, const ['points', 'cur_points', 'score']) ?? '').toString(),
       );
@@ -495,6 +554,7 @@ class _LeagueEntry {
     }
     history.sort((a, b) => a.round.compareTo(b.round));
     pointsHistory.sort((a, b) => a.round.compareTo(b.round));
+    raceHistory.sort((a, b) => a.round.compareTo(b.round));
     var accumulatedPoints = 0.0;
     final accumulatedHistory = <({int round, double points})>[];
     for (final point in pointsHistory) {
@@ -512,11 +572,28 @@ class _LeagueEntry {
         'overall_points',
       ])?.toString(),
       members: members,
-      chipsUsed: used.where((chip) => chip.isNotEmpty).toSet(),
+      chipsUsed: chipUsage.keys.toSet(),
+      chipRounds: {
+        for (final entry in chipUsage.entries)
+          if (entry.value != null) entry.key: entry.value!,
+      },
       history: history,
       pointsHistory: accumulatedHistory,
+      raceHistory: raceHistory,
     );
   }
+}
+
+class _LeagueMember {
+  const _LeagueMember({
+    required this.name,
+    required this.isConstructor,
+    required this.isBoosted,
+  });
+
+  final String name;
+  final bool isConstructor;
+  final bool isBoosted;
 }
 
 class _RacePositionTable extends StatelessWidget {
@@ -527,7 +604,7 @@ class _RacePositionTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rounds = entries
-        .expand((entry) => entry.history.map((point) => point.round))
+        .expand((entry) => entry.raceHistory.map((point) => point.round))
         .toSet()
         .toList()
       ..sort();
@@ -544,7 +621,7 @@ class _RacePositionTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('MEDALLERO · POSICIÓN POR CARRERA', style: AppText.mono(9)),
+          Text(context.tr('MEDALLERO · POSICIÓN POR CARRERA'), style: AppText.mono(9)),
           const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -555,7 +632,10 @@ class _RacePositionTable extends StatelessWidget {
               horizontalMargin: 8,
               columnSpacing: 18,
               columns: [
-                DataColumn(label: Text('EQUIPO', style: AppText.mono(7.5))),
+                DataColumn(label: Text(context.tr('EQUIPO'), style: AppText.mono(7.5))),
+                DataColumn(label: Text('1º', style: AppText.mono(7.5))),
+                DataColumn(label: Text('2º', style: AppText.mono(7.5))),
+                DataColumn(label: Text('3º', style: AppText.mono(7.5))),
                 for (final round in rounds)
                   DataColumn(label: Text('R$round', style: AppText.mono(7.5))),
               ],
@@ -574,10 +654,15 @@ class _RacePositionTable extends StatelessWidget {
                         ),
                       ),
                     ),
+                    for (final medal in const [1, 2, 3])
+                      DataCell(Text(
+                        '${entries[i].raceHistory.where((point) => point.rank == medal).length}',
+                        style: AppText.mono(8.5, color: medalColor(medal)),
+                      )),
                     for (final round in rounds)
                       DataCell(Builder(builder: (_) {
                         final matches = entries[i]
-                            .history
+                            .raceHistory
                             .where((point) => point.round == round);
                         final rank =
                             matches.isEmpty ? null : matches.first.rank;
@@ -597,18 +682,36 @@ class _RacePositionTable extends StatelessWidget {
 }
 
 class _LeagueEntryCard extends StatefulWidget {
-  const _LeagueEntryCard({required this.entry, required this.color});
+  const _LeagueEntryCard({
+    required this.entry,
+    required this.color,
+    required this.catalog,
+    this.initiallyOpen = false,
+    this.showChips = true,
+  });
   final _LeagueEntry entry;
   final Color color;
+  final Map<String, FantasyAssetInfo> catalog;
+  final bool initiallyOpen;
+  final bool showChips;
   @override
   State<_LeagueEntryCard> createState() => _LeagueEntryCardState();
 }
 
 class _LeagueEntryCardState extends State<_LeagueEntryCard> {
-  bool open = false;
+  late bool open;
+
+  @override
+  void initState() {
+    super.initState();
+    open = widget.initiallyOpen;
+  }
+
   @override
   Widget build(BuildContext context) {
     final entry = widget.entry;
+    final drivers = entry.members.where((member) => !member.isConstructor);
+    final constructors = entry.members.where((member) => member.isConstructor);
     return RefCard(
       padding: EdgeInsets.zero,
       child: InkWell(
@@ -652,7 +755,7 @@ class _LeagueEntryCardState extends State<_LeagueEntryCard> {
                 const Divider(height: 20),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('INTEGRANTES', style: AppText.mono(9)),
+                  child: Text(context.tr('PILOTOS'), style: AppText.mono(9)),
                 ),
                 const SizedBox(height: 7),
                 if (entry.members.isEmpty)
@@ -664,31 +767,58 @@ class _LeagueEntryCardState extends State<_LeagueEntryCard> {
                     ),
                   )
                 else
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                  Column(
                     children: [
-                      for (final member in entry.members)
-                        _Pill(label: member, color: AppColors.cyan),
+                      for (final member in drivers) ...[
+                        _LeagueAssetCard(
+                          member: member,
+                          catalog: widget.catalog,
+                        ),
+                        if (member != drivers.last) const SizedBox(height: 7),
+                      ],
                     ],
                   ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('CHIPS', style: AppText.mono(9)),
-                ),
-                const SizedBox(height: 7),
-                Wrap(
-                  spacing: 7,
-                  runSpacing: 7,
-                  children: [
-                    for (final chip in _chips)
-                      _ChipStatus(
-                        label: chip,
-                        used: entry.chipsUsed.contains(_slug(chip)),
-                      ),
-                  ],
-                ),
+                if (constructors.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                  child: Text(context.tr('CONSTRUCTORES'), style: AppText.mono(9)),
+                  ),
+                  const SizedBox(height: 7),
+                  Column(
+                    children: [
+                      for (final member in constructors) ...[
+                        _LeagueAssetCard(
+                          member: member,
+                          catalog: widget.catalog,
+                        ),
+                        if (member != constructors.last)
+                          const SizedBox(height: 7),
+                      ],
+                    ],
+                  ),
+                ],
+                if (widget.showChips) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child:
+                        Text(context.tr('CHIPS DE LA TEMPORADA'), style: AppText.mono(9)),
+                  ),
+                  const SizedBox(height: 7),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 7,
+                    children: [
+                      for (final chip in _chips)
+                        _ChipStatus(
+                          label: chip,
+                          used: entry.chipsUsed.contains(_canonicalChip(chip)),
+                          round: entry.chipRounds[_canonicalChip(chip)],
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ],
           ),
@@ -701,16 +831,21 @@ class _LeagueEntryCardState extends State<_LeagueEntryCard> {
 const _chips = [
   'Limitless',
   'Wildcard',
-  'Extra DRS',
+  '3x Boost',
   'No Negative',
   'Final Fix',
   'Autopilot',
 ];
 
 class _ChipStatus extends StatelessWidget {
-  const _ChipStatus({required this.label, required this.used});
+  const _ChipStatus({
+    required this.label,
+    required this.used,
+    this.round,
+  });
   final String label;
   final bool used;
+  final int? round;
   @override
   Widget build(BuildContext context) {
     final color = used ? AppColors.textTertiary : AppColors.lime;
@@ -731,7 +866,10 @@ class _ChipStatus extends StatelessWidget {
           children: [
             Icon(_chipIcon(label), size: 14, color: color),
             const SizedBox(width: 4),
-            Text(label.toUpperCase(), style: AppText.mono(6.5, color: color)),
+            Text(
+              '${label.toUpperCase()} · ${used ? 'USADO${round == null ? '' : ' R$round'}' : 'DISP.'}',
+              style: AppText.mono(6.5, color: color),
+            ),
           ],
         ),
       ),
@@ -739,21 +877,87 @@ class _ChipStatus extends StatelessWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill({required this.label, required this.color});
-  final String label;
-  final Color color;
+class _LeagueAssetCard extends StatelessWidget {
+  const _LeagueAssetCard({required this.member, required this.catalog});
+
+  final _LeagueMember member;
+  final Map<String, FantasyAssetInfo> catalog;
+
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .08),
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: color.withValues(alpha: .35)),
-        ),
-        child: Text(label, style: AppText.body(10.5, weight: FontWeight.w700)),
-      );
+  Widget build(BuildContext context) {
+    final info = _matchMember(member, catalog);
+    final constructorId = member.isConstructor
+        ? info?.id
+        : _constructorIdForName(info?.teamName, catalog);
+    final color = teamColor(constructorId);
+    final tag = member.isConstructor
+        ? 'Constructor'
+        : member.isBoosted
+            ? 'Piloto · X2 activo'
+            : 'Piloto';
+    final subtitle = member.isConstructor
+        ? 'Escuderia seleccionada'
+        : (info?.teamName.isNotEmpty == true
+            ? info!.teamName
+            : 'Piloto seleccionado');
+    return AssetCard(
+      tag: tag,
+      name: info?.name ?? member.name,
+      subtitle: subtitle,
+      barColor: color,
+      tagColor: member.isBoosted ? AppColors.lime : color,
+    );
+  }
 }
+
+FantasyAssetInfo? _matchMember(
+  _LeagueMember member,
+  Map<String, FantasyAssetInfo> catalog,
+) {
+  final wanted = _normaliseAssetName(member.name);
+  final kind = member.isConstructor
+      ? FantasyAssetKind.constructor
+      : FantasyAssetKind.driver;
+  final candidates = catalog.values.where((info) => info.kind == kind);
+  for (final info in candidates) {
+    if (_normaliseAssetName(info.name) == wanted ||
+        _normaliseAssetName(info.id) == wanted) {
+      return info;
+    }
+  }
+  if (wanted.length < 4) return null;
+  for (final info in candidates) {
+    final name = _normaliseAssetName(info.name);
+    if (name.contains(wanted) || wanted.contains(name)) return info;
+  }
+  return null;
+}
+
+String? _constructorIdForName(
+  String? teamName,
+  Map<String, FantasyAssetInfo> catalog,
+) {
+  if (teamName == null || teamName.isEmpty) return null;
+  final wanted = _normaliseAssetName(teamName);
+  for (final info in catalog.values) {
+    if (info.kind == FantasyAssetKind.constructor &&
+        _normaliseAssetName(info.name) == wanted) {
+      return info.id;
+    }
+  }
+  return wanted.replaceAll(' ', '_');
+}
+
+String _normaliseAssetName(String value) => value
+    .toLowerCase()
+    .replaceAll(RegExp('[áàäâ]'), 'a')
+    .replaceAll(RegExp('[éèëê]'), 'e')
+    .replaceAll(RegExp('[íìïî]'), 'i')
+    .replaceAll(RegExp('[óòöô]'), 'o')
+    .replaceAll(RegExp('[úùüû]'), 'u')
+    .replaceAll('ñ', 'n')
+    .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+    .trim();
 
 class _PositionChart extends StatelessWidget {
   const _PositionChart({
@@ -793,7 +997,7 @@ class _PositionChart extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('EVOLUCIÓN DE POSICIONES', style: AppText.mono(9)),
+                child: Text(context.tr('EVOLUCIÓN DE POSICIONES'), style: AppText.mono(9)),
               ),
               _ChartButton(
                 label: '3',
@@ -808,7 +1012,7 @@ class _PositionChart extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               _ChartButton(
-                label: 'Todo',
+                label: context.tr('Todo'),
                 active: window == null,
                 onTap: () => onWindowChanged(null),
               ),
@@ -945,7 +1149,7 @@ class _PointsChart extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('PUNTOS ACUMULADOS', style: AppText.mono(9)),
+          Text(context.tr('PUNTOS ACUMULADOS'), style: AppText.mono(9)),
           const SizedBox(height: 10),
           SizedBox(
             height: 190,
@@ -1136,47 +1340,6 @@ List<Map<String, dynamic>> _findNamedList(dynamic node, Set<String> keys) {
   return const [];
 }
 
-void _collectUsedChips(dynamic node, Set<String> output) {
-  if (node is Map) {
-    for (final entry in node.entries) {
-      final key = entry.key.toString().toLowerCase();
-      final isChipField = key.contains('chip') || key.contains('booster');
-      final value = entry.value;
-      if (isChipField && value is String && value.isNotEmpty) {
-        output.addAll(value.split(',').map(_slug));
-      } else if (isChipField && value is List) {
-        for (final item in value) {
-          if (item is Map) {
-            final name = _first(Map<String, dynamic>.from(item), const [
-              'name',
-              'chip',
-              'booster',
-              'type',
-              'boostername',
-            ]);
-            final active = _first(Map<String, dynamic>.from(item), const [
-              'used',
-              'isused',
-              'activated',
-              'gamedayid',
-            ]);
-            if (name != null && active != false && active != 0) {
-              output.add(_slug(name.toString()));
-            }
-          } else {
-            output.add(_slug(item.toString()));
-          }
-        }
-      }
-      _collectUsedChips(value, output);
-    }
-  } else if (node is List) {
-    for (final value in node) {
-      _collectUsedChips(value, output);
-    }
-  }
-}
-
 List<Map<String, dynamic>> _enrichLeagueRows(
   Map<String, dynamic>? response,
   List<Map<String, dynamic>> currentRows,
@@ -1222,6 +1385,11 @@ List<Map<String, dynamic>> _enrichLeagueRows(
             'round': round,
             'rank': rank,
             'points': _first(roundRow, const ['points', 'cur_points', 'score']),
+            'race_rank': _first(roundRow, const [
+              'race_rank',
+              'gameday_rank',
+              'gp_rank',
+            ]),
           });
         }
         break;
@@ -1237,19 +1405,20 @@ List<Map<String, dynamic>> _enrichLeagueRows(
 
 String _leagueMemberKey(Map<String, dynamic> row) {
   final id = _first(row, const [
+    'userguid',
+    'user_guid',
+    'guid',
+    'managerid',
+    'userid',
+    'user_id',
     'teamid',
     'team_id',
     'entryid',
     'entry_id',
-    'userid',
-    'user_id',
-    'userguid',
-    'user_guid',
-    'user_team',
-    'guid',
-    'managerid',
   ]);
-  if (id != null && id.toString().isNotEmpty) return id.toString();
+  if (id != null && id is! Iterable && id.toString().isNotEmpty) {
+    return id.toString();
+  }
   return (_first(row, const [
             'team_name',
             'teamname',
@@ -1309,7 +1478,12 @@ String _slug(String value) => value
     .toLowerCase()
     .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
     .replaceAll(RegExp(r'^_|_$'), '');
-IconData _chipIcon(String chip) => switch (_slug(chip)) {
+String _canonicalChip(String value) => switch (_slug(value)) {
+      'extra_drs' || '3x_boost' || 'triple_boost' => 'triple_boost',
+      'auto_pilot' => 'autopilot',
+      final chip => chip,
+    };
+IconData _chipIcon(String chip) => switch (_canonicalChip(chip)) {
       'limitless' => Icons.all_inclusive_rounded,
       'wildcard' => Icons.shuffle_rounded,
       'triple_boost' => Icons.bolt_rounded,
@@ -1347,11 +1521,12 @@ List<Map<String, dynamic>> _extractList(
 }
 
 dynamic _first(Map<String, dynamic> map, List<String> keys) {
-  final wanted = keys.map((key) => key.toLowerCase()).toSet();
-  for (final entry in map.entries) {
-    if (!wanted.contains(entry.key.toLowerCase())) continue;
-    final value = entry.value;
-    if (value != null && value.toString().isNotEmpty) return value;
+  for (final key in keys) {
+    for (final entry in map.entries) {
+      if (entry.key.toLowerCase() != key.toLowerCase()) continue;
+      final value = entry.value;
+      if (value != null && value.toString().isNotEmpty) return value;
+    }
   }
   return null;
 }

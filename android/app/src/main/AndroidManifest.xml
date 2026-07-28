@@ -2,10 +2,20 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:label="Fantasy Companion F1"
+        android:label="Polewise"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher">
+        <!-- Analytics permanece apagado hasta que el usuario lo autoriza. -->
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_personalization_signals"
+            android:value="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

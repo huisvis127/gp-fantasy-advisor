@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_providers.dart';
 import '../../../core/constants.dart';
 import '../../../core/fantasy_standings_provider.dart';
+import '../../../core/localization.dart';
 import '../../../core/providers.dart'
     show
         teamImportServiceProvider,
@@ -60,6 +61,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
     final driversAsync = ref.watch(driverPredictionsProvider);
     final constructorsAsync = ref.watch(engineConstructorPredictionsProvider);
     final catalog = ref.watch(fantasyAssetNameProvider).valueOrNull ?? const {};
+    final storedTeam = teamAsync.valueOrNull;
 
     teamAsync.whenData(_hydrate);
 
@@ -131,9 +133,10 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                       : const Icon(Icons.cloud_download_rounded,
                           size: 16, color: AppColors.cyan),
                   label: Text(_importing
-                      ? 'Importando…'
-                      : 'Traer equipo del Fantasy (requiere sesión)'),
+                      ? context.tr('Importando…')
+                      : context.tr('Traer equipo del Fantasy (requiere sesión)'),
                 ),
+              ),
               ),
               if (_importError != null) ...[
                 const SizedBox(height: 8),
@@ -148,11 +151,11 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                 Center(
                   child: TotalPill(
                     value: totalPoints.toStringAsFixed(1),
-                    label: 'pts esperados este GP',
+                    label: context.tr('pts esperados este GP'),
                   ),
                 ),
               if (isComplete) const SizedBox(height: 14),
-              Text('PILOTOS',
+              Text(context.tr('PILOTOS'),
                   style: AppText.mono(10, color: AppColors.textSecondary)),
               const SizedBox(height: 8),
               GridView.count(
@@ -161,7 +164,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 8,
                 crossAxisSpacing: 8,
-                childAspectRatio: 2.1,
+                mainAxisExtent: 96,
                 children: [
                   for (var i = 0; i < _driverSlots; i++)
                     AssetCard(
@@ -184,7 +187,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Text('CONSTRUCTORES',
+              Text(context.tr('CONSTRUCTORES'),
                   style: AppText.mono(10, color: AppColors.textSecondary)),
               const SizedBox(height: 8),
               Row(
@@ -227,7 +230,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: isComplete ? () => _save(remaining) : null,
-                      child: const Text('GUARDAR MI EQUIPO'),
+                      child: Text(context.tr('GUARDAR MI EQUIPO')),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -240,7 +243,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                         _constructors[i] = null;
                       }
                     }),
-                    child: const Text('Vaciar'),
+                    child: Text(context.tr('Vaciar')),
                   ),
                 ],
               ),
@@ -261,10 +264,46 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
           ),
         ],
 
+        if (storedTeam != null &&
+            storedTeam.source != MyTeamSource.manual &&
+            storedTeam.isComplete) ...[
+          const SizedBox(height: 14),
+          RefCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHead(
+                  kicker: 'Cuenta sincronizada',
+                  title: 'Chips de la temporada',
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Estado leído del historial privado de F1 Fantasy. Cada chip solo puede usarse una vez.',
+                  style: AppText.body(10.5, color: AppColors.textTertiary),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    for (final label in GameRules.chipNames)
+                      _MyTeamChip(
+                        label: label,
+                        used: storedTeam.chipsUsed.contains(
+                          _canonicalMyTeamChip(label),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+
         // ===== SUGERENCIA DE CAMBIOS =====
         if (isComplete) ...[
           const SizedBox(height: 14),
-          const SectionHead(kicker: 'Optimizador', title: 'Planes de cambios'),
+          SectionHead(kicker: 'Optimizador', title: 'Planes de cambios'),
           const SizedBox(height: 8),
           _TransferPlans(catalog: catalog),
         ],
@@ -366,7 +405,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
         .toList();
     final chosen = await showPickerSheet<AssetPrediction>(
       context: context,
-      title: 'Piloto ${slot + 1}',
+      title: context.tr('Piloto {number}', values: {'number': slot + 1}),
       items: available,
       selected: available
           .where((p) => p.assetId == _drivers[slot])
@@ -396,7 +435,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
         .toList();
     final chosen = await showPickerSheet<AssetPrediction>(
       context: context,
-      title: 'Constructor ${slot + 1}',
+      title: context.tr('Constructor {number}', values: {'number': slot + 1}),
       items: available,
       selected: available
           .where((p) => p.assetId == _constructors[slot])
@@ -422,12 +461,47 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.surface3,
-          content: Text('Equipo guardado',
+          content: Text(context.tr('Equipo guardado'),
               style: AppText.body(13, color: AppColors.lime)),
         ),
       );
     }
   }
+}
+
+class _MyTeamChip extends StatelessWidget {
+  const _MyTeamChip({required this.label, required this.used});
+
+  final String label;
+  final bool used;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = used ? AppColors.textTertiary : AppColors.lime;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .09),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: .55)),
+      ),
+      child: Text(
+        '${label.toUpperCase()} · ${used ? context.tr('USADO') : context.tr('DISP.')}',
+        style: AppText.mono(7, color: color),
+      ),
+    );
+  }
+}
+
+String _canonicalMyTeamChip(String label) {
+  final slug = label
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_|_$'), '');
+  return switch (slug) {
+    'triple_boost' || '3x_boost' => 'triple_boost',
+    final value => value,
+  };
 }
 
 class _TransferPlans extends ConsumerWidget {
@@ -457,7 +531,7 @@ class _TransferPlans extends ConsumerWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                '2 cambios gratis por jornada; el 3º cuesta -10 pts (ya descontados en la ganancia neta).',
+                context.tr('2 cambios gratis por jornada; el 3º cuesta -10 pts (ya descontados en la ganancia neta).'),
                 style: AppText.body(10.5, color: AppColors.textTertiary),
               ),
             ),
@@ -472,7 +546,7 @@ class _TransferPlans extends ConsumerWidget {
         ),
       ),
       error: (e, _) => StatusBanner(
-        message: 'No se pudieron calcular los cambios: $e',
+        message: context.tr('Error: {error}', values: {'error': e}),
         isError: true,
         onRetry: () => ref.invalidate(transferPlansProvider),
       ),
