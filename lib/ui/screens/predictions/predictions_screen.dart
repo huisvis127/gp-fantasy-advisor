@@ -49,8 +49,8 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
             Expanded(
               child: Text(
                 (weekend == null || weekend.isEmpty)
-                    ? 'Predicción con histórico. Cuando haya libres/quali del finde, se incorporan solos.'
-                    : 'Incluye las sesiones del finde ponderadas por la tabla calibrada.',
+                    ? 'Predicción con histórico. FP1, FP2 y FP3 se incorporan automáticamente.'
+                    : 'Modelo previo a clasificación: usa solo las sesiones libres disponibles.',
                 style: AppText.body(10.5, color: AppColors.textTertiary),
               ),
             ),

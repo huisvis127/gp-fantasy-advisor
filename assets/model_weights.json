@@ -1,7 +1,7 @@
 {
-  "_comment": "Pesos w1..w8 del motor de predicción. Recalibrados el 05/07/2026 con el mini-backtest sobre las rondas 2026 disputadas (tools/mini_backtest_2026.py, informe en docs/backtest_mini_2026.md): las señales de vuelta única (clasificación + gap de vuelta rápida) dominan la predicción. Calibración definitiva pendiente: tools/backtest.py sobre 2023-2025.",
-  "version": "0.2.0-minibacktest-2026",
-  "calibrated_on": "2026-07-05",
+  "_comment": "Pesos generales recalibrados el 05/07/2026. Pesos de sesiones calibrados el 18/07/2026 con 38 GP OpenF1: entrenamiento 2023-2024 y validación fuera de muestra 2025 (tools/session_weights_backtest.py y docs/session_weights_backtest.md).",
+  "version": "0.3.0-session-backtest-2023-2025",
+  "calibrated_on": "2026-07-18",
   "validation_spearman": 0.63,
   "validation_note": "Spearman medio +0.63 y acierto top-10 ~72-75% prediciendo las rondas 4/5/7/8 de 2026 solo con datos anteriores (muestra pequeña: 4 carreras).",
   "feature_weights": {
@@ -15,8 +15,16 @@
     "w8_riesgo_dnf": 0.02
   },
   "session_weights_by_objective": {
-    "race": { "fp1": 0.15, "fp2": 0.35, "fp3": 0.20, "quali": 0.30 },
-    "sprint": { "fp1": 0.50, "sq": 0.50 }
+    "race_fp1_fp2": { "fp1": 0.50, "fp2": 0.50 },
+    "race_fp1_fp2_fp3": { "fp1": 0.42, "fp2": 0.13, "fp3": 0.45 }
+  },
+  "session_validation": {
+    "sample_races": 38,
+    "train_seasons": [2023, 2024],
+    "validation_season": 2025,
+    "fp1_fp2_validation_spearman": 0.585,
+    "fp1_fp2_fp3_validation_spearman": 0.652,
+    "fp1_fp2_fp3_validation_top5_capture": 0.797
   },
   "pace_stint_metric": "median_top2_stints",
   "recent_form_window_races": 5,

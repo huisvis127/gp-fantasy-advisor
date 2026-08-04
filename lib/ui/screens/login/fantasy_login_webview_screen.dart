@@ -166,7 +166,14 @@ class _FantasyLoginWebViewScreenState
     stage = 'teams';
     const teams = await readJson('/services/user/gameplay/' + guid + '/getusergamedaysv1/1');
     stage = 'leagues';
-    const leagues = await readJson('/services/user/league/' + guid + '/getuserleague/1');
+    let leagues;
+    try {
+      // Endpoint used by the current (2026) F1 Fantasy web application.
+      leagues = await readJson('/services/user/league/' + guid + '/leaguelandingv1');
+    } catch (_) {
+      // Keep compatibility with snapshots from the previous API.
+      leagues = await readJson('/services/user/league/' + guid + '/getuserleague/1');
+    }
 
     const findArray = node => {
       if (!node || typeof node !== 'object') return [];
@@ -250,16 +257,38 @@ class _FantasyLoginWebViewScreenState
       const id = league.LeagueId || league.LeagueID || league.leagueId || league.league_id || league.id;
       if (!id) continue;
       const h2h = Number(league.IsHTHLeague || league.isHTHLeague || 0);
+      const leagueType = String(
+        league.LeagueType || league.leagueType || league.league_type || ''
+      ).toLowerCase();
       const history = {};
-      await Promise.all(leagueEvents.map(async event => {
+      if (leagueType === 'private') {
+        // Since the 2026 redesign, standings are static feeds. `list_1` is
+        // the overall table and `list_2` is the score for one Grand Prix.
         try {
-          const board = await readJson(
-            '/services/user/league/' + guid + '/getuserleaguemembers/1/' + id + '/' + h2h + '/' + event.gameDayId + '/1/100/'
+          leaderboards[String(id)] = await readJson(
+            '/feeds/leaderboard/privateleague/list_1_' + id + '_0_1.json'
           );
-          history[String(event.gameDayId)] = board;
-          if (event.gameDayId === gameDay) leaderboards[String(id)] = board;
-        } catch (_) {}
-      }));
+        } catch (_) {
+          try {
+            leaderboards[String(id)] = await readJson(
+              '/services/user/league/' + guid + '/getuserleaguemembers/1/' + id + '/' + h2h + '/' + gameDay + '/1/100/'
+            );
+          } catch (_) {}
+        }
+        await Promise.all(leagueEvents.map(async event => {
+          try {
+            history[String(event.gameDayId)] = await readJson(
+              '/feeds/leaderboard/privateleague/list_2_' + id + '_' + event.gameDayId + '_1.json'
+            );
+          } catch (_) {
+            try {
+              history[String(event.gameDayId)] = await readJson(
+                '/services/user/league/' + guid + '/getuserleaguemembers/1/' + id + '/' + h2h + '/' + event.gameDayId + '/1/100/'
+              );
+            } catch (_) {}
+          }
+        }));
+      }
       leagueHistory[String(id)] = history;
       if (!leaderboards[String(id)]) {
         const days = Object.keys(history).sort((a, b) => Number(a) - Number(b));
@@ -289,6 +318,10 @@ class _FantasyLoginWebViewScreenState
       if (kDebugMode) {
         debugPrint(
             '[F1_CAPTURE_STRUCTURE] ${jsonEncode(_structureOf(decoded))}');
+        final board = _firstLeagueBoard(
+          decoded is Map ? decoded['leagueHistory'] : null,
+        );
+        if (board != null) _logLeagueBoardShape(board);
       }
       if (decoded is Map && decoded['error'] != null) {
         if (kDebugMode) {
@@ -341,6 +374,40 @@ class _FantasyLoginWebViewScreenState
       };
     }
     return value.runtimeType.toString();
+  }
+
+  dynamic _firstLeagueBoard(dynamic history) {
+    if (history is! Map || history.isEmpty) return null;
+    final league = history.values.first;
+    if (league is! Map || league.isEmpty) return null;
+    return league.values.first;
+  }
+
+  void _logLeagueBoardShape(dynamic value,
+      [String path = r'$', int depth = 0]) {
+    if (depth > 5) return;
+    if (value is Map) {
+      debugPrint(
+        '[F1_LEAGUE_SHAPE] $path keys=${value.keys.join('|')}',
+      );
+      for (final entry in value.entries) {
+        if (entry.value is Map || entry.value is List) {
+          _logLeagueBoardShape(
+            entry.value,
+            '$path.${entry.key}',
+            depth + 1,
+          );
+        }
+      }
+    } else if (value is List) {
+      debugPrint('[F1_LEAGUE_SHAPE] $path length=${value.length}');
+      if (value.isNotEmpty && value.first is Map) {
+        final first = value.first as Map;
+        debugPrint(
+          '[F1_LEAGUE_SHAPE] $path[0] fields=${first.entries.map((entry) => '${entry.key}:${entry.value.runtimeType}').join('|')}',
+        );
+      }
+    }
   }
 
   /// runJavaScriptReturningResult devuelve el JSON con comillas escapadas

@@ -179,7 +179,8 @@ class UserWeightsNotifier extends Notifier<Map<String, double>> {
 }
 
 final userWeightsProvider =
-    NotifierProvider<UserWeightsNotifier, Map<String, double>>(UserWeightsNotifier.new);
+    NotifierProvider<UserWeightsNotifier, Map<String, double>>(
+        UserWeightsNotifier.new);
 
 /// `ModelWeights` efectivos: la estructura calibrada del asset, con los
 /// pesos w1..w8 sustituidos por los porcentajes elegidos por el usuario.
@@ -196,7 +197,7 @@ final effectiveWeightsProvider = FutureProvider<ModelWeights>((ref) async {
     w6AfinidadCircuito: w('afinidad_circuito'),
     w7FormaEquipo: w('forma_equipo'),
     w8RiesgoDnf: w('riesgo_dnf'),
-    sessionWeightsRace: base.sessionWeightsRace,
-    sessionWeightsSprint: base.sessionWeightsSprint,
+    sessionWeightsAfterFp2: base.sessionWeightsAfterFp2,
+    sessionWeightsAfterFp3: base.sessionWeightsAfterFp3,
   );
 });

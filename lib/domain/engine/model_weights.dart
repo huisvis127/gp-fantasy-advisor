@@ -18,8 +18,8 @@ class ModelWeights {
     required this.w6AfinidadCircuito,
     required this.w7FormaEquipo,
     required this.w8RiesgoDnf,
-    required this.sessionWeightsRace,
-    required this.sessionWeightsSprint,
+    required this.sessionWeightsAfterFp2,
+    required this.sessionWeightsAfterFp3,
   });
 
   final double w1RitmoCarrera;
@@ -31,8 +31,8 @@ class ModelWeights {
   final double w7FormaEquipo;
   final double w8RiesgoDnf;
 
-  final Map<String, double> sessionWeightsRace;
-  final Map<String, double> sessionWeightsSprint;
+  final Map<String, double> sessionWeightsAfterFp2;
+  final Map<String, double> sessionWeightsAfterFp3;
 
   static Future<ModelWeights> load() async {
     final raw = await rootBundle.loadString(AssetPaths.modelWeights);
@@ -43,7 +43,8 @@ class ModelWeights {
     final fw = json['feature_weights'] as Map<String, dynamic>;
     final sw = json['session_weights_by_objective'] as Map<String, dynamic>;
     Map<String, double> parseSessionWeights(String key) =>
-        (sw[key] as Map<String, dynamic>).map((k, v) => MapEntry(k, (v as num).toDouble()));
+        (sw[key] as Map<String, dynamic>)
+            .map((k, v) => MapEntry(k, (v as num).toDouble()));
 
     return ModelWeights(
       w1RitmoCarrera: (fw['w1_ritmo_carrera'] as num).toDouble(),
@@ -54,22 +55,28 @@ class ModelWeights {
       w6AfinidadCircuito: (fw['w6_afinidad_circuito'] as num).toDouble(),
       w7FormaEquipo: (fw['w7_forma_equipo'] as num).toDouble(),
       w8RiesgoDnf: (fw['w8_riesgo_dnf'] as num).toDouble(),
-      sessionWeightsRace: parseSessionWeights('race'),
-      sessionWeightsSprint: parseSessionWeights('sprint'),
+      sessionWeightsAfterFp2: parseSessionWeights('race_fp1_fp2'),
+      sessionWeightsAfterFp3: parseSessionWeights('race_fp1_fp2_fp3'),
     );
   }
 
-  /// Pesos por sesión repartiendo proporcionalmente el peso de una sesión
-  /// que falta entre las demás (sección 5.1: "si una sesión no existe su
-  /// peso se reparte proporcionalmente entre las demás").
+  /// Usa dos modelos distintos: uno al terminar FP2 y otro al terminar FP3.
+  /// La clasificación y la sprint quali nunca alimentan la recomendación,
+  /// porque el equipo se decide antes de que empiecen.
   Map<String, double> sessionWeightsFor({
     required bool isSprint,
     required Set<String> availableSessions,
   }) {
-    final base = isSprint ? sessionWeightsSprint : sessionWeightsRace;
-    final available = base.keys.where(availableSessions.contains).toList();
+    final practices = availableSessions.intersection(
+      const {'fp1', 'fp2', 'fp3'},
+    );
+    final base = practices.contains('fp3')
+        ? sessionWeightsAfterFp3
+        : sessionWeightsAfterFp2;
+    final available = base.keys.where(practices.contains).toList();
     if (available.isEmpty) return {};
-    final availableTotal = available.fold<double>(0, (sum, k) => sum + base[k]!);
+    final availableTotal =
+        available.fold<double>(0, (sum, k) => sum + base[k]!);
     if (availableTotal == 0) return {};
     return {
       for (final k in available) k: base[k]! / availableTotal,

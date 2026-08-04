@@ -9,7 +9,7 @@ import 'selected_gp.dart';
 /// Datos del fin de semana en curso (o del finde de un GP pasado) desde
 /// OpenF1, agregados por sesión (docs/PLAN_PREDICCION_SESIONES.md).
 /// Es lo que hace que la predicción mejore por etapas: pre-finde -> con FP1
-/// -> con FP1+FP2 -> ... -> con quali.
+/// -> con FP1+FP2 -> con FP1+FP2+FP3. Se detiene antes de clasificación.
 class WeekendData {
   const WeekendData({
     this.sessions = const <String>{},
@@ -17,7 +17,7 @@ class WeekendData {
     this.error,
   });
 
-  /// Sesiones terminadas con datos: subconjunto de {fp1, fp2, fp3, sq, quali}.
+  /// Sesiones terminadas con datos: subconjunto de {fp1, fp2, fp3}.
   final Set<String> sessions;
 
   /// driverId -> { 'onelap:fp1': gap%, 'pace:fp1': gap%, ... }.
@@ -33,15 +33,14 @@ class WeekendData {
   /// Etiqueta de etapa para la UI.
   String get stageLabel {
     if (sessions.isEmpty) return 'PRE-FINDE';
-    const order = ['fp1', 'fp2', 'fp3', 'sq', 'quali'];
+    const order = ['fp1', 'fp2', 'fp3'];
     const labels = {
       'fp1': 'FP1',
       'fp2': 'FP2',
       'fp3': 'FP3',
-      'sq': 'SQ',
-      'quali': 'QUALI',
     };
-    final present = order.where(sessions.contains).map((s) => labels[s]!).toList();
+    final present =
+        order.where(sessions.contains).map((s) => labels[s]!).toList();
     return 'CON ${present.join('+')}';
   }
 }
@@ -62,13 +61,8 @@ String? _sessionKeyOf(String sessionName) {
       return 'fp2';
     case 'Practice 3':
       return 'fp3';
-    case 'Sprint Qualifying':
-    case 'Sprint Shootout':
-      return 'sq';
-    case 'Qualifying':
-      return 'quali';
     default:
-      return null; // Race / Sprint: no alimentan la predicción de ese GP
+      return null; // Quali / SQ / Race / Sprint no alimentan la predicción.
   }
 }
 
@@ -136,10 +130,10 @@ Future<WeekendData> _loadWeekend(
   final catalog = await ref.watch(fantasyAssetNameProvider.future);
   final driverNames = <String, String>{
     for (final e in catalog.entries)
-      if (e.value.kind == FantasyAssetKind.driver) e.key: _normalize(e.value.name),
+      if (e.value.kind == FantasyAssetKind.driver)
+        e.key: _normalize(e.value.name),
   };
-  final openF1Drivers =
-      await api.getSessionDrivers(completed.values.first);
+  final openF1Drivers = await api.getSessionDrivers(completed.values.first);
   final numberToDriverId = <String, String>{};
   for (final d in openF1Drivers) {
     final number = d['driver_number']?.toString();
@@ -181,7 +175,8 @@ Future<WeekendData> _loadWeekend(
       if (driverId == null) return;
       final map = byDriverId.putIfAbsent(driverId, () => <String, double>{});
       map['onelap:${entry.key}'] = (a.bestLapMs - bestLap) / bestLap * 100.0;
-      map['pace:${entry.key}'] = (a.top2StintsAvgMs - bestPace) / bestPace * 100.0;
+      map['pace:${entry.key}'] =
+          (a.top2StintsAvgMs - bestPace) / bestPace * 100.0;
     });
   }
 

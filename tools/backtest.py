@@ -387,8 +387,8 @@ def main() -> None:
         "validation_passed": passed,
         "feature_weights": best_weights.as_dict(),
         "session_weights_by_objective": {
-            "race": {"fp1": 0.15, "fp2": 0.35, "fp3": 0.20, "quali": 0.30},
-            "sprint": {"fp1": 0.50, "sq": 0.50},
+            "race_fp1_fp2": {"fp1": 0.50, "fp2": 0.50},
+            "race_fp1_fp2_fp3": {"fp1": 0.42, "fp2": 0.13, "fp3": 0.45},
         },
         "pace_stint_metric": "median_top2_stints",
         "recent_form_window_races": 5,

@@ -98,12 +98,21 @@ class LeagueAnalytics {
         );
         builder.name = identity.name;
         builder.eventPoints[eventIndex] = _asDouble(_first(row, const [
+          'gdpoints',
           'gamedaypoints',
           'gameday_points',
           'matchdaypoints',
           'racepoints',
           'eventpoints',
           'weekpoints',
+          'cur_points',
+        ]));
+        builder.eventRanks[eventIndex] = _asInt(_first(row, const [
+          'gdrank',
+          'eventrank',
+          'cur_rank',
+          'rank',
+          'position',
         ]));
         builder.reportedTotals[eventIndex] = _asDouble(_first(row, const [
           'ovpoints',
@@ -126,7 +135,15 @@ class LeagueAnalytics {
       builder.name = identity.name;
       builder.currentRank = _asInt(_first(
         row,
-        const ['userrank', 'rank', 'position', 'overall_rank'],
+        const [
+          'ovrank',
+          'gdrank',
+          'cur_rank',
+          'userrank',
+          'rank',
+          'position',
+          'overall_rank',
+        ],
       ));
       builder.currentTotal = _asDouble(_first(row, const [
         'ovpoints',
@@ -135,6 +152,7 @@ class LeagueAnalytics {
         'totalpoints',
         'total_points',
         'points',
+        'cur_points',
         'score',
       ]));
     }
@@ -174,9 +192,24 @@ class LeagueAnalytics {
           .where((member) => member.eventPoints[i] != null)
           .toList()
         ..sort((a, b) => b.eventPoints[i]!.compareTo(a.eventPoints[i]!));
-      if (eventRanking.isNotEmpty) eventRanking[0].gold++;
-      if (eventRanking.length > 1) eventRanking[1].silver++;
-      if (eventRanking.length > 2) eventRanking[2].bronze++;
+      var computedRank = 1;
+      double? previousPoints;
+      for (var index = 0; index < eventRanking.length; index++) {
+        final points = eventRanking[index].eventPoints[i]!;
+        if (previousPoints != null && points != previousPoints) {
+          computedRank = index + 1;
+        }
+        previousPoints = points;
+        final reportedRank = eventRanking[index].eventRanks[i];
+        switch (reportedRank ?? computedRank) {
+          case 1:
+            eventRanking[index].gold++;
+          case 2:
+            eventRanking[index].silver++;
+          case 3:
+            eventRanking[index].bronze++;
+        }
+      }
     }
 
     final members = builders.values.map((builder) => builder.build()).toList()
@@ -193,6 +226,7 @@ class LeagueAnalytics {
 class _MemberBuilder {
   _MemberBuilder(this.key, this.name, int eventCount)
       : eventPoints = List<double?>.filled(eventCount, null),
+        eventRanks = List<int?>.filled(eventCount, null),
         reportedTotals = List<double?>.filled(eventCount, null),
         cumulativePoints = List<double?>.filled(eventCount, null),
         positions = List<int?>.filled(eventCount, null);
@@ -200,6 +234,7 @@ class _MemberBuilder {
   final String key;
   String name;
   final List<double?> eventPoints;
+  final List<int?> eventRanks;
   final List<double?> reportedTotals;
   final List<double?> cumulativePoints;
   final List<int?> positions;
@@ -234,9 +269,12 @@ class _MemberBuilder {
   final name = _displayValue(rawName);
   final rawId = _first(row, const [
     'userguid',
+    'user_guid',
     'userid',
     'user_id',
     'guid',
+    'socialid',
+    'social_id',
     'teamid',
     'team_id',
     'entryid',
@@ -259,6 +297,19 @@ List<Map<String, dynamic>> extractLeagueRows(dynamic node) {
     'value',
   };
   if (node is Map) {
+    final rankedRows = <Map<String, dynamic>>[];
+    for (final preferredKey in const ['userrank', 'memrank']) {
+      for (final entry in node.entries) {
+        if (entry.key.toString().toLowerCase() != preferredKey ||
+            entry.value is! List) {
+          continue;
+        }
+        rankedRows.addAll((entry.value as List)
+            .whereType<Map>()
+            .map((row) => Map<String, dynamic>.from(row)));
+      }
+    }
+    if (rankedRows.isNotEmpty) return rankedRows;
     for (final entry in node.entries) {
       if (preferred.contains(entry.key.toString().toLowerCase()) &&
           entry.value is List) {

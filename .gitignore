@@ -8,9 +8,12 @@ build/
 android/local.properties
 android/key.properties
 android/app/*.jks
+android/app/src/google-services.json
 ios/Flutter/Flutter.podspec
 ios/Pods/
 .DS_Store
 tools/__pycache__/
 tools/.venv/
 *.pyc
+.cache/
+tools/.cache/

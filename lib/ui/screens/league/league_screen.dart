@@ -169,7 +169,11 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
           );
         }
 
-        final leagues = _extractLeagues(requestSnapshot.data);
+        final allLeagues = _extractLeagues(requestSnapshot.data);
+        final privateLeagues = allLeagues
+            .where((league) => _leagueType(league) == 'private')
+            .toList();
+        final leagues = privateLeagues.isNotEmpty ? privateLeagues : allLeagues;
         if (leagues.isEmpty) {
           return ListView(
             padding: const EdgeInsets.all(14),
@@ -651,6 +655,7 @@ List<Map<String, dynamic>> _extractLeagues(dynamic node) {
     'details',
     'value',
     'leaguesdata',
+    'user_leagues',
   };
   if (node is Map) {
     for (final entry in node.entries) {
@@ -687,6 +692,11 @@ String _leagueName(Map<String, dynamic> league) => _decode(
               'Liga')
           .toString(),
     );
+
+String _leagueType(Map<String, dynamic> league) =>
+    (_first(league, const ['league_type', 'leaguetype', 'type']) ?? '')
+        .toString()
+        .toLowerCase();
 
 dynamic _first(Map map, List<String> keys) {
   final wanted = keys.map((key) => key.toLowerCase()).toSet();
