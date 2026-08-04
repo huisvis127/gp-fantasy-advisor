@@ -61,18 +61,20 @@ class _RootShellState extends ConsumerState<RootShell> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Fantasy Companion',
+                          'GP Fantasy Advisor',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              AppText.syne(18, color: AppColors.lime).copyWith(
-                            shadows: [
-                              Shadow(
-                                color: AppColors.lime.withValues(alpha: 0.45),
-                                blurRadius: 12,
+                          style: AppText.syne(18, color: AppColors.lime)
+                              .copyWith(
+                                shadows: [
+                                  Shadow(
+                                    color: AppColors.lime.withValues(
+                                      alpha: 0.45,
+                                    ),
+                                    blurRadius: 12,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
                         ),
                       ),
                       const SizedBox(width: 9),
@@ -85,8 +87,10 @@ class _RootShellState extends ConsumerState<RootShell> {
                             selectedRace.raceName.toUpperCase(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style:
-                                AppText.mono(9, color: AppColors.textSecondary),
+                            style: AppText.mono(
+                              9,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ),
                       ],
@@ -96,7 +100,8 @@ class _RootShellState extends ConsumerState<RootShell> {
                         visualDensity: VisualDensity.compact,
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
-                              builder: (_) => const SettingsScreen()),
+                            builder: (_) => const SettingsScreen(),
+                          ),
                         ),
                         icon: const Icon(
                           Icons.settings_rounded,
@@ -108,7 +113,9 @@ class _RootShellState extends ConsumerState<RootShell> {
                   ),
                 ),
               ),
-              Expanded(child: IndexedStack(index: _index, children: _screens)),
+              Expanded(
+                child: IndexedStack(index: _index, children: _screens),
+              ),
             ],
           ),
         ),
@@ -144,8 +151,9 @@ class _RootShellState extends ConsumerState<RootShell> {
                               boxShadow: i == _index
                                   ? [
                                       BoxShadow(
-                                        color: AppColors.lime
-                                            .withValues(alpha: 0.65),
+                                        color: AppColors.lime.withValues(
+                                          alpha: 0.65,
+                                        ),
                                         blurRadius: 12,
                                       ),
                                     ]

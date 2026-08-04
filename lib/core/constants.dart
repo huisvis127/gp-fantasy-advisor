@@ -31,9 +31,12 @@ class AssetPaths {
 
   static const String scoringTable = 'assets/scoring_2026.json';
   static const String modelWeights = 'assets/model_weights.json';
-  static const String remoteConfigFallback = 'assets/remote_config_fallback.json';
-  static const String driverStandingsFallback = 'assets/driver_standings_2026.json';
-  static const String constructorStandingsFallback = 'assets/constructor_standings_2026.json';
+  static const String remoteConfigFallback =
+      'assets/remote_config_fallback.json';
+  static const String driverStandingsFallback =
+      'assets/driver_standings_2026.json';
+  static const String constructorStandingsFallback =
+      'assets/constructor_standings_2026.json';
 }
 
 class AppMeta {

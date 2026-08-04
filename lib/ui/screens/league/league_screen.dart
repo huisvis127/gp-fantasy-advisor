@@ -6,8 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/app_providers.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/league_analytics.dart';
+import '../../../domain/models/live_fantasy.dart';
+import '../../../domain/models/my_team.dart';
 import '../../widgets/ref_widgets.dart';
 import '../login/fantasy_login_screen.dart';
 
@@ -26,10 +29,7 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
     final auth = ref.watch(fantasyAuthServiceProvider);
     return FutureBuilder<List<String?>>(
       key: ValueKey(_refreshKey),
-      future: Future.wait([
-        auth.readStoredToken(),
-        auth.readSessionSnapshot(),
-      ]),
+      future: Future.wait([auth.readStoredToken(), auth.readSessionSnapshot()]),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator(strokeWidth: 2));
@@ -133,22 +133,22 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
     }
     final api = ref.read(fantasyApiProvider);
     final season = ref.read(currentSeasonProvider);
-    _request = api.getLeagueEntrants(
-      season: season,
-      bearerToken: widget.token,
-    );
+    _request = api.getLeagueEntrants(season: season, bearerToken: widget.token);
   }
 
   Future<void> _captureHistory() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const FantasyLoginScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const FantasyLoginScreen()));
     if (!mounted) return;
     widget.onSessionUpdated();
   }
 
   @override
   Widget build(BuildContext context) {
+    final myTeam = ref.watch(myTeamProvider).valueOrNull;
+    final liveAssets =
+        ref.watch(liveFantasyProvider).valueOrNull?.assets ?? const [];
     return FutureBuilder<Map<String, dynamic>>(
       future: _request,
       builder: (context, requestSnapshot) {
@@ -205,10 +205,7 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 30),
             children: [
-              const SectionHead(
-                kicker: 'Competición',
-                title: 'Tu liga F1',
-              ),
+              const SectionHead(kicker: 'Competición', title: 'Tu liga F1'),
               const SizedBox(height: 6),
               Text(
                 leagues.length == 1
@@ -242,6 +239,12 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
                 ),
                 const SizedBox(height: 20),
                 _CurrentStandings(analytics: analytics),
+                const SizedBox(height: 22),
+                _RivalStrategy(
+                  analytics: analytics,
+                  team: myTeam,
+                  liveAssets: liveAssets,
+                ),
                 const SizedBox(height: 22),
                 _TrendSection(analytics: analytics),
                 const SizedBox(height: 22),
@@ -315,8 +318,10 @@ class _LeagueSummary extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              TagChip('${analytics.members.length} equipos',
-                  color: AppColors.lime),
+              TagChip(
+                '${analytics.members.length} equipos',
+                color: AppColors.lime,
+              ),
               TagChip('${analytics.events.length} GP', color: AppColors.cyan),
               if (analytics.hasHistory)
                 const TagChip('Historial completo', color: AppColors.ok),
@@ -374,6 +379,110 @@ class _CurrentStandings extends StatelessWidget {
   }
 }
 
+class _RivalStrategy extends StatelessWidget {
+  const _RivalStrategy({
+    required this.analytics,
+    required this.team,
+    required this.liveAssets,
+  });
+
+  final LeagueAnalytics analytics;
+  final MyTeam? team;
+  final List<LiveAssetScore> liveAssets;
+
+  @override
+  Widget build(BuildContext context) {
+    final me = analytics.members
+        .where((member) => member.isCurrentUser)
+        .firstOrNull;
+    LeagueMemberTrend? rival;
+    if (me?.currentRank != null) {
+      final ahead =
+          analytics.members
+              .where(
+                (member) =>
+                    member.currentRank != null &&
+                    member.currentRank! < me!.currentRank!,
+              )
+              .toList()
+            ..sort((a, b) => b.currentRank!.compareTo(a.currentRank!));
+      rival = ahead.firstOrNull;
+    }
+    final gap = me?.currentTotal != null && rival?.currentTotal != null
+        ? rival!.currentTotal! - me!.currentTotal!
+        : null;
+    final ownedIds = team == null
+        ? const <String>{}
+        : {...team!.driverIds, ...team!.constructorIds};
+    final owned =
+        liveAssets.where((asset) => ownedIds.contains(asset.assetId)).toList()
+          ..sort(
+            (a, b) => a.selectedPercentage.compareTo(b.selectedPercentage),
+          );
+    final unownedPopular =
+        liveAssets.where((asset) => !ownedIds.contains(asset.assetId)).toList()
+          ..sort(
+            (a, b) => b.selectedPercentage.compareTo(a.selectedPercentage),
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHead(
+          kicker: 'Diferenciales',
+          title: 'Estrategia contra rivales',
+        ),
+        const SizedBox(height: 8),
+        RefCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (me != null && rival != null) ...[
+                Text('Objetivo: ${rival.name}', style: AppText.syne(14)),
+                const SizedBox(height: 4),
+                Text(
+                  gap == null
+                      ? 'Está justo por delante en la clasificación.'
+                      : 'Necesitas recuperar ${gap.toStringAsFixed(0)} puntos.',
+                  style: AppText.body(11.5, color: AppColors.textSecondary),
+                ),
+              ] else
+                Text(
+                  'La liga no identifica todavía cuál es tu fila. Actualiza '
+                  'la captura para activar el rival directo.',
+                  style: AppText.body(11.5, color: AppColors.textSecondary),
+                ),
+              if (owned.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Tu diferencial: ${owned.first.displayName} '
+                  '(${owned.first.selectedPercentage.toStringAsFixed(0)}% de selección)',
+                  style: AppText.body(11, color: AppColors.lime),
+                ),
+              ],
+              if (unownedPopular.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Amenaza popular: ${unownedPopular.first.displayName} '
+                  '(${unownedPopular.first.selectedPercentage.toStringAsFixed(0)}%)',
+                  style: AppText.body(11, color: AppColors.warning),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                'Los porcentajes son oficiales globales. Las alineaciones '
+                'privadas de rivales solo se usarán si el servicio oficial '
+                'las devuelve después del cierre.',
+                style: AppText.body(9.5, color: AppColors.textTertiary),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _TrendSection extends StatelessWidget {
   const _TrendSection({required this.analytics});
 
@@ -384,10 +493,7 @@ class _TrendSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionHead(
-          kicker: 'Campeonato',
-          title: 'Evolución por GP',
-        ),
+        const SectionHead(kicker: 'Campeonato', title: 'Evolución por GP'),
         const SizedBox(height: 5),
         Text(
           analytics.hasHistory
@@ -467,10 +573,7 @@ class _LeagueChartCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 230,
-            child: LineChart(_chartData(members)),
-          ),
+          SizedBox(height: 230, child: LineChart(_chartData(members))),
         ],
       ),
     );
@@ -482,8 +585,9 @@ class _LeagueChartCard extends StatelessWidget {
         .expand((member) => member.cumulativePoints)
         .whereType<double>()
         .toList();
-    final pointMax =
-        allPointValues.isEmpty ? 1.0 : allPointValues.reduce(math.max) * 1.08;
+    final pointMax = allPointValues.isEmpty
+        ? 1.0
+        : allPointValues.reduce(math.max) * 1.08;
     return LineChartData(
       minX: 0,
       maxX: math.max(1, analytics.events.length - 1).toDouble(),
@@ -492,16 +596,15 @@ class _LeagueChartCard extends StatelessWidget {
       gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
-        getDrawingHorizontalLine: (_) => const FlLine(
-          color: AppColors.border1,
-          strokeWidth: 1,
-        ),
+        getDrawingHorizontalLine: (_) =>
+            const FlLine(color: AppColors.border1, strokeWidth: 1),
       ),
       borderData: FlBorderData(show: false),
       titlesData: FlTitlesData(
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        rightTitles:
-            const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
@@ -524,8 +627,9 @@ class _LeagueChartCard extends StatelessWidget {
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 30,
-            interval:
-                math.max(1, (analytics.events.length / 4).ceil()).toDouble(),
+            interval: math
+                .max(1, (analytics.events.length / 4).ceil())
+                .toDouble(),
             getTitlesWidget: (value, meta) {
               final index = value.round();
               if (index < 0 || index >= analytics.events.length) {
@@ -547,9 +651,11 @@ class _LeagueChartCard extends StatelessWidget {
         for (var i = 0; i < members.length; i++)
           LineChartBarData(
             spots: [
-              for (var eventIndex = 0;
-                  eventIndex < analytics.events.length;
-                  eventIndex++)
+              for (
+                var eventIndex = 0;
+                eventIndex < analytics.events.length;
+                eventIndex++
+              )
                 if ((positions
                         ? members[i].positions[eventIndex]?.toDouble()
                         : members[i].cumulativePoints[eventIndex])
@@ -577,7 +683,8 @@ class _MedalTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = [...analytics.members]..sort((a, b) {
+    final rows = [...analytics.members]
+      ..sort((a, b) {
         final gold = b.gold.compareTo(a.gold);
         if (gold != 0) return gold;
         final silver = b.silver.compareTo(a.silver);
@@ -632,19 +739,22 @@ class _MedalTable extends StatelessWidget {
   }
 
   Widget _medalHeader(String text, Color color) => SizedBox(
-        width: 42,
-        child: Text(text,
-            textAlign: TextAlign.center, style: AppText.mono(9, color: color)),
-      );
+    width: 42,
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: AppText.mono(9, color: color),
+    ),
+  );
 
   Widget _medalValue(int value, Color color) => SizedBox(
-        width: 42,
-        child: Text(
-          '$value',
-          textAlign: TextAlign.center,
-          style: AppText.syne(17, color: color),
-        ),
-      );
+    width: 42,
+    child: Text(
+      '$value',
+      textAlign: TextAlign.center,
+      style: AppText.syne(17, color: color),
+    ),
+  );
 }
 
 List<Map<String, dynamic>> _extractLeagues(dynamic node) {
@@ -676,22 +786,19 @@ List<Map<String, dynamic>> _extractLeagues(dynamic node) {
   return const [];
 }
 
-String? _leagueId(Map<String, dynamic> league) => _first(league, const [
-      'league_id',
-      'leagueid',
-      'id',
-    ])?.toString();
+String? _leagueId(Map<String, dynamic> league) =>
+    _first(league, const ['league_id', 'leagueid', 'id'])?.toString();
 
 String _leagueName(Map<String, dynamic> league) => _decode(
-      (_first(league, const [
-                'league_name',
-                'leaguename',
-                'name',
-                'display_name',
-              ]) ??
-              'Liga')
-          .toString(),
-    );
+  (_first(league, const [
+            'league_name',
+            'leaguename',
+            'name',
+            'display_name',
+          ]) ??
+          'Liga')
+      .toString(),
+);
 
 String _leagueType(Map<String, dynamic> league) =>
     (_first(league, const ['league_type', 'leaguetype', 'type']) ?? '')
@@ -717,11 +824,11 @@ String _decode(String value) {
 }
 
 Color _rankColor(int rank) => switch (rank) {
-      1 => AppColors.gold,
-      2 => AppColors.silver,
-      3 => AppColors.orange,
-      _ => AppColors.lime,
-    };
+  1 => AppColors.gold,
+  2 => AppColors.silver,
+  3 => AppColors.orange,
+  _ => AppColors.lime,
+};
 
 double? _lastValue(List<double?> values) {
   for (final value in values.reversed) {

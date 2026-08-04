@@ -17,7 +17,8 @@ class EmptyState extends StatelessWidget {
   const EmptyState.noConnection({super.key, this.onRetry})
       : icon = Icons.wifi_off_rounded,
         title = 'Sin conexión',
-        message = 'No se pudo actualizar. Mostrando los últimos datos guardados.';
+        message =
+            'No se pudo actualizar. Mostrando los últimos datos guardados.';
 
   const EmptyState.noData({super.key, this.onRetry})
       : icon = Icons.inbox_rounded,
@@ -27,12 +28,14 @@ class EmptyState extends StatelessWidget {
   const EmptyState.loginExpired({super.key, this.onRetry})
       : icon = Icons.lock_clock_rounded,
         title = 'Sesión caducada',
-        message = 'Vuelve a iniciar sesión en F1 Fantasy para importar tu equipo.';
+        message =
+            'Vuelve a iniciar sesión en F1 Fantasy para importar tu equipo.';
 
   const EmptyState.apiDown({super.key, this.onRetry})
       : icon = Icons.cloud_off_rounded,
         title = 'Servicio no disponible',
-        message = 'La fuente de datos no responde ahora mismo. Inténtalo más tarde.';
+        message =
+            'La fuente de datos no responde ahora mismo. Inténtalo más tarde.';
 
   final IconData icon;
   final String title;
@@ -58,7 +61,8 @@ class EmptyState extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: AppSpacing.md),
-              ElevatedButton(onPressed: onRetry, child: const Text('Reintentar')),
+              ElevatedButton(
+                  onPressed: onRetry, child: const Text('Reintentar')),
             ],
           ],
         ),

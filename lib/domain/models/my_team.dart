@@ -30,7 +30,8 @@ class MyTeam {
     return MyTeam(
       driverIds: driverIds ?? this.driverIds,
       constructorIds: constructorIds ?? this.constructorIds,
-      remainingBudgetMillions: remainingBudgetMillions ?? this.remainingBudgetMillions,
+      remainingBudgetMillions:
+          remainingBudgetMillions ?? this.remainingBudgetMillions,
       boostedDriverId: boostedDriverId ?? this.boostedDriverId,
       source: source ?? this.source,
       chipsUsed: chipsUsed ?? this.chipsUsed,

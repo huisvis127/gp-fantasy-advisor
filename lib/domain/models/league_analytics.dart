@@ -23,6 +23,7 @@ class LeagueMemberTrend {
   int bronze = 0;
   int? currentRank;
   double? currentTotal;
+  bool isCurrentUser = false;
 }
 
 class LeagueAnalytics {
@@ -49,16 +50,17 @@ class LeagueAnalytics {
     final rawEvents = snapshot['leagueEvents'];
     if (rawEvents is List) {
       for (final raw in rawEvents.whereType<Map>()) {
-        final day =
-            _asInt(_first(raw, const ['gamedayid', 'gameDayId', 'day']));
+        final day = _asInt(
+          _first(raw, const ['gamedayid', 'gameDayId', 'day']),
+        );
         if (day == null) continue;
         eventLabels[day] = _decode(
           (_first(raw, const ['label', 'name']) ?? 'R$day').toString(),
         );
-        eventCompletion[day] = _asBool(_first(
-              raw,
-              const ['iscomplete', 'isComplete', 'complete'],
-            )) ??
+        eventCompletion[day] =
+            _asBool(
+              _first(raw, const ['iscomplete', 'isComplete', 'complete']),
+            ) ??
             true;
       }
     }
@@ -81,11 +83,13 @@ class LeagueAnalytics {
 
     final days = eventBoards.keys.toList()..sort();
     final events = days
-        .map((day) => LeagueEvent(
-              gameDayId: day,
-              label: eventLabels[day] ?? 'R$day',
-              isComplete: eventCompletion[day] ?? true,
-            ))
+        .map(
+          (day) => LeagueEvent(
+            gameDayId: day,
+            label: eventLabels[day] ?? 'R$day',
+            isComplete: eventCompletion[day] ?? true,
+          ),
+        )
         .toList();
     final builders = <String, _MemberBuilder>{};
 
@@ -97,32 +101,39 @@ class LeagueAnalytics {
           () => _MemberBuilder(identity.key, identity.name, events.length),
         );
         builder.name = identity.name;
-        builder.eventPoints[eventIndex] = _asDouble(_first(row, const [
-          'gdpoints',
-          'gamedaypoints',
-          'gameday_points',
-          'matchdaypoints',
-          'racepoints',
-          'eventpoints',
-          'weekpoints',
-          'cur_points',
-        ]));
-        builder.eventRanks[eventIndex] = _asInt(_first(row, const [
-          'gdrank',
-          'eventrank',
-          'cur_rank',
-          'rank',
-          'position',
-        ]));
-        builder.reportedTotals[eventIndex] = _asDouble(_first(row, const [
-          'ovpoints',
-          'overallpoints',
-          'overall_points',
-          'totalpoints',
-          'total_points',
-          'points',
-          'score',
-        ]));
+        builder.isCurrentUser = builder.isCurrentUser || _isCurrentUser(row);
+        builder.eventPoints[eventIndex] = _asDouble(
+          _first(row, const [
+            'gdpoints',
+            'gamedaypoints',
+            'gameday_points',
+            'matchdaypoints',
+            'racepoints',
+            'eventpoints',
+            'weekpoints',
+            'cur_points',
+          ]),
+        );
+        builder.eventRanks[eventIndex] = _asInt(
+          _first(row, const [
+            'gdrank',
+            'eventrank',
+            'cur_rank',
+            'rank',
+            'position',
+          ]),
+        );
+        builder.reportedTotals[eventIndex] = _asDouble(
+          _first(row, const [
+            'ovpoints',
+            'overallpoints',
+            'overall_points',
+            'totalpoints',
+            'total_points',
+            'points',
+            'score',
+          ]),
+        );
       }
     }
 
@@ -133,9 +144,9 @@ class LeagueAnalytics {
         () => _MemberBuilder(identity.key, identity.name, events.length),
       );
       builder.name = identity.name;
-      builder.currentRank = _asInt(_first(
-        row,
-        const [
+      builder.isCurrentUser = builder.isCurrentUser || _isCurrentUser(row);
+      builder.currentRank = _asInt(
+        _first(row, const [
           'ovrank',
           'gdrank',
           'cur_rank',
@@ -143,18 +154,20 @@ class LeagueAnalytics {
           'rank',
           'position',
           'overall_rank',
-        ],
-      ));
-      builder.currentTotal = _asDouble(_first(row, const [
-        'ovpoints',
-        'overallpoints',
-        'overall_points',
-        'totalpoints',
-        'total_points',
-        'points',
-        'cur_points',
-        'score',
-      ]));
+        ]),
+      );
+      builder.currentTotal = _asDouble(
+        _first(row, const [
+          'ovpoints',
+          'overallpoints',
+          'overall_points',
+          'totalpoints',
+          'total_points',
+          'points',
+          'cur_points',
+          'score',
+        ]),
+      );
     }
 
     for (final builder in builders.values) {
@@ -178,20 +191,24 @@ class LeagueAnalytics {
     }
 
     for (var i = 0; i < events.length; i++) {
-      final cumulativeRanking = builders.values
-          .where((member) => member.cumulativePoints[i] != null)
-          .toList()
-        ..sort(
-            (a, b) => b.cumulativePoints[i]!.compareTo(a.cumulativePoints[i]!));
+      final cumulativeRanking =
+          builders.values
+              .where((member) => member.cumulativePoints[i] != null)
+              .toList()
+            ..sort(
+              (a, b) =>
+                  b.cumulativePoints[i]!.compareTo(a.cumulativePoints[i]!),
+            );
       for (var rank = 0; rank < cumulativeRanking.length; rank++) {
         cumulativeRanking[rank].positions[i] = rank + 1;
       }
 
       if (!events[i].isComplete) continue;
-      final eventRanking = builders.values
-          .where((member) => member.eventPoints[i] != null)
-          .toList()
-        ..sort((a, b) => b.eventPoints[i]!.compareTo(a.eventPoints[i]!));
+      final eventRanking =
+          builders.values
+              .where((member) => member.eventPoints[i] != null)
+              .toList()
+            ..sort((a, b) => b.eventPoints[i]!.compareTo(a.eventPoints[i]!));
       var computedRank = 1;
       double? previousPoints;
       for (var index = 0; index < eventRanking.length; index++) {
@@ -225,11 +242,11 @@ class LeagueAnalytics {
 
 class _MemberBuilder {
   _MemberBuilder(this.key, this.name, int eventCount)
-      : eventPoints = List<double?>.filled(eventCount, null),
-        eventRanks = List<int?>.filled(eventCount, null),
-        reportedTotals = List<double?>.filled(eventCount, null),
-        cumulativePoints = List<double?>.filled(eventCount, null),
-        positions = List<int?>.filled(eventCount, null);
+    : eventPoints = List<double?>.filled(eventCount, null),
+      eventRanks = List<int?>.filled(eventCount, null),
+      reportedTotals = List<double?>.filled(eventCount, null),
+      cumulativePoints = List<double?>.filled(eventCount, null),
+      positions = List<int?>.filled(eventCount, null);
 
   final String key;
   String name;
@@ -243,6 +260,7 @@ class _MemberBuilder {
   int bronze = 0;
   int? currentRank;
   double? currentTotal;
+  bool isCurrentUser = false;
 
   LeagueMemberTrend build() => LeagueMemberTrend(key: key, name: name)
     ..eventPoints = List.unmodifiable(eventPoints)
@@ -252,11 +270,26 @@ class _MemberBuilder {
     ..silver = silver
     ..bronze = bronze
     ..currentRank = currentRank
-    ..currentTotal = currentTotal;
+    ..currentTotal = currentTotal
+    ..isCurrentUser = isCurrentUser;
 }
 
+bool _isCurrentUser(Map<String, dynamic> row) =>
+    _asBool(
+      _first(row, const [
+        'isloggedinuser',
+        'is_logged_in_user',
+        'iscurrentuser',
+        'is_current_user',
+        'isme',
+        'is_me',
+      ]),
+    ) ??
+    false;
+
 ({String key, String name}) _identity(Map<String, dynamic> row) {
-  final rawName = _first(row, const [
+  final rawName =
+      _first(row, const [
         'teamname',
         'team_name',
         'entry_name',
@@ -304,9 +337,11 @@ List<Map<String, dynamic>> extractLeagueRows(dynamic node) {
             entry.value is! List) {
           continue;
         }
-        rankedRows.addAll((entry.value as List)
-            .whereType<Map>()
-            .map((row) => Map<String, dynamic>.from(row)));
+        rankedRows.addAll(
+          (entry.value as List).whereType<Map>().map(
+            (row) => Map<String, dynamic>.from(row),
+          ),
+        );
       }
     }
     if (rankedRows.isNotEmpty) return rankedRows;

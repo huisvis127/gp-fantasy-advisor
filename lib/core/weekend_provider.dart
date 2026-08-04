@@ -14,6 +14,7 @@ class WeekendData {
   const WeekendData({
     this.sessions = const <String>{},
     this.byDriverId = const {},
+    this.insights = const {},
     this.error,
   });
 
@@ -23,6 +24,8 @@ class WeekendData {
   /// driverId -> { 'onelap:fp1': gap%, 'pace:fp1': gap%, ... }.
   /// Gap % contra el mejor de cada sesión (0 = el más rápido).
   final Map<String, Map<String, double>> byDriverId;
+
+  final Map<String, DriverWeekendInsight> insights;
 
   /// Error visible (nunca silencioso); si hay error, sessions queda vacío
   /// y la predicción sigue en modo pre-finde.
@@ -34,15 +37,31 @@ class WeekendData {
   String get stageLabel {
     if (sessions.isEmpty) return 'PRE-FINDE';
     const order = ['fp1', 'fp2', 'fp3'];
-    const labels = {
-      'fp1': 'FP1',
-      'fp2': 'FP2',
-      'fp3': 'FP3',
-    };
-    final present =
-        order.where(sessions.contains).map((s) => labels[s]!).toList();
+    const labels = {'fp1': 'FP1', 'fp2': 'FP2', 'fp3': 'FP3'};
+    final present = order
+        .where(sessions.contains)
+        .map((s) => labels[s]!)
+        .toList();
     return 'CON ${present.join('+')}';
   }
+}
+
+class DriverWeekendInsight {
+  const DriverWeekendInsight({
+    required this.driverId,
+    required this.sessionCount,
+    required this.totalLaps,
+    required this.oneLapGapPercent,
+    required this.paceGapPercent,
+    required this.longRunSpreadPercent,
+  });
+
+  final String driverId;
+  final int sessionCount;
+  final int totalLaps;
+  final double oneLapGapPercent;
+  final double paceGapPercent;
+  final double longRunSpreadPercent;
 }
 
 /// Nombres de país Jolpica -> OpenF1 cuando difieren.
@@ -94,7 +113,8 @@ final weekendDataProvider = FutureProvider<WeekendData>((ref) async {
     return await _loadWeekend(api, ref, race, now);
   } catch (e) {
     return WeekendData(
-      error: 'OpenF1 no respondió (${e.toString().split('\n').first}). '
+      error:
+          'OpenF1 no respondió (${e.toString().split('\n').first}). '
           'Predicción en modo pre-finde.',
     );
   }
@@ -107,8 +127,10 @@ Future<WeekendData> _loadWeekend(
   DateTime now,
 ) async {
   final countryName = _countryNameMap[race.country] ?? race.country;
-  final sessions =
-      await api.getSessions(year: race.season, countryName: countryName);
+  final sessions = await api.getSessions(
+    year: race.season,
+    countryName: countryName,
+  );
 
   // Filtrar al meeting correcto por fecha (España tiene 2 GPs en 2026) y
   // quedarnos con las sesiones terminadas que alimentan la predicción.
@@ -150,6 +172,7 @@ Future<WeekendData> _loadWeekend(
 
   // Descargar vueltas de cada sesión terminada y convertir a gaps %.
   final byDriverId = <String, Map<String, double>>{};
+  final insightBuilders = <String, _InsightBuilder>{};
   final withData = <String>{};
   for (final entry in completed.entries) {
     final laps = await api.getLaps(entry.value);
@@ -177,8 +200,48 @@ Future<WeekendData> _loadWeekend(
       map['onelap:${entry.key}'] = (a.bestLapMs - bestLap) / bestLap * 100.0;
       map['pace:${entry.key}'] =
           (a.top2StintsAvgMs - bestPace) / bestPace * 100.0;
+      final insight = insightBuilders.putIfAbsent(
+        driverId,
+        () => _InsightBuilder(driverId),
+      );
+      insight.sessionCount++;
+      insight.totalLaps += a.lapCount;
+      insight.oneLapGapPercent = map['onelap:${entry.key}']!;
+      insight.paceGapPercent = map['pace:${entry.key}']!;
+      insight.spreads.add(
+        (a.top2StintsAvgMs - a.bestLapMs) / a.bestLapMs * 100,
+      );
     });
   }
 
-  return WeekendData(sessions: withData, byDriverId: byDriverId);
+  return WeekendData(
+    sessions: withData,
+    byDriverId: byDriverId,
+    insights: {
+      for (final entry in insightBuilders.entries)
+        entry.key: entry.value.build(),
+    },
+  );
+}
+
+class _InsightBuilder {
+  _InsightBuilder(this.driverId);
+
+  final String driverId;
+  int sessionCount = 0;
+  int totalLaps = 0;
+  double oneLapGapPercent = 0;
+  double paceGapPercent = 0;
+  final List<double> spreads = [];
+
+  DriverWeekendInsight build() => DriverWeekendInsight(
+    driverId: driverId,
+    sessionCount: sessionCount,
+    totalLaps: totalLaps,
+    oneLapGapPercent: oneLapGapPercent,
+    paceGapPercent: paceGapPercent,
+    longRunSpreadPercent: spreads.isEmpty
+        ? 0
+        : spreads.reduce((a, b) => a + b) / spreads.length,
+  );
 }

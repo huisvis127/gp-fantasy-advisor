@@ -88,4 +88,36 @@ void main() {
     expect(assets.last['is_constructor'], isTrue);
     expect(assets.last['price'], 28.0);
   });
+
+  test('descarga precio y puntos de las tres jornadas recientes', () async {
+    final adapter = _FeedAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = FantasyApi(dio, publicBaseUrl: 'https://fantasy.formula1.com');
+
+    final snapshots = await api.getRecentRoundSnapshots(2026);
+
+    expect(snapshots.map((item) => item.round), [8, 9, 10]);
+    expect(snapshots.last.isCurrent, isTrue);
+    expect(snapshots.first.prices, hasLength(2));
+    expect(snapshots.first.points, hasLength(2));
+    expect(adapter.paths, hasLength(4));
+  });
+
+  test(
+    'construye la clasificación provisional desde el feed oficial',
+    () async {
+      final adapter = _FeedAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final api = FantasyApi(
+        dio,
+        publicBaseUrl: 'https://fantasy.formula1.com',
+      );
+
+      final live = await api.getLiveSnapshot(2026);
+
+      expect(live.round, 10);
+      expect(live.assets, hasLength(2));
+      expect(live.assets.first.assetId, 'antonelli');
+    },
+  );
 }

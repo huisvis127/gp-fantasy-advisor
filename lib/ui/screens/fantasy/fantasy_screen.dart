@@ -4,6 +4,9 @@ import '../../../core/theme.dart';
 import '../../widgets/ref_widgets.dart';
 import '../ideal/ideal_screen.dart';
 import '../my_team/my_team_screen.dart';
+import '../market/market_screen.dart';
+import '../strategy/strategy_screen.dart';
+import '../live/live_screen.dart';
 
 /// Reúne las dos herramientas de juego en la pestaña Fantasy, igual que la
 /// aplicación de referencia: propuesta óptima y equipo real del usuario.
@@ -26,10 +29,7 @@ class _FantasyScreenState extends State<FantasyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SectionHead(
-                kicker: 'Estrategia',
-                title: 'Tu juego',
-              ),
+              const SectionHead(kicker: 'Estrategia', title: 'Tu juego'),
               const SizedBox(height: 5),
               Text(
                 'Construye el equipo ideal o analiza el que ya tienes.',
@@ -37,7 +37,7 @@ class _FantasyScreenState extends State<FantasyScreen> {
               ),
               const SizedBox(height: 12),
               SubTabs(
-                labels: const ['Equipo ideal', 'Mi equipo'],
+                labels: const ['Ideal', 'Equipo', 'Mercado', 'Plan', 'Directo'],
                 selectedIndex: _tab,
                 onSelected: (value) => setState(() => _tab = value),
               ),
@@ -48,7 +48,13 @@ class _FantasyScreenState extends State<FantasyScreen> {
         Expanded(
           child: IndexedStack(
             index: _tab,
-            children: const [IdealScreen(), MyTeamScreen()],
+            children: const [
+              IdealScreen(),
+              MyTeamScreen(),
+              MarketScreen(),
+              StrategyScreen(),
+              LiveScreen(),
+            ],
           ),
         ),
       ],

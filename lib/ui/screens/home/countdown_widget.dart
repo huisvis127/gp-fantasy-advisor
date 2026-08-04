@@ -41,7 +41,8 @@ class _CountdownWidgetState extends State<CountdownWidget> {
   @override
   Widget build(BuildContext context) {
     if (_remaining.isNegative) {
-      return Text('¡EN MARCHA O FINALIZADO!', style: AppText.mono(11, color: AppColors.ok));
+      return Text('¡EN MARCHA O FINALIZADO!',
+          style: AppText.mono(11, color: AppColors.ok));
     }
     final days = _remaining.inDays;
     final hours = _remaining.inHours % 24;
@@ -63,7 +64,8 @@ class _CountdownWidgetState extends State<CountdownWidget> {
 
   Widget _separator() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Text(':', style: AppText.syne(22, color: AppColors.textTertiary)),
+        child:
+            Text(':', style: AppText.syne(22, color: AppColors.textTertiary)),
       );
 
   Widget _timeBlock(String value, String label) {

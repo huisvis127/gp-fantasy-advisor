@@ -23,5 +23,6 @@ class AssetPrediction {
   final Map<String, double> breakdown;
 
   /// Puntos-por-valor, equivalente a `scorePerValue` de la app de referencia.
-  double get pointsPerValue => priceMillions <= 0 ? 0 : expectedPoints / priceMillions;
+  double get pointsPerValue =>
+      priceMillions <= 0 ? 0 : expectedPoints / priceMillions;
 }

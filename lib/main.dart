@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/app_providers.dart';
+import 'core/alert_settings.dart';
 import 'core/providers.dart' show remoteConfigProvider;
 import 'core/remote_config.dart';
 import 'core/theme.dart';
@@ -15,9 +16,7 @@ Future<void> main() async {
 
   runApp(
     ProviderScope(
-      overrides: [
-        remoteConfigProvider.overrideWithValue(remoteConfig),
-      ],
+      overrides: [remoteConfigProvider.overrideWithValue(remoteConfig)],
       child: const GpFantasyAdvisorApp(),
     ),
   );
@@ -41,11 +40,22 @@ class _GpFantasyAdvisorAppState extends ConsumerState<GpFantasyAdvisorApp> {
     // los errores de la sync son visibles en la UI (syncControllerProvider).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(syncControllerProvider.notifier).syncNow();
+      ref.read(alertSettingsProvider.future);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(driverPredictionsProvider, (previous, next) {
+      next.whenData((predictions) {
+        final stage =
+            ref.read(weekendDataProvider).valueOrNull?.stageLabel ??
+            'PRE-FINDE';
+        ref
+            .read(alertSettingsProvider.notifier)
+            .notifyIfRecommendationChanged(predictions, stage);
+      });
+    });
     return MaterialApp(
       title: 'GP Fantasy Advisor',
       debugShowCheckedModeBanner: false,

@@ -19,7 +19,8 @@ class ScoringTable {
   }
 
   /// Constructor para tests / backtesting sin cargar assets de Flutter.
-  factory ScoringTable.fromJson(Map<String, dynamic> json) => ScoringTable._(json);
+  factory ScoringTable.fromJson(Map<String, dynamic> json) =>
+      ScoringTable._(json);
 
   Map<String, int> get racePositionPoints =>
       (_data['race']['position_points'] as Map<String, dynamic>)
@@ -54,7 +55,8 @@ class ScoringTable {
     for (var i = 0; i < positionProbabilities.length; i++) {
       final position = i + 1;
       final pointsIfFinished = pointsForRacePosition(position);
-      expected += positionProbabilities[i] * (1 - dnfProbability) * pointsIfFinished;
+      expected +=
+          positionProbabilities[i] * (1 - dnfProbability) * pointsIfFinished;
     }
     expected += dnfProbability * dnfPenalty;
     expected += fastestLapProbability * fastestLapPoints;
@@ -70,7 +72,8 @@ class SoftmaxDistribution {
   /// `scores` en el mismo orden que los pilotos a comparar. `temperature`
   /// controla cuánto se concentra la probabilidad en los mejores (más bajo
   /// = más determinista); se calibra en el backtesting junto a w1..w8.
-  static List<double> winProbabilities(List<double> scores, {double temperature = 12.0}) {
+  static List<double> winProbabilities(List<double> scores,
+      {double temperature = 12.0}) {
     final exps = scores.map((s) => exp(s / temperature)).toList();
     final sum = exps.reduce((a, b) => a + b);
     return exps.map((e) => e / sum).toList();

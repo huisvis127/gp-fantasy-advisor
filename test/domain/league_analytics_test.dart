@@ -15,16 +15,8 @@ void main() {
             'Data': {
               'Value': {
                 'memRank': [
-                  {
-                    'userGuid': 'a',
-                    'teamName': 'Equipo A',
-                    'gdPoints': 100,
-                  },
-                  {
-                    'userGuid': 'b',
-                    'teamName': 'Equipo B',
-                    'gdPoints': 80,
-                  },
+                  {'userGuid': 'a', 'teamName': 'Equipo A', 'gdPoints': 100},
+                  {'userGuid': 'b', 'teamName': 'Equipo B', 'gdPoints': 80},
                 ],
               },
             },
@@ -33,16 +25,8 @@ void main() {
             'Data': {
               'Value': {
                 'memRank': [
-                  {
-                    'userGuid': 'a',
-                    'teamName': 'Equipo A',
-                    'gdPoints': 50,
-                  },
-                  {
-                    'userGuid': 'b',
-                    'teamName': 'Equipo B',
-                    'gdPoints': 90,
-                  },
+                  {'userGuid': 'a', 'teamName': 'Equipo A', 'gdPoints': 50},
+                  {'userGuid': 'b', 'teamName': 'Equipo B', 'gdPoints': 90},
                 ],
               },
             },
@@ -56,13 +40,13 @@ void main() {
               'userGuid': 'b',
               'teamName': 'Equipo B',
               'userRank': 1,
-              'ovPoints': 170
+              'ovPoints': 170,
             },
             {
               'userGuid': 'a',
               'teamName': 'Equipo A',
               'userRank': 2,
-              'ovPoints': 150
+              'ovPoints': 150,
             },
           ],
         },
@@ -71,8 +55,10 @@ void main() {
 
     final analytics = LeagueAnalytics.fromSnapshot(snapshot, 'league-1');
 
-    expect(
-        analytics.events.map((event) => event.label), ['Australia', 'China']);
+    expect(analytics.events.map((event) => event.label), [
+      'Australia',
+      'China',
+    ]);
     expect(analytics.members, hasLength(2));
     final a = analytics.members.firstWhere((member) => member.key == 'a');
     final b = analytics.members.firstWhere((member) => member.key == 'b');
@@ -86,18 +72,12 @@ void main() {
   });
 
   test('acepta los feeds 2026 y conserva los cuatro equipos de la liga', () {
-    Map<String, dynamic> row(
-      String id,
-      String name,
-      int rank,
-      num points,
-    ) =>
-        {
-          'user_guid': id,
-          'team_name': name,
-          'cur_rank': rank,
-          'cur_points': points,
-        };
+    Map<String, dynamic> row(String id, String name, int rank, num points) => {
+      'user_guid': id,
+      'team_name': name,
+      'cur_rank': rank,
+      'cur_points': points,
+    };
 
     final snapshot = <String, dynamic>{
       'gameDay': 2,
@@ -134,7 +114,7 @@ void main() {
           'Value': {
             'leaderboard': [
               row('oro', 'OROICLE%20Roid%20Bull%20Racing', 1, 2131),
-              row('luis', 'Luispeed', 2, 1974),
+              {...row('luis', 'Luispeed', 2, 1974), 'isLoggedInUser': 1},
               row('tx', 'Txarandaka%20Motorsport', 3, 1961),
               row('coponos', 'Coponos%20Racing', 4, 1671),
             ],
@@ -146,17 +126,18 @@ void main() {
     final analytics = LeagueAnalytics.fromSnapshot(snapshot, '4764009');
 
     expect(analytics.members, hasLength(4));
-    expect(
-      analytics.members.map((member) => member.name),
-      [
-        'OROICLE Roid Bull Racing',
-        'Luispeed',
-        'Txarandaka Motorsport',
-        'Coponos Racing',
-      ],
-    );
-    expect(analytics.members.map((member) => member.currentTotal),
-        [2131, 1974, 1961, 1671]);
+    expect(analytics.members.map((member) => member.name), [
+      'OROICLE Roid Bull Racing',
+      'Luispeed',
+      'Txarandaka Motorsport',
+      'Coponos Racing',
+    ]);
+    expect(analytics.members.map((member) => member.currentTotal), [
+      2131,
+      1974,
+      1961,
+      1671,
+    ]);
     expect(
       analytics.members
           .firstWhere((member) => member.key == 'coponos')
@@ -174,6 +155,12 @@ void main() {
     expect(
       analytics.members.firstWhere((member) => member.key == 'tx').bronze,
       1,
+    );
+    expect(
+      analytics.members
+          .firstWhere((member) => member.key == 'luis')
+          .isCurrentUser,
+      isTrue,
     );
   });
 }

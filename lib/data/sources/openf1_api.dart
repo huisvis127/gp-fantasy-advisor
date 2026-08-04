@@ -68,9 +68,12 @@ class OpenF1Api {
       // "Stint" simplificado: bloques de vueltas consecutivas sin outlier
       // (> 107% del mejor tiempo se descarta como vuelta sucia/tráfico).
       final clean = sorted.where((t) => t <= bestLap * 1.07).toList();
-      final bestStintAvg = clean.take(3).reduce((a, b) => a + b) / clean.take(3).length;
+      final bestStintAvg =
+          clean.take(3).reduce((a, b) => a + b) / clean.take(3).length;
       final top2 = clean.take(2).toList();
-      final top2Avg = top2.isEmpty ? bestStintAvg : top2.reduce((a, b) => a + b) / top2.length;
+      final top2Avg = top2.isEmpty
+          ? bestStintAvg
+          : top2.reduce((a, b) => a + b) / top2.length;
 
       result[driverNumber] = SessionLapsAggregate(
         season: season,

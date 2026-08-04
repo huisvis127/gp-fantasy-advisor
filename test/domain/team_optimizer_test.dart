@@ -85,4 +85,36 @@ void main() {
       expect(boosted, 'd2');
     });
   });
+
+  group('TeamOptimizer.suggestTransfers', () {
+    test('encuentra la pareja óptima aunque el mejor activo solo no quepa', () {
+      final drivers = [
+        for (var i = 1; i <= 5; i++) _fakePrediction('d$i', 10, 10),
+        _fakePrediction('caro', 100, 20),
+        _fakePrediction('valor', 90, 10),
+        _fakePrediction('barato', 70, 1),
+      ];
+      final constructors = [
+        _fakePrediction('c1', 10, 10),
+        _fakePrediction('c2', 10, 10),
+      ];
+
+      const optimizer = TeamOptimizer();
+      final plans = optimizer.suggestTransfers(
+        currentDriverIds: const ['d1', 'd2', 'd3', 'd4', 'd5'],
+        currentConstructorIds: const ['c1', 'c2'],
+        driverPredictions: drivers,
+        constructorPredictions: constructors,
+        remainingBudgetMillions: 0,
+        maxTransfersToConsider: 2,
+      );
+
+      final twoChanges = plans.firstWhere(
+        (plan) => plan.numberOfTransfers == 2,
+      );
+      expect(twoChanges.transfersIn, containsAll(['valor', 'barato']));
+      expect(twoChanges.resultingTeam.totalCostMillions, lessThanOrEqualTo(70));
+      expect(twoChanges.netExpectedGain, 140);
+    });
+  });
 }
