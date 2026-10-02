@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 
 /// Componentes traducidos 1:1 del index.html de la app de referencia
-/// (ver PLAN_DESARROLLO.md sección 1.1). Cada widget indica en su docstring
+/// (ver docs/archive/PLAN_DESARROLLO.md sección 1.1). Cada widget indica en su docstring
 /// la clase CSS original que replica.
 
 /// `.card` — tarjeta con gradiente surface-2 -> surface-1, borde b1,

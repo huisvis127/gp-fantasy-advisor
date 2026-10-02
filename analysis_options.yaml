@@ -11,3 +11,5 @@ analyzer:
   exclude:
     - "**/*.g.dart"
     - "build/**"
+    - ".local/**"
+    - "dist/**"

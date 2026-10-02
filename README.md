@@ -1,56 +1,82 @@
 # GP Fantasy Advisor
 
-Aplicación Android no oficial para consultar datos, analizar pilotos y constructores, preparar una estrategia de F1 Fantasy y revisar las ligas del usuario. Mantiene la identidad visual roja y oscura del proyecto.
+Aplicación Android no oficial para preparar equipos de F1 Fantasy, consultar datos de pista y analizar ligas. Versión actual: **1.3.1+16**. No está afiliada a Formula One Licensing B.V.
 
-No está afiliada a Formula One Licensing B.V.
+## Empezar
 
-## Navegación
+Esta carpeta es la única raíz del proyecto. Abre aquí el editor y ejecuta los comandos desde aquí.
 
-- **Resumen**: siguiente Gran Premio, sincronización y recomendaciones principales.
-- **Análisis**: ranking configurable con pesos de rendimiento, forma, circuito y riesgo.
-- **Fantasy**: equipo ideal y personal, mercado de precios, plan a tres Grandes Premios y puntuación provisional en directo.
-- **Circuito**: información del GP, afinidad e inteligencia de las sesiones de pista.
-- **Liga**: clasificación, evolución, medallero y estrategia de diferenciales frente a rivales.
-- **Ajustes**: sincronización y alertas locales 24 horas y 1 hora antes del cierre oficial.
-
-## Datos y privacidad
-
-- Calendario, resultados y clasificación: Jolpica F1.
-- Precios, puntos, propiedad y catálogo de F1 Fantasy: feeds públicos oficiales actuales.
-- Ritmo y consistencia de las sesiones: OpenF1.
-- Cuenta, equipo y ligas: se abren dentro de la web oficial. La contraseña no pasa por la aplicación ni se guarda en ella.
-- La sesión capturada y los datos privados se almacenan cifrados en el dispositivo.
-- Si una fuente no responde, se conservan los últimos datos válidos y se muestra el estado de sincronización.
-- La puntuación en directo y las probabilidades de precios se identifican como provisionales o estimadas.
-
-## Compilar y comprobar
-
-Requiere Flutter estable y Android SDK con API 26 o superior.
+Requisitos: Flutter **3.44.8** (Dart incluido), Java 17 o compatible, y Android SDK. La aplicación funciona desde Android 8 (API 26); para compilar se necesita la API indicada por Flutter, actualmente 36.
 
 ```bash
 flutter pub get
 flutter analyze
 flutter test
 flutter build apk --release
+```
+
+La APK se genera en `build/app/outputs/flutter-apk/app-release.apk`. La copia local entregada de la versión 1.3.1 está en `dist/GP-Fantasy-Advisor-1.3.1.apk`. Los instaladores quedan fuera de Git; el repositorio contiene el código fuente.
+
+## Funciones actuales
+
+- **Resumen y análisis:** próximo GP, sincronización, predicciones y pesos configurables.
+- **Fantasy:** equipo personal e ideal, mercado de precios, plan de tres GP, chips y puntuación provisional en directo.
+- **Circuito:** contexto del GP y datos de sesiones.
+- **Liga:** clasificación, evolución, medallero y diferenciales. Se representan como máximo **20 equipos** por liga; si hay más, se muestran los 20 primeros y un aviso. Cada equipo puede elegir entre 20 colores, guardados por liga y equipo.
+- **Ajustes:** modo claro u oscuro, idiomas, sincronización y alertas locales de cierre. La apariencia se conserva entre sesiones.
+
+## Dónde está cada cosa
+
+```text
+lib/                  aplicación Flutter
+  core/               tema, preferencias, proveedores y alertas
+  data/               APIs, persistencia y repositorios
+  domain/             modelos, predicciones y optimizadores
+  ui/                 pantallas y componentes
+android/              configuración y recursos Android
+assets/               reglas, pesos, catálogos e icono
+test/                 pruebas de interfaz, lógica, APIs y persistencia
+tools/                scripts de calibración y backtesting
+docs/                 índice, planes, informes y especificación histórica
+.github/workflows/    verificaciones y compilación en GitHub
+dist/                 APK local actual; ignorada por Git
+.local/               archivo local de material anterior; ignorado por Git
+```
+
+Consulta el [índice de documentación](docs/README.md) y la [guía de herramientas](tools/README.md). `lib/data/db/database.g.dart` es código generado necesario para la base de datos y se mantiene en Git. Al modificar las tablas, regenera con:
+
+```bash
+dart run build_runner build --delete-conflicting-outputs
+```
+
+## Git y GitHub
+
+Repositorio: [huisvis127/gp-fantasy-advisor](https://github.com/huisvis127/gp-fantasy-advisor).
+
+Trabaja en ramas y envía los cambios mediante una pull request a `main`. Las ramas antiguas se conservan como historial; no representan carpetas adicionales de la aplicación. GitHub comprueba el código y las pruebas y genera una APK descargable en los artefactos de la ejecución.
+
+```bash
+git status
+git switch -c feature/nombre-del-cambio
+git add <archivos>
+git commit -m "Describe el cambio"
+git push -u origin feature/nombre-del-cambio
+```
+
+`.gitignore` excluye compilaciones, cachés, capturas locales, instaladores, sesiones del editor y credenciales.
+
+## Firma y distribución
+
+Sin `android/key.properties`, la APK de release se firma con la clave de desarrollo y sirve para instalación y pruebas locales. Para Google Play, configura una clave de subida privada con `android/key.properties.example` como referencia y genera:
+
+```bash
 flutter build appbundle --release
 ```
 
-El APK se genera en `build/app/outputs/flutter-apk/app-release.apk` y el paquete de Play Store en `build/app/outputs/bundle/release/app-release.aab`.
+El paquete queda en `build/app/outputs/bundle/release/app-release.aab`. Las claves, contraseñas y `key.properties` no se suben a Git.
 
-Para publicar, copia `android/key.properties.example` como `android/key.properties`, crea una clave de subida y completa sus valores. Sin ese archivo, las compilaciones locales se firman con la clave de desarrollo y no deben publicarse.
+## Datos
 
-## Estructura principal
+Jolpica proporciona calendario y resultados; los feeds oficiales de F1 Fantasy aportan precios y puntos; OpenF1 aporta datos de sesiones. La contraseña se introduce en la web oficial embebida, y la sesión privada se guarda cifrada en el dispositivo. Si una fuente falla, se conserva la caché disponible. La puntuación en directo y las estimaciones de precios se indican como provisionales.
 
-```text
-lib/core/             tema, constantes, proveedores y alertas
-lib/data/             APIs, base de datos y repositorios
-lib/domain/           modelos, puntuación, predicción y optimizadores
-lib/ui/screens/       pantallas organizadas por sección
-lib/ui/widgets/       componentes visuales compartidos
-assets/               reglas, pesos y configuración de respaldo
-test/                 pruebas de APIs, persistencia y lógica
-```
-
-## Nota sobre el acceso oficial
-
-F1 Fantasy puede cambiar sus servicios privados o sus comprobaciones de seguridad. El flujo principal usa la propia web oficial embebida para reducir ese riesgo. La comprobación definitiva del acceso, del equipo y de las ligas debe hacerse en un teléfono con una cuenta real.
+La validación histórica y sus limitaciones están documentadas en [los informes](docs/README.md). El acceso oficial y las notificaciones requieren comprobación adicional en un teléfono real.

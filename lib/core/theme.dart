@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Sistema de diseño extraído 1:1 del index.html de la app de referencia
-/// ("Fantasy Advisor" MotoGP, PLAN_DESARROLLO.md sección 1.1 y 6).
+/// ("Fantasy Advisor" MotoGP, docs/archive/PLAN_DESARROLLO.md sección 1.1 y 6).
 ///
 /// Tokens CSS de la referencia:
 ///   --bg:#08080b  --bg-2:#0b0b10

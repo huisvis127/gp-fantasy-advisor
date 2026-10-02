@@ -1,7 +1,7 @@
 name: gp_fantasy_advisor
 description: "GP Fantasy Advisor — asesor no oficial para F1 Fantasy."
 publish_to: "none"
-version: 1.3.0+15
+version: 1.3.1+16
 
 environment:
   sdk: ">=3.10.0 <4.0.0"

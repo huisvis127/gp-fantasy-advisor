@@ -37,5 +37,5 @@ Para tres sesiones, el pico bruto (43/1/56) era menos estable entre 2023 y
 resultado en 2025. Mejora el Spearman del anterior 20/40/40, que obtuvo 0,627.
 
 El resultado completo reproducible se guarda en
-`docs/session_weights_backtest.json` y se genera con
+`docs/reports/session_weights_backtest.json` y se genera con
 `python tools/session_weights_backtest.py --step 0.01`.

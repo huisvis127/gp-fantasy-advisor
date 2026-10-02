@@ -27,7 +27,7 @@ En resumen: no es una elección rara, es lo que hacen todas las apps de este tip
 | **Con FP1+FP2** | + FP2 | Viernes/Sábado |
 | **Con FP1-FP3** | + FP3 | Sábado |
 
-La etapa activa se detecta sola y se muestra en la UI. La clasificación y la sprint quali se excluyen. Hay dos tablas calibradas con F1 real en `model_weights.json`: FP1+FP2 (50/50) y FP1+FP2+FP3 (42/13/45). Metodología y validación: `docs/session_weights_backtest.md`.
+La etapa activa se detecta sola y se muestra en la UI. La clasificación y la sprint quali se excluyen. Hay dos tablas calibradas con F1 real en `model_weights.json`: FP1+FP2 (50/50) y FP1+FP2+FP3 (42/13/45). Metodología y validación: `docs/reports/session_weights_backtest.md`.
 
 ## 2. Datos (OpenF1, sin coste)
 

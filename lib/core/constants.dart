@@ -1,4 +1,4 @@
-/// Reglas del juego F1 Fantasy 2026 (PLAN_DESARROLLO.md, sección 2).
+/// Reglas del juego F1 Fantasy 2026 (docs/archive/PLAN_DESARROLLO.md, sección 2).
 /// Verificar contra fantasy.formula1.com al inicio del proyecto: pueden cambiar.
 class GameRules {
   GameRules._();

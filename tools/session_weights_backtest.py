@@ -285,7 +285,7 @@ def main() -> None:
         "--cache", type=Path, default=project_root / ".cache/openf1_sessions"
     )
     parser.add_argument(
-        "--out", type=Path, default=project_root / "docs/session_weights_backtest.json"
+        "--out", type=Path, default=project_root / "docs/reports/session_weights_backtest.json"
     )
     parser.add_argument("--step", type=float, default=0.025)
     args = parser.parse_args()

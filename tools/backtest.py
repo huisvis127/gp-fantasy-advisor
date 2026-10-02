@@ -477,8 +477,8 @@ def main() -> None:
     parser.add_argument("--trials", type=int, default=300)
     parser.add_argument("--cache", type=Path, default=Path("tools/.cache/backtest"))
     parser.add_argument("--out", type=Path, default=Path("assets/model_weights.json"))
-    parser.add_argument("--report", type=Path, default=Path("docs/backtest_report.md"))
-    parser.add_argument("--details", type=Path, default=Path("docs/backtest_report.json"))
+    parser.add_argument("--report", type=Path, default=Path("docs/reports/backtest_report.md"))
+    parser.add_argument("--details", type=Path, default=Path("docs/reports/backtest_report.json"))
     args = parser.parse_args()
     if len(args.seasons) < 2:
         raise SystemExit("Se necesita al menos una temporada de entrenamiento y otra de validación.")
