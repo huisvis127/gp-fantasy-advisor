@@ -121,7 +121,7 @@ final weekendDataProvider = FutureProvider<WeekendData>((ref) async {
   } catch (e) {
     return WeekendData(
       error:
-          'OpenF1 no pudo cargar ${race.raceName}: '
+          'OpenF1 no pudo preparar la predicción para ${race.raceName}: '
           '${_describeOpenF1Error(e)}. Predicción en modo pre-finde.',
     );
   }
@@ -136,10 +136,20 @@ Future<WeekendData> loadWeekendData({
   required Map<String, FantasyAssetInfo> catalog,
 }) async {
   final countryName = _countryNameMap[race.country] ?? race.country;
-  final sessions = await api.getSessions(
-    year: race.season,
-    countryName: countryName,
-  );
+  late final List<Map<String, dynamic>> sessions;
+  try {
+    sessions = await api.getSessions(
+      year: race.season,
+      countryName: countryName,
+    );
+  } catch (error) {
+    return WeekendData(
+      error:
+          'OpenF1 no pudo cargar el catálogo de sesiones para '
+          '${race.raceName} (${race.country}): '
+          '${_describeOpenF1Error(error)}. Predicción en modo pre-finde.',
+    );
+  }
 
   // Filtrar al meeting correcto por fecha (España tiene 2 GPs en 2026) y
   // quedarnos con las sesiones terminadas que alimentan la predicción.

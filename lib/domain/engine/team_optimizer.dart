@@ -179,56 +179,97 @@ class TeamOptimizer {
     );
     bestByChanges[0] = [current];
 
-    final driverCombos = _combinations(driverPredictions, 5);
-    final constructorCombos = _combinations(constructorPredictions, 2);
-    for (final drivers in driverCombos) {
-      final driverChanges =
-          5 - drivers.driverIds.where(currentDrivers.contains).length;
-      if (driverChanges > maxTransfersToConsider) continue;
-      for (final constructors in constructorCombos) {
-        final changes =
-            driverChanges +
-            2 -
-            constructors.driverIds.where(currentConstructors.contains).length;
-        if (changes == 0 || changes > maxTransfersToConsider) continue;
-        final cost = drivers.totalCostMillions + constructors.totalCostMillions;
-        if (cost > availableBudget + 0.0001) continue;
-        final nextDrivers = drivers.driverIds;
-        final nextConstructors = constructors.driverIds;
-        final basePoints =
-            drivers.totalExpectedPoints + constructors.totalExpectedPoints;
-        final candidateCombo = _withBestDriverBoost(
-          TeamCombo(
-            driverIds: List.unmodifiable(nextDrivers),
-            constructorIds: List.unmodifiable(nextConstructors),
-            totalCostMillions: cost,
-            totalExpectedPoints: basePoints,
-          ),
-          driverPredictions,
+    final driverCombosByChanges = List.generate(
+      maxTransfersToConsider + 1,
+      (_) => <TeamCombo>[],
+    );
+    for (final combo in _combinations(driverPredictions, 5)) {
+      final changes = 5 - combo.driverIds.where(currentDrivers.contains).length;
+      if (changes <= maxTransfersToConsider) {
+        // El boost del piloto queda calculado una vez por combinación, no
+        // dentro del producto cartesiano con los constructores.
+        driverCombosByChanges[changes].add(
+          _withBestDriverBoost(combo, driverPredictions),
         );
-        final candidate = _BestSwapResult(
-          transfersOut: [
-            ...currentDriverIds.where((id) => !nextDrivers.contains(id)),
-            ...currentConstructorIds.where(
-              (id) => !nextConstructors.contains(id),
-            ),
-          ],
-          transfersIn: [
-            ...nextDrivers.where((id) => !currentDrivers.contains(id)),
-            ...nextConstructors.where(
-              (id) => !currentConstructors.contains(id),
-            ),
-          ],
-          combo: candidateCombo,
-        );
-        final list = bestByChanges.putIfAbsent(changes, () => []);
-        list.add(candidate);
-        list.sort(
-          (a, b) => b.combo.boostedExpectedPoints.compareTo(
-            a.combo.boostedExpectedPoints,
-          ),
-        );
-        if (list.length > candidatesPerTransferCount) list.removeLast();
+      }
+    }
+    final constructorCombosByChanges = List.generate(
+      maxTransfersToConsider + 1,
+      (_) => <TeamCombo>[],
+    );
+    for (final combo in _combinations(constructorPredictions, 2)) {
+      final changes =
+          2 - combo.driverIds.where(currentConstructors.contains).length;
+      if (changes <= maxTransfersToConsider) {
+        constructorCombosByChanges[changes].add(combo);
+      }
+    }
+
+    for (
+      var driverChanges = 0;
+      driverChanges <= maxTransfersToConsider;
+      driverChanges++
+    ) {
+      final maxConstructorChanges = maxTransfersToConsider - driverChanges;
+      for (
+        var constructorChanges = 0;
+        constructorChanges <= maxConstructorChanges;
+        constructorChanges++
+      ) {
+        final changes = driverChanges + constructorChanges;
+        if (changes == 0) continue;
+        final driverCombos = driverCombosByChanges[driverChanges];
+        final constructorCombos =
+            constructorCombosByChanges[constructorChanges];
+        for (final drivers in driverCombos) {
+          for (final constructors in constructorCombos) {
+            final cost =
+                drivers.totalCostMillions + constructors.totalCostMillions;
+            if (cost > availableBudget + 0.0001) continue;
+            final basePoints =
+                drivers.totalExpectedPoints + constructors.totalExpectedPoints;
+            final boostedPoints = basePoints + drivers.boostGain;
+            final list = bestByChanges.putIfAbsent(changes, () => []);
+            if (candidatesPerTransferCount <= 0) continue;
+            if (list.length >= candidatesPerTransferCount &&
+                boostedPoints <= list.last.combo.boostedExpectedPoints) {
+              continue;
+            }
+
+            final nextDrivers = drivers.driverIds;
+            final nextConstructors = constructors.driverIds;
+            final candidate = _BestSwapResult(
+              transfersOut: [
+                ...currentDriverIds.where((id) => !nextDrivers.contains(id)),
+                ...currentConstructorIds.where(
+                  (id) => !nextConstructors.contains(id),
+                ),
+              ],
+              transfersIn: [
+                ...nextDrivers.where((id) => !currentDrivers.contains(id)),
+                ...nextConstructors.where(
+                  (id) => !currentConstructors.contains(id),
+                ),
+              ],
+              combo: TeamCombo(
+                driverIds: List.unmodifiable(nextDrivers),
+                constructorIds: List.unmodifiable(nextConstructors),
+                totalCostMillions: cost,
+                totalExpectedPoints: basePoints,
+                boostedDriverId: drivers.boostedDriverId,
+                boostGain: drivers.boostGain,
+              ),
+            );
+            var insertAt = list.length;
+            while (insertAt > 0 &&
+                boostedPoints >
+                    list[insertAt - 1].combo.boostedExpectedPoints) {
+              insertAt--;
+            }
+            list.insert(insertAt, candidate);
+            if (list.length > candidatesPerTransferCount) list.removeLast();
+          }
+        }
       }
     }
 

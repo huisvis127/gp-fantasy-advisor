@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:gp_fantasy_advisor/domain/engine/strategy_planner.dart';
 import 'package:gp_fantasy_advisor/domain/engine/team_optimizer.dart';
 import 'package:gp_fantasy_advisor/domain/models/my_team.dart';
@@ -102,7 +103,58 @@ void main() {
     expect(plan.rounds.first.driverIds, contains('d7'));
     expect(plan.rounds.first.driverIds, isNot(contains('d6')));
   });
+
+  test('perfil reproducible con 22 pilotos, 11 constructores y 3 carreras', () {
+    final projections = List.generate(3, (index) => _fullGridRound(index + 1));
+    const fullGridTeam = MyTeam(
+      driverIds: ['d01', 'd02', 'd03', 'd04', 'd05'],
+      constructorIds: ['c01', 'c02'],
+      remainingBudgetMillions: 48,
+    );
+
+    // Calienta JIT/caches antes de medir para que las comparaciones locales
+    // repetidas sean más útiles. El test imprime ambos tiempos en el runner.
+    planner.buildPlan(
+      initialTeam: fullGridTeam,
+      projections: [projections.first],
+    );
+    final stopwatch = Stopwatch()..start();
+    final plan = planner.buildPlan(
+      initialTeam: fullGridTeam,
+      projections: projections,
+    );
+    stopwatch.stop();
+
+    expect(plan.rounds, hasLength(3));
+    debugPrint(
+      'TEAM_OPTIMIZER_PROFILE assets=22+11 rounds=3 '
+      'elapsed_ms=${stopwatch.elapsedMilliseconds}',
+    );
+  });
 }
+
+RoundProjection _fullGridRound(int round) => RoundProjection(
+  season: 2026,
+  round: round,
+  raceName: 'Profile GP $round',
+  hasSprint: round == 2,
+  drivers: [
+    for (var i = 1; i <= 22; i++)
+      _prediction(
+        'd${i.toString().padLeft(2, '0')}',
+        (38 - i + round).toDouble(),
+        4.5 + i * 0.72,
+      ),
+  ],
+  constructors: [
+    for (var i = 1; i <= 11; i++)
+      _prediction(
+        'c${i.toString().padLeft(2, '0')}',
+        (42 - i + round).toDouble(),
+        6.0 + i * 1.15,
+      ),
+  ],
+);
 
 RoundProjection _roundWithAlternatives(
   int round, {

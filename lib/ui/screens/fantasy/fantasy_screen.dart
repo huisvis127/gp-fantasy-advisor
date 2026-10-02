@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_locale.dart';
 import '../../../core/theme.dart';
 import '../../widgets/ref_widgets.dart';
+import '../../widgets/lazy_tab_stack.dart';
 import '../ideal/ideal_screen.dart';
 import '../my_team/my_team_screen.dart';
 import '../market/market_screen.dart';
@@ -59,7 +60,7 @@ class _FantasyScreenState extends ConsumerState<FantasyScreen> {
           ),
         ),
         Expanded(
-          child: IndexedStack(
+          child: LazyTabStack(
             index: _tab,
             children: const [
               IdealScreen(),

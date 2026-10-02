@@ -1,6 +1,6 @@
 # GP Fantasy Advisor
 
-Aplicación Android no oficial para preparar equipos de F1 Fantasy, consultar datos de pista y analizar ligas. Versión actual: **1.4.2+30**. No está afiliada a Formula One Licensing B.V.
+Aplicación Android no oficial para preparar equipos de F1 Fantasy, consultar datos de pista y analizar ligas. Versión actual: **1.4.3+31**. No está afiliada a Formula One Licensing B.V.
 
 ## Empezar
 
@@ -15,7 +15,7 @@ flutter test
 flutter build apk --release
 ```
 
-La APK se genera en `build/app/outputs/flutter-apk/app-release.apk`. La copia local entregada de la versión 1.4.2 está en `dist/GP-Fantasy-Advisor-1.4.2.apk`. Los instaladores quedan fuera de Git; el repositorio contiene el código fuente.
+La APK se genera en `build/app/outputs/flutter-apk/app-release.apk`. La copia local entregada de la versión 1.4.3 está en `dist/GP-Fantasy-Advisor-1.4.3.apk`. Los instaladores quedan fuera de Git; el repositorio contiene el código fuente.
 
 ## Funciones actuales
 
@@ -67,7 +67,7 @@ git push -u origin feature/nombre-del-cambio
 
 ## Firma y distribución
 
-La numeración de Android (`versionCode`, después de `+` en `pubspec.yaml`) debe superar todas las APK distribuidas anteriormente. El Android de prueba tenía instalada la versión 1.4.0 con código 28; la entrega 1.4.1 usó código 29 y la actual 1.4.2 usa código 30. Antes de entregar una APK, verifica la firma y prueba la actualización sobre una versión anterior, además de comprobar que la copia de `dist/` coincida con la compilación.
+La numeración de Android (`versionCode`, después de `+` en `pubspec.yaml`) debe superar todas las APK distribuidas anteriormente. El Android de prueba tenía instalada la versión 1.4.0 con código 28; la entrega 1.4.1 usó código 29 la 1.4.2 usó código 30 y la actual 1.4.3 usa código 31. Antes de entregar una APK, verifica la firma y prueba la actualización sobre una versión anterior, además de comprobar que la copia de `dist/` coincida con la compilación.
 
 Sin `android/key.properties`, la APK de release se firma con la clave de desarrollo y sirve para instalación y pruebas locales. Para Google Play, configura una clave de subida privada con `android/key.properties.example` como referencia y genera:
 
@@ -88,3 +88,5 @@ Después de instalar una actualización, usa **Liga → Actualizar** para captur
 La proyección Fantasy suma clasificación, carrera y Sprint cuando corresponde, con el ×2 del piloto elegido. Es una estimación parcial: no predice adelantamientos, posiciones ganadas, Driver of the Day ni puntos de paradas en boxes. La pantalla muestra la etapa de datos (pre-finde o prácticas disponibles) y explica fallos de sesiones. Un fallo de FP2/FP3 conserva las métricas válidas de las otras prácticas; las respuestas vacías no bloquean posteriores actualizaciones.
 
 La clasificación de liga se refresca desde el feed oficial y cruza GUID, identificadores sociales y número de equipo sin contar alias como miembros nuevos. Las capturas anteriores con estructura `current/rounds` siguen siendo legibles. El icono verde neón de Polewise se conserva en todos los tamaños y en los recursos adaptativos de Android.
+
+Los cálculos de equipo ideal, cambios, estrategia y revisión se ejecutan en un isolate, con una sola optimización simultánea. Las pestañas se cargan al visitarlas. Si Jolpica y OpenF1 discrepan sobre el país de un GP y el filtro de país responde 400/404, se consulta el índice del año y se seleccionan únicamente las prácticas terminadas dentro de la ventana de ese GP.

@@ -18,31 +18,53 @@ class _WeekendAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    if (options.path.endsWith('/sessions') &&
+        options.queryParameters['country_name'] == 'Malaysia') {
+      return ResponseBody.fromString(
+        jsonEncode({'detail': 'No sessions found'}),
+        404,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
     final data = switch (options.path.split('/').last) {
       'sessions' => [
         _session(
-          101,
+          11700,
           'Practice 1',
-          '2026-10-09T08:00:00Z',
-          '2026-10-09T09:00:00Z',
+          '2026-09-28T06:30:00Z',
+          '2026-09-28T07:30:00Z',
         ),
         _session(
-          102,
+          11727,
+          'Practice 1',
+          '2026-10-02T06:30:00Z',
+          '2026-10-02T07:30:00Z',
+        ),
+        _session(
+          11728,
           'Practice 2',
-          '2026-10-09T12:00:00Z',
-          '2026-10-09T13:00:00Z',
+          '2026-10-02T10:00:00Z',
+          '2026-10-02T11:00:00Z',
         ),
         _session(
-          103,
+          11729,
           'Practice 3',
-          '2026-10-10T08:00:00Z',
-          '2026-10-10T09:00:00Z',
+          '2026-10-03T06:30:00Z',
+          '2026-10-03T07:30:00Z',
         ),
         _session(
-          104,
+          11730,
           'Qualifying',
-          '2026-10-10T12:00:00Z',
-          '2026-10-10T13:00:00Z',
+          '2026-10-03T10:00:00Z',
+          '2026-10-03T11:00:00Z',
+        ),
+        _session(
+          11732,
+          'Practice 1',
+          '2026-10-05T06:30:00Z',
+          '2026-10-05T07:30:00Z',
         ),
       ],
       'drivers' => [
@@ -52,13 +74,14 @@ class _WeekendAdapter implements HttpClientAdapter {
           'full_name': 'Lando NORRIS',
         },
       ],
-      'laps' when options.queryParameters['session_key'] == 102 => null,
-      'laps' when options.queryParameters['session_key'] == 103 => <dynamic>[],
+      'laps' when options.queryParameters['session_key'] == 11728 => null,
+      'laps' when options.queryParameters['session_key'] == 11729 =>
+        <dynamic>[],
       'laps' => [_lap(4, 100.0, 1), _lap(4, 101.0, 2), _lap(4, 102.0, 3)],
       _ => throw StateError('Unexpected OpenF1 path: ${options.path}'),
     };
     if (options.path.endsWith('/laps') &&
-        options.queryParameters['session_key'] == 102) {
+        options.queryParameters['session_key'] == 11728) {
       return ResponseBody.fromString(
         jsonEncode({'detail': 'Not found'}),
         404,
@@ -75,6 +98,24 @@ class _WeekendAdapter implements HttpClientAdapter {
       },
     );
   }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _SessionCatalogUnavailableAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString(
+    jsonEncode({'detail': 'Not found'}),
+    404,
+    headers: {
+      Headers.contentTypeHeader: ['application/json'],
+    },
+  );
 
   @override
   void close({bool force = false}) {}
@@ -108,7 +149,37 @@ FantasyAssetInfo _driver(String id, String name) => FantasyAssetInfo(
 );
 
 void main() {
-  test('un 404 en FP2 conserva FP1 e inyecta al piloto del catálogo', () async {
+  test('informa si falla el catálogo anual de sesiones', () async {
+    final api = OpenF1Api(
+      Dio()..httpClientAdapter = _SessionCatalogUnavailableAdapter(),
+      baseUrl: 'https://example.test/v1',
+      minimumRequestGap: Duration.zero,
+    );
+    final weekend = await loadWeekendData(
+      api: api,
+      race: Race(
+        season: 2026,
+        round: 16,
+        raceName: 'Bahrain Grand Prix in Malaysia',
+        circuitId: 'sepang',
+        circuitName: 'Sepang International Circuit',
+        country: 'Malaysia',
+        date: DateTime.utc(2026, 10, 4, 9),
+      ),
+      now: DateTime.utc(2026, 10, 3, 8),
+      catalog: {'norris': _driver('norris', 'Lando Norris')},
+    );
+
+    expect(weekend.isEmpty, isTrue);
+    expect(weekend.error, contains('catálogo de sesiones'));
+    expect(
+      weekend.error,
+      contains('Bahrain Grand Prix in Malaysia (Malaysia)'),
+    );
+    expect(weekend.error, contains('HTTP 404 en /v1/sessions'));
+  });
+
+  test('el 404 de Malaysia usa sesiones del año y conserva FP1', () async {
     final adapter = _WeekendAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final api = OpenF1Api(
@@ -120,14 +191,14 @@ void main() {
       api: api,
       race: Race(
         season: 2026,
-        round: 18,
-        raceName: 'Singapore Grand Prix',
-        circuitId: 'marina_bay',
-        circuitName: 'Marina Bay',
-        country: 'Singapore',
-        date: DateTime.utc(2026, 10, 11, 12),
+        round: 16,
+        raceName: 'Bahrain Grand Prix in Malaysia',
+        circuitId: 'sepang',
+        circuitName: 'Sepang International Circuit',
+        country: 'Malaysia',
+        date: DateTime.utc(2026, 10, 4, 9),
       ),
-      now: DateTime.utc(2026, 10, 10, 10),
+      now: DateTime.utc(2026, 10, 3, 8),
       catalog: {'norris': _driver('norris', 'Lando Norris')},
     );
 
@@ -137,13 +208,16 @@ void main() {
     expect(weekend.byDriverId['norris']!.keys, {'onelap:fp1', 'pace:fp1'});
     expect(weekend.error, contains('FP2 (HTTP 404'));
     expect(weekend.error, contains('FP3'));
-    expect(weekend.error, contains('Singapore Grand Prix'));
+    expect(weekend.error, contains('Bahrain Grand Prix in Malaysia'));
     expect(adapter.requests.map((request) => request.path.split('/').last), [
+      'sessions',
       'sessions',
       'drivers',
       'laps',
       'laps',
       'laps',
     ]);
+    expect(adapter.requests[0].queryParameters['country_name'], 'Malaysia');
+    expect(adapter.requests[1].queryParameters, {'year': 2026});
   });
 }

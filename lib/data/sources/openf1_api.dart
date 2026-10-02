@@ -30,18 +30,35 @@ class OpenF1Api {
 
   Future<List<Map<String, dynamic>>> getSessions({
     required int year,
-    required String countryName,
+    String? countryName,
   }) async {
-    final cacheKey = '$year:$countryName';
+    final cacheKey = '$year:${countryName ?? ''}';
     final cached = _sessionCache[cacheKey];
     if (cached != null &&
         DateTime.now().difference(cached.at) < const Duration(seconds: 30)) {
       return cached.rows;
     }
-    final rows = await _getList(
-      '$_baseUrl/sessions',
-      queryParameters: {'year': year, 'country_name': countryName},
-    );
+    final url = '$_baseUrl/sessions';
+    final rows =
+        await _getList(
+          url,
+          queryParameters: {
+            'year': year,
+            if (countryName != null && countryName.isNotEmpty)
+              'country_name': countryName,
+          },
+        ).catchError((Object error) async {
+          // Jolpica's 2026 calendar places the Bahrain GP at Sepang and labels
+          // its country Malaysia, while OpenF1 publishes that meeting as Bahrain.
+          // If a country filter has no match, retry the year index and let the
+          // caller identify the meeting by its date window.
+          if (countryName == null ||
+              error is! DioException ||
+              !{400, 404}.contains(error.response?.statusCode)) {
+            throw error;
+          }
+          return _getList(url, queryParameters: {'year': year});
+        });
     _sessionCache[cacheKey] = (at: DateTime.now(), rows: rows);
     return rows;
   }

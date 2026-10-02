@@ -4,7 +4,7 @@ import '../domain/engine/isolate_runner.dart';
 import '../domain/engine/team_optimizer.dart';
 import '../domain/engine/price_forecast_engine.dart';
 import '../domain/engine/strategy_planner.dart';
-import '../domain/engine/decision_review_engine.dart';
+import '../domain/engine/optimization_isolate_runner.dart';
 import '../domain/models/my_team.dart';
 import '../domain/models/prediction.dart';
 import '../domain/models/price_forecast.dart';
@@ -304,16 +304,12 @@ final teamDecisionCenterProvider = FutureProvider<TeamDecisionCenter?>((
     engineConstructorPredictionsProvider.future,
   );
   if (drivers.isEmpty || constructors.isEmpty) return null;
-  return ref
-      .watch(teamOptimizerProvider)
-      .buildDecisionCenter(
-        currentDriverIds: team.driverIds,
-        currentConstructorIds: team.constructorIds,
-        currentBoostedDriverId: team.boostedDriverId,
-        driverPredictions: drivers,
-        constructorPredictions: constructors,
-        remainingBudgetMillions: team.remainingBudgetMillions,
-      );
+  return OptimizationIsolateRunner.decisionCenter(
+    optimizer: ref.watch(teamOptimizerProvider),
+    team: team,
+    drivers: drivers,
+    constructors: constructors,
+  );
 });
 
 final priceForecastEngineProvider = Provider<PriceForecastEngine>(
@@ -422,13 +418,12 @@ final strategyPlanProvider = FutureProvider<MultiRoundPlan>((ref) async {
       limit: 2,
     );
   }
-  return ref
-      .watch(strategyPlannerProvider)
-      .buildPlan(
-        initialTeam: team,
-        projections: projections,
-        officialPointHistory: history,
-      );
+  return OptimizationIsolateRunner.strategy(
+    planner: ref.watch(strategyPlannerProvider),
+    team: team,
+    projections: projections,
+    history: history,
+  );
 });
 
 final chipAdviceProvider = FutureProvider<List<ChipAdvice>>((ref) async {
@@ -510,13 +505,13 @@ final latestDecisionReviewProvider = FutureProvider<DecisionReview?>((
           .toSet(),
     );
     if (!team.isComplete) continue;
-    return const DecisionReviewEngine().review(
+    return OptimizationIsolateRunner.review(
       season: snapshot.season,
       round: snapshot.round,
       raceName: race?.raceName ?? 'Jornada ${snapshot.round}',
       team: team,
-      actualDrivers: actualDrivers,
-      actualConstructors: actualConstructors,
+      drivers: actualDrivers,
+      constructors: actualConstructors,
     );
   }
   return null;
@@ -539,10 +534,10 @@ final optimalTeamProvider = FutureProvider.family<TeamCombo, TeamPriority>((
     );
   }
   final optimizer = ref.watch(teamOptimizerProvider);
-  return optimizer.findOptimalTeam(
-    driverPredictions: driverPredictions,
-    constructorPredictions: constructorPredictions,
-    totalBudgetMillions: 100,
+  return OptimizationIsolateRunner.optimal(
+    optimizer: optimizer,
+    drivers: driverPredictions,
+    constructors: constructorPredictions,
     priority: priority,
   );
 });
@@ -559,13 +554,11 @@ final transferPlansProvider = FutureProvider<List<TransferPlan>>((ref) async {
     return const <TransferPlan>[];
   }
   final optimizer = ref.watch(teamOptimizerProvider);
-  final plans = optimizer.suggestTransfers(
-    currentDriverIds: team.driverIds,
-    currentConstructorIds: team.constructorIds,
-    currentBoostedDriverId: team.boostedDriverId,
-    driverPredictions: driverPredictions,
-    constructorPredictions: constructorPredictions,
-    remainingBudgetMillions: team.remainingBudgetMillions,
+  final plans = await OptimizationIsolateRunner.transfers(
+    optimizer: optimizer,
+    team: team,
+    drivers: driverPredictions,
+    constructors: constructorPredictions,
   );
   plans.sort((a, b) => b.netExpectedGain.compareTo(a.netExpectedGain));
   return plans.take(3).toList();

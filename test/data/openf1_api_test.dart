@@ -74,6 +74,29 @@ class _EmptyThenDataAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _UnavailableAdapter implements HttpClientAdapter {
+  int requests = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests++;
+    return ResponseBody.fromString(
+      jsonEncode({'detail': 'temporarily unavailable'}),
+      503,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 void main() {
   test(
     'reintenta 429, conserva filtros y cachea la lista durante 30 s',
@@ -122,4 +145,24 @@ void main() {
 
     expect(adapter.requests.values, everyElement(2));
   });
+
+  test(
+    'un 503 sigue siendo un error y no se oculta con el catálogo anual',
+    () async {
+      final adapter = _UnavailableAdapter();
+      final api = OpenF1Api(
+        Dio()..httpClientAdapter = adapter,
+        baseUrl: 'https://example.test/v1',
+        minimumRequestGap: Duration.zero,
+        retryBaseDelay: Duration.zero,
+      );
+
+      await expectLater(
+        api.getSessions(year: 2026, countryName: 'Malaysia'),
+        throwsA(isA<DioException>()),
+      );
+
+      expect(adapter.requests, 4);
+    },
+  );
 }

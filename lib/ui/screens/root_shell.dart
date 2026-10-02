@@ -5,6 +5,7 @@ import '../../core/app_providers.dart';
 import '../../core/app_locale.dart';
 import '../../core/theme.dart';
 import '../widgets/ref_widgets.dart';
+import '../widgets/lazy_tab_stack.dart';
 import 'home/home_screen.dart';
 import 'circuit/circuit_screen.dart';
 import 'fantasy/fantasy_screen.dart';
@@ -117,7 +118,7 @@ class _RootShellState extends ConsumerState<RootShell> {
                 ),
               ),
               Expanded(
-                child: IndexedStack(index: _index, children: _screens),
+                child: LazyTabStack(index: _index, children: _screens),
               ),
             ],
           ),

@@ -92,6 +92,51 @@ void main() {
   });
 
   group('TeamOptimizer.suggestTransfers', () {
+    test('conserva top-K empatado sin violar cambios ni presupuesto', () {
+      final drivers = [
+        for (var i = 1; i <= 5; i++) _fakePrediction('d$i', 10, 10),
+        _fakePrediction('d6', 10, 10),
+        _fakePrediction('d7', 10, 11), // empatado, pero excede el presupuesto
+      ];
+      final constructors = [
+        _fakePrediction('c1', 10, 10),
+        _fakePrediction('c2', 10, 10),
+        _fakePrediction('c3', 10, 10),
+      ];
+
+      final plans = const TeamOptimizer().transferCandidates(
+        currentDriverIds: const ['d1', 'd2', 'd3', 'd4', 'd5'],
+        currentConstructorIds: const ['c1', 'c2'],
+        driverPredictions: drivers,
+        constructorPredictions: constructors,
+        remainingBudgetMillions: 0,
+        maxTransfersToConsider: 1,
+        candidatesPerTransferCount: 3,
+      );
+      final oneChange = plans
+          .where((plan) => plan.numberOfTransfers == 1)
+          .toList();
+
+      expect(oneChange, hasLength(3));
+      expect(
+        oneChange.map((plan) => plan.resultingTeam.constructorIds.join(',')),
+        containsAll(['c1,c3', 'c2,c3']),
+      );
+      expect(
+        oneChange.map((plan) => plan.resultingTeam.driverIds.join(',')),
+        contains('d1,d2,d3,d4,d6'),
+      );
+      expect(oneChange.every((plan) => plan.netExpectedGain == 0), isTrue);
+      expect(
+        oneChange.every((plan) => plan.resultingTeam.totalCostMillions <= 70),
+        isTrue,
+      );
+      expect(
+        oneChange.any((plan) => plan.resultingTeam.driverIds.contains('d7')),
+        isFalse,
+      );
+    });
+
     test('encuentra la pareja óptima aunque el mejor activo solo no quepa', () {
       final drivers = [
         for (var i = 1; i <= 5; i++) _fakePrediction('d$i', 10, 10),
