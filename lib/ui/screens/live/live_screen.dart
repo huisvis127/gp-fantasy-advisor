@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/app_providers.dart';
+import '../../../core/app_locale.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/live_fantasy.dart';
 import '../../../domain/models/my_team.dart';
@@ -13,16 +14,18 @@ class LiveScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    Theme.of(context);
     final live = ref.watch(liveFantasyProvider);
     final team = ref.watch(myTeamProvider).valueOrNull;
+    final strings = AppStrings(ref.watch(appLocaleProvider));
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
       children: [
         live.when(
-          data: (snapshot) => _content(context, ref, snapshot, team),
-          loading: () => const Center(
+          data: (snapshot) => _content(context, ref, snapshot, team, strings),
+          loading: () => Center(
             child: Padding(
-              padding: EdgeInsets.all(28),
+              padding: const EdgeInsets.all(28),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: AppColors.magenta,
@@ -30,7 +33,7 @@ class LiveScreen extends ConsumerWidget {
             ),
           ),
           error: (error, _) => StatusBanner(
-            message: 'El directo oficial no está disponible: $error',
+            message: '${strings.t('live_unavailable')}: $error',
             isError: true,
             onRetry: () => ref.invalidate(liveFantasyProvider),
           ),
@@ -44,6 +47,7 @@ class LiveScreen extends ConsumerWidget {
     WidgetRef ref,
     LiveFantasySnapshot snapshot,
     MyTeam? team,
+    AppStrings strings,
   ) {
     final updated = DateFormat('HH:mm:ss').format(snapshot.updatedAt);
     final ownAssets = team == null
@@ -83,25 +87,25 @@ class LiveScreen extends ConsumerWidget {
                           : AppColors.textTertiary,
                       shape: BoxShape.circle,
                       boxShadow: snapshot.isLive
-                          ? const [
-                              BoxShadow(color: AppColors.error, blurRadius: 10),
-                            ]
+                          ? [BoxShadow(color: AppColors.error, blurRadius: 10)]
                           : null,
                     ),
                   ),
                   const SizedBox(width: 7),
                   Kicker(
-                    snapshot.isLive ? 'EN DIRECTO' : 'ÚLTIMO DATO OFICIAL',
+                    snapshot.isLive
+                        ? strings.t('live_now')
+                        : strings.t('latest_official'),
                     color: snapshot.isLive
                         ? AppColors.error
                         : AppColors.textTertiary,
                   ),
                   const Spacer(),
                   IconButton(
-                    tooltip: 'Actualizar ahora',
+                    tooltip: strings.t('refresh_now'),
                     visualDensity: VisualDensity.compact,
                     onPressed: () => ref.invalidate(liveFantasyProvider),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.refresh_rounded,
                       size: 18,
                       color: AppColors.cyan,
@@ -113,7 +117,7 @@ class LiveScreen extends ConsumerWidget {
               Text(snapshot.meetingName, style: AppText.syne(18)),
               const SizedBox(height: 3),
               Text(
-                '${snapshot.sessionName} · actualizado $updated',
+                '${snapshot.sessionName} · ${strings.t('updated')} $updated',
                 style: AppText.body(11, color: AppColors.textSecondary),
               ),
               if (team != null && team.isComplete) ...[
@@ -123,7 +127,7 @@ class LiveScreen extends ConsumerWidget {
                   style: AppText.syne(36, color: AppColors.lime),
                 ),
                 Text(
-                  'PUNTOS PROVISIONALES DE TU EQUIPO',
+                  strings.t('provisional_team_points'),
                   style: AppText.mono(9, color: AppColors.textSecondary),
                 ),
               ],
@@ -131,21 +135,20 @@ class LiveScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 10),
-        const StatusBanner(
-          message:
-              'La puntuación puede cambiar por correcciones, DOTD, '
-              'penalizaciones o cierre oficial de la sesión.',
-        ),
+        StatusBanner(message: strings.t('live_caution')),
         const SizedBox(height: 12),
         SectionHead(
-          kicker: 'Clasificación provisional',
-          title: team == null ? 'Todos los activos' : 'Tu equipo y líderes',
+          kicker: strings.t('provisional_ranking'),
+          title: team == null
+              ? strings.t('all_assets')
+              : strings.t('team_and_leaders'),
         ),
         const SizedBox(height: 8),
         for (final asset in _visibleAssets(snapshot.assets, ownAssets)) ...[
           _LiveAssetCard(
             asset: asset,
             isOwned: ownAssets.any((item) => item.assetId == asset.assetId),
+            strings: strings,
           ),
           const SizedBox(height: 8),
         ],
@@ -168,13 +171,19 @@ class LiveScreen extends ConsumerWidget {
 }
 
 class _LiveAssetCard extends StatelessWidget {
-  const _LiveAssetCard({required this.asset, required this.isOwned});
+  const _LiveAssetCard({
+    required this.asset,
+    required this.isOwned,
+    required this.strings,
+  });
 
   final LiveAssetScore asset;
   final bool isOwned;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final completedSessions = asset.sessions
         .where((session) => session.points != null)
         .map(
@@ -200,14 +209,17 @@ class _LiveAssetCard extends StatelessWidget {
                     ),
                     if (isOwned) ...[
                       const SizedBox(width: 6),
-                      const TagChip('TU EQUIPO', color: AppColors.lime),
+                      TagChip(
+                        strings.t('your_team_tag'),
+                        color: AppColors.lime,
+                      ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   completedSessions.isEmpty
-                      ? 'Selección ${asset.selectedPercentage.toStringAsFixed(0)}%'
+                      ? '${strings.t('selection')} ${asset.selectedPercentage.toStringAsFixed(0)}%'
                       : completedSessions,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -225,7 +237,7 @@ class _LiveAssetCard extends StatelessWidget {
                 style: AppText.syne(18, color: AppColors.cyan),
               ),
               Text(
-                'pts',
+                strings.t('points'),
                 style: AppText.mono(8, color: AppColors.textTertiary),
               ),
             ],

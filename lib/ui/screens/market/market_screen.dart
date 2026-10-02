@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_providers.dart';
+import '../../../core/app_locale.dart';
 import '../../../core/fantasy_standings_provider.dart';
 import '../../../core/team_colors.dart';
 import '../../../core/theme.dart';
@@ -20,8 +21,10 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final forecastsAsync = ref.watch(priceForecastsProvider);
     final catalog = ref.watch(fantasyAssetNameProvider).valueOrNull ?? const {};
+    final strings = AppStrings(ref.watch(appLocaleProvider));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
@@ -30,20 +33,18 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SectionHead(
-                kicker: 'Ventana móvil de 3 GP',
-                title: 'Mercado y precios',
+              SectionHead(
+                kicker: strings.t('market_window'),
+                title: strings.t('market_prices'),
               ),
               const SizedBox(height: 6),
               Text(
-                'Combina los dos últimos resultados oficiales con la '
-                'predicción del próximo GP. La probabilidad es estimada; '
-                'los puntos anteriores y los umbrales son oficiales.',
+                strings.t('market_intro'),
                 style: AppText.body(11.5, color: AppColors.textTertiary),
               ),
               const SizedBox(height: 12),
               SubTabs(
-                labels: const ['Pilotos', 'Constructores'],
+                labels: [strings.t('drivers'), strings.t('constructors')],
                 selectedIndex: _tab,
                 onSelected: (value) => setState(() => _tab = value),
               ),
@@ -60,24 +61,18 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                   : kind == FantasyAssetKind.constructor;
             }).toList();
             if (filtered.isEmpty) {
-              return const StatusBanner(
-                message: 'Sin datos de mercado. Sincroniza desde Resumen.',
-              );
+              return StatusBanner(message: strings.t('no_market'));
             }
             return Column(
               children: [
                 if (filtered.any((item) => !item.hasOfficialHistory)) ...[
-                  const StatusBanner(
-                    message:
-                        'Aún faltan dos jornadas oficiales en la caché. '
-                        'Los activos marcados como estimados usan la predicción '
-                        'también como referencia histórica.',
-                  ),
+                  StatusBanner(message: strings.t('estimated_history_note')),
                   const SizedBox(height: 10),
                 ],
                 for (final forecast in filtered) ...[
                   _MarketCard(
                     forecast: forecast,
+                    strings: strings,
                     name:
                         catalog[forecast.assetId]?.name ??
                         prettifyId(forecast.assetId),
@@ -87,9 +82,9 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
               ],
             );
           },
-          loading: () => const Center(
+          loading: () => Center(
             child: Padding(
-              padding: EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: AppColors.lime,
@@ -97,7 +92,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
             ),
           ),
           error: (error, _) => StatusBanner(
-            message: 'No se pudo calcular el mercado: $error',
+            message: '${strings.t('market_failed')}: $error',
             isError: true,
             onRetry: () => ref.invalidate(priceForecastsProvider),
           ),
@@ -108,13 +103,19 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 }
 
 class _MarketCard extends StatelessWidget {
-  const _MarketCard({required this.forecast, required this.name});
+  const _MarketCard({
+    required this.forecast,
+    required this.name,
+    required this.strings,
+  });
 
   final PriceForecast forecast;
   final String name;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final delta = forecast.projectedDeltaMillions;
     final color = delta > 0
         ? AppColors.lime
@@ -138,7 +139,7 @@ class _MarketCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       '${forecast.currentPriceMillions.toStringAsFixed(1)} M\$ '
-                      '· últimos puntos $history',
+                      '· ${strings.t('last_points')} $history',
                       style: AppText.body(10.5, color: AppColors.textTertiary),
                     ),
                   ],
@@ -173,13 +174,13 @@ class _MarketCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Subida ${(forecast.riseProbability * 100).toStringAsFixed(0)}%',
+                  '${strings.t('rise')} ${(forecast.riseProbability * 100).toStringAsFixed(0)}%',
                   style: AppText.mono(9, color: color),
                 ),
               ),
               Text(
-                '≥${forecast.requiredForGood} pts sube · '
-                '>${forecast.requiredForGreat} pts máximo',
+                '${strings.t('rises_at')} ≥${forecast.requiredForGood} pts · '
+                '${strings.t('maximum_at')} >${forecast.requiredForGreat} pts',
                 style: AppText.body(10, color: AppColors.textSecondary),
               ),
             ],
@@ -187,7 +188,7 @@ class _MarketCard extends StatelessWidget {
           if (!forecast.hasOfficialHistory) ...[
             const SizedBox(height: 5),
             Text(
-              'HISTÓRICO ESTIMADO',
+              strings.t('estimated_history'),
               style: AppText.mono(8, color: AppColors.warning),
             ),
           ],

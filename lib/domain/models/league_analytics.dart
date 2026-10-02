@@ -29,10 +29,20 @@ class LeagueMemberTrend {
 class LeagueAnalytics {
   const LeagueAnalytics({required this.events, required this.members});
 
+  /// Máximo de equipos que la app representa a la vez por liga.
+  static const maxDisplayedTeams = 20;
+
   final List<LeagueEvent> events;
   final List<LeagueMemberTrend> members;
 
   bool get hasHistory => events.length > 1;
+
+  LeagueAnalytics get limitedForDisplay => members.length <= maxDisplayedTeams
+      ? this
+      : LeagueAnalytics(
+          events: events,
+          members: members.take(maxDisplayedTeams).toList(growable: false),
+        );
 
   factory LeagueAnalytics.fromSnapshot(
     Map<String, dynamic> snapshot,

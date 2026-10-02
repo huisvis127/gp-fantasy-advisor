@@ -24,6 +24,7 @@ class _ManualTeamEntryScreenState extends ConsumerState<ManualTeamEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final driversAsync = ref.watch(driverPredictionsProvider);
     final constructorsAsync = ref.watch(constructorPredictionsProvider);
     final names = ref.watch(fantasyAssetNameProvider).valueOrNull ??
@@ -182,6 +183,7 @@ class _PickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return CheckboxListTile(
       value: selected,
       onChanged: enabled ? (_) => onChanged() : null,

@@ -26,110 +26,173 @@ class StrategyPlanner {
       );
     }
 
-    var driverIds = [...initialTeam.driverIds];
-    var constructorIds = [...initialTeam.constructorIds];
-    var bank = initialTeam.remainingBudgetMillions;
     final histories = <String, List<int>>{
       for (final entry in officialPointHistory.entries)
         entry.key: [...entry.value.take(2)],
     };
-    final prices = <String, double>{};
-    final plannedRounds = <PlannedRound>[];
-    var totalPoints = 0.0;
-    var totalPriceGain = 0.0;
-
+    final initialPrices = <String, double>{};
     for (final projection in projections) {
       for (final prediction in [
         ...projection.drivers,
         ...projection.constructors,
       ]) {
-        prices.putIfAbsent(prediction.assetId, () => prediction.priceMillions);
-      }
-      final drivers = projection.drivers
-          .map(
-            (prediction) => _withPrice(prediction, prices[prediction.assetId]!),
-          )
-          .toList();
-      final constructors = projection.constructors
-          .map(
-            (prediction) => _withPrice(prediction, prices[prediction.assetId]!),
-          )
-          .toList();
-      final currentAssets = [...driverIds, ...constructorIds];
-      final plans = optimizer.suggestTransfers(
-        currentDriverIds: driverIds,
-        currentConstructorIds: constructorIds,
-        driverPredictions: drivers,
-        constructorPredictions: constructors,
-        remainingBudgetMillions: bank,
-      );
-      final chosen = plans.isEmpty
-          ? null
-          : plans.firstWhere(
-              (plan) => plan.netExpectedGain > 0,
-              orElse: () => plans.first,
-            );
-      if (chosen == null) continue;
-
-      driverIds = [...chosen.resultingTeam.driverIds];
-      constructorIds = [...chosen.resultingTeam.constructorIds];
-      final availableBudget =
-          _teamCost(currentAssets, [...drivers, ...constructors]) + bank;
-      bank = (availableBudget - chosen.resultingTeam.totalCostMillions)
-          .clamp(0, double.infinity)
-          .toDouble();
-      final boostId = optimizer.recommendBoost(driverIds, drivers);
-      final boostGain = drivers
-          .firstWhere((prediction) => prediction.assetId == boostId)
-          .expectedPoints;
-      final roundPoints =
-          chosen.resultingTeam.totalExpectedPoints +
-          boostGain +
-          chosen.extraTransferPenaltyApplied;
-
-      var ownedPriceGain = 0.0;
-      for (final prediction in [...drivers, ...constructors]) {
-        final forecast = priceEngine.forecast(
-          prediction: prediction,
-          previousPoints: histories[prediction.assetId] ?? const [],
+        initialPrices.putIfAbsent(
+          prediction.assetId,
+          () => prediction.priceMillions,
         );
-        prices[prediction.assetId] =
-            prediction.priceMillions + forecast.projectedDeltaMillions;
-        if (driverIds.contains(prediction.assetId) ||
-            constructorIds.contains(prediction.assetId)) {
-          ownedPriceGain += forecast.projectedDeltaMillions;
-        }
-        histories[prediction.assetId] = [
-          prediction.expectedPoints.round(),
-          ...(histories[prediction.assetId] ?? const []).take(1),
-        ];
       }
-      totalPoints += roundPoints;
-      totalPriceGain += ownedPriceGain;
-      final projectedValue =
-          bank +
-          driverIds.fold<double>(0, (sum, id) => sum + (prices[id] ?? 0)) +
-          constructorIds.fold<double>(0, (sum, id) => sum + (prices[id] ?? 0));
-      plannedRounds.add(
-        PlannedRound(
-          projection: projection,
-          driverIds: List.unmodifiable(driverIds),
-          constructorIds: List.unmodifiable(constructorIds),
-          transfersOut: List.unmodifiable(chosen.transfersOut),
-          transfersIn: List.unmodifiable(chosen.transfersIn),
-          transferPenalty: chosen.extraTransferPenaltyApplied,
-          boostedDriverId: boostId,
-          expectedPoints: roundPoints,
-          projectedTeamValueMillions: projectedValue,
-          projectedPriceGainMillions: ownedPriceGain,
-        ),
-      );
     }
 
+    var beam = <_PlanState>[
+      _PlanState(
+        driverIds: [...initialTeam.driverIds],
+        constructorIds: [...initialTeam.constructorIds],
+        bank: initialTeam.remainingBudgetMillions,
+        prices: initialPrices,
+        histories: histories,
+        rounds: const [],
+        totalPoints: 0,
+        totalPriceGain: 0,
+      ),
+    ];
+
+    for (final projection in projections) {
+      final expanded = <_PlanState>[];
+      for (final state in beam) {
+        final drivers = projection.drivers
+            .map(
+              (prediction) => _withPrice(
+                prediction,
+                state.prices[prediction.assetId] ?? prediction.priceMillions,
+              ),
+            )
+            .toList();
+        final constructors = projection.constructors
+            .map(
+              (prediction) => _withPrice(
+                prediction,
+                state.prices[prediction.assetId] ?? prediction.priceMillions,
+              ),
+            )
+            .toList();
+        final candidates = optimizer.transferCandidates(
+          currentDriverIds: state.driverIds,
+          currentConstructorIds: state.constructorIds,
+          driverPredictions: drivers,
+          constructorPredictions: constructors,
+          remainingBudgetMillions: state.bank,
+          candidatesPerTransferCount: 2,
+        );
+        for (final candidate in candidates) {
+          final nextDrivers = [...candidate.resultingTeam.driverIds];
+          final nextConstructors = [...candidate.resultingTeam.constructorIds];
+          if (nextDrivers.isEmpty || nextConstructors.isEmpty) continue;
+          final currentAssets = [...state.driverIds, ...state.constructorIds];
+          final availableBudget =
+              _teamCost(currentAssets, [...drivers, ...constructors]) +
+              state.bank;
+          final nextBank =
+              (availableBudget - candidate.resultingTeam.totalCostMillions)
+                  .clamp(0, double.infinity)
+                  .toDouble();
+          final boostId = optimizer.recommendBoost(nextDrivers, drivers);
+          final boostGain = drivers
+              .firstWhere((prediction) => prediction.assetId == boostId)
+              .expectedPoints;
+          final roundPoints =
+              candidate.resultingTeam.totalExpectedPoints +
+              boostGain +
+              candidate.extraTransferPenaltyApplied;
+
+          final nextPrices = {...state.prices};
+          final nextHistories = <String, List<int>>{
+            for (final entry in state.histories.entries)
+              entry.key: [...entry.value],
+          };
+          var ownedPriceGain = 0.0;
+          for (final prediction in [...drivers, ...constructors]) {
+            final forecast = priceEngine.forecast(
+              prediction: prediction,
+              previousPoints: nextHistories[prediction.assetId] ?? const [],
+            );
+            nextPrices[prediction.assetId] =
+                prediction.priceMillions + forecast.projectedDeltaMillions;
+            if (nextDrivers.contains(prediction.assetId) ||
+                nextConstructors.contains(prediction.assetId)) {
+              ownedPriceGain += forecast.projectedDeltaMillions;
+            }
+            nextHistories[prediction.assetId] = [
+              prediction.expectedPoints.round(),
+              ...(nextHistories[prediction.assetId] ?? const []).take(1),
+            ];
+          }
+          final projectedValue =
+              nextBank +
+              nextDrivers.fold<double>(
+                0,
+                (sum, id) => sum + (nextPrices[id] ?? 0),
+              ) +
+              nextConstructors.fold<double>(
+                0,
+                (sum, id) => sum + (nextPrices[id] ?? 0),
+              );
+          final plannedRound = PlannedRound(
+            projection: projection,
+            driverIds: List.unmodifiable(nextDrivers),
+            constructorIds: List.unmodifiable(nextConstructors),
+            transfersOut: List.unmodifiable(candidate.transfersOut),
+            transfersIn: List.unmodifiable(candidate.transfersIn),
+            transferPenalty: candidate.extraTransferPenaltyApplied,
+            boostedDriverId: boostId,
+            expectedPoints: roundPoints,
+            projectedTeamValueMillions: projectedValue,
+            projectedPriceGainMillions: ownedPriceGain,
+          );
+          expanded.add(
+            _PlanState(
+              driverIds: nextDrivers,
+              constructorIds: nextConstructors,
+              bank: nextBank,
+              prices: nextPrices,
+              histories: nextHistories,
+              rounds: [...state.rounds, plannedRound],
+              totalPoints: state.totalPoints + roundPoints,
+              totalPriceGain: state.totalPriceGain + ownedPriceGain,
+            ),
+          );
+        }
+      }
+      if (expanded.isEmpty) break;
+      final deduplicated = <String, _PlanState>{};
+      for (final state in expanded) {
+        final drivers = [...state.driverIds]..sort();
+        final constructors = [...state.constructorIds]..sort();
+        final key =
+            '${drivers.join(',')}|${constructors.join(',')}|'
+            '${state.bank.toStringAsFixed(2)}';
+        final previous = deduplicated[key];
+        if (previous == null || state.objective > previous.objective) {
+          deduplicated[key] = state;
+        }
+      }
+      beam = deduplicated.values.toList()
+        ..sort((a, b) => b.objective.compareTo(a.objective));
+      if (beam.length > 4) beam = beam.take(4).toList();
+    }
+
+    if (beam.isEmpty) {
+      return const MultiRoundPlan(
+        rounds: [],
+        totalExpectedPoints: 0,
+        totalProjectedPriceGainMillions: 0,
+      );
+    }
+    beam.sort((a, b) => b.objective.compareTo(a.objective));
+    final best = beam.first;
     return MultiRoundPlan(
-      rounds: List.unmodifiable(plannedRounds),
-      totalExpectedPoints: totalPoints,
-      totalProjectedPriceGainMillions: totalPriceGain,
+      rounds: List.unmodifiable(best.rounds),
+      totalExpectedPoints: best.totalPoints,
+      totalProjectedPriceGainMillions: best.totalPriceGain,
     );
   }
 
@@ -241,4 +304,31 @@ class StrategyPlanner {
       (sum, id) => sum + (byId[id]?.priceMillions ?? 0),
     );
   }
+}
+
+class _PlanState {
+  const _PlanState({
+    required this.driverIds,
+    required this.constructorIds,
+    required this.bank,
+    required this.prices,
+    required this.histories,
+    required this.rounds,
+    required this.totalPoints,
+    required this.totalPriceGain,
+  });
+
+  final List<String> driverIds;
+  final List<String> constructorIds;
+  final double bank;
+  final Map<String, double> prices;
+  final Map<String, List<int>> histories;
+  final List<PlannedRound> rounds;
+  final double totalPoints;
+  final double totalPriceGain;
+
+  /// Un millón adicional se valora como seis puntos dentro del horizonte.
+  /// Así se conserva una ruta que construye presupuesto sin permitir que el
+  /// valor económico domine a los puntos Fantasy reales.
+  double get objective => totalPoints + totalPriceGain * 6;
 }

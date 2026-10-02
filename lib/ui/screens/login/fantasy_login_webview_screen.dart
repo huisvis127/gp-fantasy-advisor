@@ -444,6 +444,7 @@ class _FantasyLoginWebViewScreenState
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Conectar F1 Fantasy'),

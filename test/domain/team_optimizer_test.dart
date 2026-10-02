@@ -116,5 +116,39 @@ void main() {
       expect(twoChanges.resultingTeam.totalCostMillions, lessThanOrEqualTo(70));
       expect(twoChanges.netExpectedGain, 140);
     });
+
+    test(
+      'centro de decisión conserva 1 cambio, 2 cambios y techo absoluto',
+      () {
+        final drivers = [
+          for (var i = 1; i <= 5; i++) _fakePrediction('d$i', 10, 10),
+          _fakePrediction('d6', 30, 10),
+          _fakePrediction('d7', 25, 10),
+        ];
+        final constructors = [
+          _fakePrediction('c1', 10, 10),
+          _fakePrediction('c2', 10, 10),
+          _fakePrediction('c3', 30, 10),
+        ];
+
+        const optimizer = TeamOptimizer();
+        final center = optimizer.buildDecisionCenter(
+          currentDriverIds: const ['d1', 'd2', 'd3', 'd4', 'd5'],
+          currentConstructorIds: const ['c1', 'c2'],
+          driverPredictions: drivers,
+          constructorPredictions: constructors,
+          remainingBudgetMillions: 0,
+        );
+
+        expect(center.oneTransfer?.numberOfTransfers, 1);
+        expect(center.twoTransfers?.numberOfTransfers, 2);
+        expect(center.perfectTeam.driverIds, hasLength(5));
+        expect(center.perfectTeam.constructorIds, hasLength(2));
+        expect(
+          center.perfectTeam.totalExpectedPoints,
+          greaterThanOrEqualTo(center.currentTeam.totalExpectedPoints),
+        );
+      },
+    );
   });
 }

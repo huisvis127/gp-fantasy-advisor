@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_providers.dart';
+import '../../core/app_locale.dart';
 import '../../core/theme.dart';
 import '../widgets/ref_widgets.dart';
 import 'home/home_screen.dart';
@@ -25,11 +26,11 @@ class _RootShellState extends ConsumerState<RootShell> {
   int _index = 0;
 
   static const _tabs = [
-    ('RESUMEN', Icons.speed_rounded),
-    ('ANÁLISIS', Icons.query_stats_rounded),
-    ('FANTASY', Icons.auto_awesome_rounded),
-    ('CIRCUITO', Icons.route_rounded),
-    ('LIGA', Icons.emoji_events_rounded),
+    ('summary', Icons.speed_rounded),
+    ('analysis', Icons.query_stats_rounded),
+    ('fantasy', Icons.auto_awesome_rounded),
+    ('circuit', Icons.route_rounded),
+    ('league', Icons.emoji_events_rounded),
   ];
 
   static const _screens = [
@@ -42,7 +43,9 @@ class _RootShellState extends ConsumerState<RootShell> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final selectedRace = ref.watch(selectedRaceProvider).valueOrNull;
+    final strings = AppStrings(ref.watch(appLocaleProvider));
 
     return Scaffold(
       body: AppBackground(
@@ -53,7 +56,7 @@ class _RootShellState extends ConsumerState<RootShell> {
               // .app-header
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: AppColors.border1)),
                 ),
                 child: LayoutBuilder(
@@ -96,14 +99,14 @@ class _RootShellState extends ConsumerState<RootShell> {
                       ],
                       const SizedBox(width: 4),
                       IconButton(
-                        tooltip: 'Ajustes',
+                        tooltip: strings.t('settings'),
                         visualDensity: VisualDensity.compact,
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const SettingsScreen(),
                           ),
                         ),
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.settings_rounded,
                           size: 19,
                           color: AppColors.textSecondary,
@@ -123,7 +126,7 @@ class _RootShellState extends ConsumerState<RootShell> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppColors.background.withValues(alpha: 0.92),
-          border: const Border(top: BorderSide(color: AppColors.border1)),
+          border: Border(top: BorderSide(color: AppColors.border1)),
         ),
         child: SafeArea(
           top: false,
@@ -169,7 +172,7 @@ class _RootShellState extends ConsumerState<RootShell> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            _tabs[i].$1,
+                            strings.t(_tabs[i].$1),
                             style: AppText.mono(
                               8,
                               color: i == _index

@@ -40,6 +40,7 @@ class _CountdownWidgetState extends State<CountdownWidget> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     if (_remaining.isNegative) {
       return Text('¡EN MARCHA O FINALIZADO!',
           style: AppText.mono(11, color: AppColors.ok));

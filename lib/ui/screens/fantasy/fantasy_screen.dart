@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_locale.dart';
 import '../../../core/theme.dart';
 import '../../widgets/ref_widgets.dart';
 import '../ideal/ideal_screen.dart';
@@ -10,18 +12,20 @@ import '../live/live_screen.dart';
 
 /// Reúne las dos herramientas de juego en la pestaña Fantasy, igual que la
 /// aplicación de referencia: propuesta óptima y equipo real del usuario.
-class FantasyScreen extends StatefulWidget {
+class FantasyScreen extends ConsumerStatefulWidget {
   const FantasyScreen({super.key});
 
   @override
-  State<FantasyScreen> createState() => _FantasyScreenState();
+  ConsumerState<FantasyScreen> createState() => _FantasyScreenState();
 }
 
-class _FantasyScreenState extends State<FantasyScreen> {
+class _FantasyScreenState extends ConsumerState<FantasyScreen> {
   int _tab = 0;
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
+    final strings = AppStrings(ref.watch(appLocaleProvider));
     return Column(
       children: [
         Padding(
@@ -29,15 +33,24 @@ class _FantasyScreenState extends State<FantasyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SectionHead(kicker: 'Estrategia', title: 'Tu juego'),
+              SectionHead(
+                kicker: strings.t('strategy'),
+                title: strings.t('your_game'),
+              ),
               const SizedBox(height: 5),
               Text(
-                'Construye el equipo ideal o analiza el que ya tienes.',
+                strings.t('your_game_sub'),
                 style: AppText.body(12, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
               SubTabs(
-                labels: const ['Ideal', 'Equipo', 'Mercado', 'Plan', 'Directo'],
+                labels: [
+                  strings.t('ideal'),
+                  strings.t('team'),
+                  strings.t('market'),
+                  strings.t('plan'),
+                  strings.t('live'),
+                ],
                 selectedIndex: _tab,
                 onSelected: (value) => setState(() => _tab = value),
               ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_providers.dart';
+import '../../../core/app_locale.dart';
 import '../../../core/fantasy_standings_provider.dart';
 import '../../../core/team_colors.dart';
 import '../../../core/theme.dart';
@@ -13,10 +14,12 @@ class StrategyScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    Theme.of(context);
     final planAsync = ref.watch(strategyPlanProvider);
     final chipsAsync = ref.watch(chipAdviceProvider);
     final reviewAsync = ref.watch(latestDecisionReviewProvider);
     final catalog = ref.watch(fantasyAssetNameProvider).valueOrNull ?? const {};
+    final strings = AppStrings(ref.watch(appLocaleProvider));
     String nameOf(String id) => catalog[id]?.name ?? prettifyId(id);
 
     return ListView(
@@ -26,15 +29,13 @@ class StrategyScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SectionHead(
-                kicker: 'Horizonte de 3 GP',
-                title: 'Planificador de temporada',
+              SectionHead(
+                kicker: strings.t('three_gp_horizon'),
+                title: strings.t('season_planner'),
               ),
               const SizedBox(height: 6),
               Text(
-                'Encadena cambios, boost y crecimiento de presupuesto. '
-                'El primer GP incorpora las sesiones disponibles; los '
-                'siguientes son proyecciones pre-fin de semana.',
+                strings.t('planner_intro'),
                 style: AppText.body(11.5, color: AppColors.textTertiary),
               ),
             ],
@@ -44,11 +45,7 @@ class StrategyScreen extends ConsumerWidget {
         planAsync.when(
           data: (plan) {
             if (plan.rounds.isEmpty) {
-              return const StatusBanner(
-                message:
-                    'Guarda o importa un equipo completo para crear '
-                    'el plan de los próximos Grandes Premios.',
-              );
+              return StatusBanner(message: strings.t('save_team_for_plan'));
             }
             return Column(
               children: [
@@ -57,7 +54,7 @@ class StrategyScreen extends ConsumerWidget {
                     Expanded(
                       child: TotalPill(
                         value: plan.totalExpectedPoints.toStringAsFixed(0),
-                        label: 'pts en el horizonte',
+                        label: strings.t('horizon_points'),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -65,7 +62,7 @@ class StrategyScreen extends ConsumerWidget {
                       child: TotalPill(
                         value:
                             '${plan.totalProjectedPriceGainMillions >= 0 ? '+' : ''}${plan.totalProjectedPriceGainMillions.toStringAsFixed(1)} M\$',
-                        label: 'valor proyectado',
+                        label: strings.t('projected_value'),
                       ),
                     ),
                   ],
@@ -76,15 +73,16 @@ class StrategyScreen extends ConsumerWidget {
                     round: plan.rounds[index],
                     number: index + 1,
                     nameOf: nameOf,
+                    strings: strings,
                   ),
                   const SizedBox(height: 9),
                 ],
               ],
             );
           },
-          loading: () => const Center(
+          loading: () => Center(
             child: Padding(
-              padding: EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: AppColors.lime,
@@ -92,50 +90,47 @@ class StrategyScreen extends ConsumerWidget {
             ),
           ),
           error: (error, _) => StatusBanner(
-            message: 'No se pudo construir el plan: $error',
+            message: '${strings.t('plan_failed')}: $error',
             isError: true,
             onRetry: () => ref.invalidate(strategyPlanProvider),
           ),
         ),
         const SizedBox(height: 8),
-        const SectionHead(kicker: 'Oportunidad', title: 'Asesor de chips'),
+        SectionHead(
+          kicker: strings.t('opportunity'),
+          title: strings.t('chip_advisor'),
+        ),
         const SizedBox(height: 8),
         chipsAsync.when(
           data: (advice) => advice.isEmpty
-              ? const StatusBanner(
-                  message: 'El asesor necesita un equipo y un plan válidos.',
-                )
+              ? StatusBanner(message: strings.t('chip_needs_plan'))
               : Column(
                   children: [
                     for (final item in advice) ...[
-                      _ChipCard(advice: item),
+                      _ChipCard(advice: item, strings: strings),
                       const SizedBox(height: 8),
                     ],
                   ],
                 ),
-          loading: () => const LinearProgressIndicator(
+          loading: () => LinearProgressIndicator(
             color: AppColors.cyan,
             backgroundColor: AppColors.surface3,
           ),
           error: (error, _) => StatusBanner(
-            message: 'No se pudo evaluar los chips: $error',
+            message: '${strings.t('chips_failed')}: $error',
             isError: true,
           ),
         ),
         const SizedBox(height: 8),
-        const SectionHead(
-          kicker: 'Aprendizaje',
-          title: 'Revisión de decisiones',
+        SectionHead(
+          kicker: strings.t('learning'),
+          title: strings.t('decision_review'),
         ),
         const SizedBox(height: 8),
         reviewAsync.when(
           data: (review) {
             if (review == null) {
-              return const StatusBanner(
-                message:
-                    'La revisión aparecerá después de una jornada para '
-                    'la que hayas guardado tu equipo.',
-              );
+              return StatusBanner(message: strings.t('review_pending'));
             }
             return RefCard(
               child: Column(
@@ -148,29 +143,29 @@ class StrategyScreen extends ConsumerWidget {
                       Expanded(
                         child: TotalPill(
                           value: review.teamPoints.toStringAsFixed(0),
-                          label: 'tus puntos',
+                          label: strings.t('your_points'),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: TotalPill(
                           value: review.optimalPoints.toStringAsFixed(0),
-                          label: 'óptimo posible',
+                          label: strings.t('optimal_points'),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Diferencia ${review.missedPoints.toStringAsFixed(0)} pts · '
+                    '${strings.t('difference')} ${review.missedPoints.toStringAsFixed(0)} pts · '
                     'boost +${review.boostImpact.toStringAsFixed(0)} pts',
                     style: AppText.body(11.5, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    'Mejor: ${nameOf(review.bestAssetId)} '
+                    '${strings.t('best')}: ${nameOf(review.bestAssetId)} '
                     '${review.bestAssetPoints.toStringAsFixed(0)} pts · '
-                    'Peor: ${nameOf(review.worstAssetId)} '
+                    '${strings.t('worst')}: ${nameOf(review.worstAssetId)} '
                     '${review.worstAssetPoints.toStringAsFixed(0)} pts',
                     style: AppText.body(10.5, color: AppColors.textTertiary),
                   ),
@@ -178,12 +173,12 @@ class StrategyScreen extends ConsumerWidget {
               ),
             );
           },
-          loading: () => const LinearProgressIndicator(
+          loading: () => LinearProgressIndicator(
             color: AppColors.violet,
             backgroundColor: AppColors.surface3,
           ),
           error: (error, _) => StatusBanner(
-            message: 'No se pudo revisar la última jornada: $error',
+            message: '${strings.t('review_failed')}: $error',
             isError: true,
           ),
         ),
@@ -197,14 +192,17 @@ class _RoundCard extends StatelessWidget {
     required this.round,
     required this.number,
     required this.nameOf,
+    required this.strings,
   });
 
   final PlannedRound round;
   final int number;
   final String Function(String) nameOf;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final hasTransfers = round.transfersIn.isNotEmpty;
     return RefCard(
       padding: const EdgeInsets.all(15),
@@ -231,7 +229,7 @@ class _RoundCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.swap_horiz_rounded,
                       size: 15,
                       color: AppColors.violet,
@@ -249,13 +247,13 @@ class _RoundCard extends StatelessWidget {
               )
           else
             Text(
-              'Mantener el equipo',
+              strings.t('keep_team'),
               style: AppText.body(11.5, color: AppColors.textSecondary),
             ),
           const SizedBox(height: 7),
           Text(
             'Boost ×2: ${nameOf(round.boostedDriverId)} · '
-            'valor ${round.projectedTeamValueMillions.toStringAsFixed(1)} M\$ · '
+            '${strings.t('team_value')} ${round.projectedTeamValueMillions.toStringAsFixed(1)} M\$ · '
             'Δ ${round.projectedPriceGainMillions >= 0 ? '+' : ''}'
             '${round.projectedPriceGainMillions.toStringAsFixed(1)} M\$',
             style: AppText.body(10.5, color: AppColors.textTertiary),
@@ -263,7 +261,7 @@ class _RoundCard extends StatelessWidget {
           if (round.transferPenalty < 0) ...[
             const SizedBox(height: 5),
             Text(
-              '${round.transferPenalty} pts por cambios adicionales',
+              '${round.transferPenalty} ${strings.t('extra_transfer_penalty')}',
               style: AppText.mono(9, color: AppColors.warning),
             ),
           ],
@@ -274,21 +272,23 @@ class _RoundCard extends StatelessWidget {
 }
 
 class _ChipCard extends StatelessWidget {
-  const _ChipCard({required this.advice});
+  const _ChipCard({required this.advice, required this.strings});
 
   final ChipAdvice advice;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final color = switch (advice.level) {
       ChipRecommendationLevel.use => AppColors.lime,
       ChipRecommendationLevel.consider => AppColors.warning,
       ChipRecommendationLevel.hold => AppColors.textTertiary,
     };
     final label = switch (advice.level) {
-      ChipRecommendationLevel.use => 'USAR',
-      ChipRecommendationLevel.consider => 'VALORAR',
-      ChipRecommendationLevel.hold => 'GUARDAR',
+      ChipRecommendationLevel.use => strings.t('use'),
+      ChipRecommendationLevel.consider => strings.t('consider'),
+      ChipRecommendationLevel.hold => strings.t('hold'),
     };
     return RefCard(
       padding: const EdgeInsets.all(13),
@@ -302,7 +302,7 @@ class _ChipCard extends StatelessWidget {
                 Text(advice.chip, style: AppText.syne(13)),
                 const SizedBox(height: 3),
                 Text(
-                  advice.reason,
+                  strings.t('chip_${advice.level.name}_reason'),
                   style: AppText.body(10.5, color: AppColors.textSecondary),
                 ),
               ],

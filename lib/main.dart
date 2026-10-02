@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/app_providers.dart';
+import 'core/app_locale.dart';
 import 'core/alert_settings.dart';
 import 'core/providers.dart' show remoteConfigProvider;
 import 'core/remote_config.dart';
 import 'core/theme.dart';
+import 'core/app_appearance.dart';
 import 'ui/screens/root_shell.dart';
 
 Future<void> main() async {
@@ -46,6 +49,9 @@ class _GpFantasyAdvisorAppState extends ConsumerState<GpFantasyAdvisorApp> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
+    final languageCode = ref.watch(appLocaleProvider);
+    AppColors.brightness = ref.watch(appAppearanceProvider);
     ref.listen(driverPredictionsProvider, (previous, next) {
       next.whenData((predictions) {
         final stage =
@@ -60,6 +66,19 @@ class _GpFantasyAdvisorAppState extends ConsumerState<GpFantasyAdvisorApp> {
       title: 'GP Fantasy Advisor',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      locale: Locale(languageCode),
+      supportedLocales: const [
+        Locale('es'),
+        Locale('en'),
+        Locale('it'),
+        Locale('de'),
+        Locale('id'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: const RootShell(),
     );
   }

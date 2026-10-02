@@ -24,10 +24,11 @@ class RefCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final card = Container(
       padding: padding,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [AppColors.surface2, AppColors.surface1],
@@ -36,7 +37,10 @@ class RefCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.lg),
         boxShadow: const [
           BoxShadow(
-              color: Color(0x2E000000), blurRadius: 50, offset: Offset(0, 18)),
+            color: Color(0x2E000000),
+            blurRadius: 50,
+            offset: Offset(0, 18),
+          ),
         ],
       ),
       child: child,
@@ -55,9 +59,10 @@ class HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [AppColors.surface2, AppColors.surface1],
@@ -86,21 +91,29 @@ class HeroCard extends StatelessWidget {
 
 /// `.eyebrow` / `.section-kicker` — etiqueta mono uppercase con tracking.
 class Kicker extends StatelessWidget {
-  const Kicker(this.text, {super.key, this.color = AppColors.lime});
+  const Kicker(this.text, {super.key, this.color});
 
   final String text;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    return Text(text.toUpperCase(), style: AppText.mono(11, color: color));
+    Theme.of(context);
+    return Text(
+      text.toUpperCase(),
+      style: AppText.mono(11, color: color ?? AppColors.lime),
+    );
   }
 }
 
 /// Cabecera de sección: kicker + título Syne (`.section-head`).
 class SectionHead extends StatelessWidget {
-  const SectionHead(
-      {super.key, required this.kicker, required this.title, this.trailing});
+  const SectionHead({
+    super.key,
+    required this.kicker,
+    required this.title,
+    this.trailing,
+  });
 
   final String kicker;
   final String title;
@@ -108,6 +121,7 @@ class SectionHead extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -149,13 +163,18 @@ class NeonSelect<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(),
-            style: AppText.body(11,
-                    color: AppColors.textSecondary, weight: FontWeight.w600)
-                .copyWith(letterSpacing: 0.6)),
+        Text(
+          label.toUpperCase(),
+          style: AppText.body(
+            11,
+            color: AppColors.textSecondary,
+            weight: FontWeight.w600,
+          ).copyWith(letterSpacing: 0.6),
+        ),
         const SizedBox(height: 5),
         GestureDetector(
           onTap: items.isEmpty
@@ -175,7 +194,7 @@ class NeonSelect<T> extends StatelessWidget {
             height: 46,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [AppColors.surface3, AppColors.surface1],
@@ -192,8 +211,11 @@ class NeonSelect<T> extends StatelessWidget {
                     style: AppText.body(14, weight: FontWeight.w600),
                   ),
                 ),
-                const Icon(Icons.arrow_drop_down_rounded,
-                    color: AppColors.lime, size: 26),
+                Icon(
+                  Icons.arrow_drop_down_rounded,
+                  color: AppColors.lime,
+                  size: 26,
+                ),
               ],
             ),
           ),
@@ -220,10 +242,11 @@ Future<T?> showPickerSheet<T>({
     builder: (ctx) {
       return Container(
         margin: const EdgeInsets.all(14),
-        constraints:
-            BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.76),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.76,
+        ),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [AppColors.surface2, AppColors.surface1],
@@ -241,8 +264,10 @@ Future<T?> showPickerSheet<T>({
                   Expanded(child: Text(title, style: AppText.syne(16))),
                   IconButton(
                     onPressed: () => Navigator.of(ctx).pop(),
-                    icon: const Icon(Icons.close_rounded,
-                        color: AppColors.textPrimary),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ],
               ),
@@ -289,24 +314,33 @@ Future<T?> showPickerSheet<T>({
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(itemLabel(item),
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppText.body(14,
-                                        weight: FontWeight.w800)),
+                                Text(
+                                  itemLabel(item),
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppText.body(
+                                    14,
+                                    weight: FontWeight.w800,
+                                  ),
+                                ),
                                 if (itemMeta != null)
-                                  Text(itemMeta(item),
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppText.body(11,
-                                          color: AppColors.textTertiary)),
+                                  Text(
+                                    itemMeta(item),
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppText.body(
+                                      11,
+                                      color: AppColors.textTertiary,
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
                           if (isActive)
                             Padding(
                               padding: const EdgeInsets.only(right: 12),
-                              child: Text('✓',
-                                  style:
-                                      AppText.mono(14, color: AppColors.lime)),
+                              child: Text(
+                                '✓',
+                                style: AppText.mono(14, color: AppColors.lime),
+                              ),
                             ),
                         ],
                       ),
@@ -329,7 +363,7 @@ class SliderBox extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
-    this.accent = AppColors.lime,
+    this.accent,
   });
 
   final String label;
@@ -337,27 +371,32 @@ class SliderBox extends StatelessWidget {
   /// 0-100 (porcentaje).
   final double value;
   final ValueChanged<double> onChanged;
-  final Color accent;
+  final Color? accent;
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label,
-                style: AppText.body(12.5, color: AppColors.textSecondary)),
-            Text('${value.round()}%',
-                style: AppText.body(12.5, weight: FontWeight.w800)),
+            Text(
+              label,
+              style: AppText.body(12.5, color: AppColors.textSecondary),
+            ),
+            Text(
+              '${value.round()}%',
+              style: AppText.body(12.5, weight: FontWeight.w800),
+            ),
           ],
         ),
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
-            activeTrackColor: accent,
-            thumbColor: accent,
-            overlayColor: accent.withValues(alpha: 0.12),
+            activeTrackColor: accent ?? AppColors.lime,
+            thumbColor: accent ?? AppColors.lime,
+            overlayColor: (accent ?? AppColors.lime).withValues(alpha: 0.12),
             trackHeight: 4,
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
           ),
@@ -393,6 +432,7 @@ class RecCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Container(
       constraints: const BoxConstraints(minHeight: 76),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -411,23 +451,29 @@ class RecCard extends StatelessWidget {
               const SizedBox(height: 6),
               Padding(
                 padding: const EdgeInsets.only(right: 44),
-                child: Text(name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.syne(13.5)),
-              ),
-              const SizedBox(height: 2),
-              Text(subtitle,
+                child: Text(
+                  name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.body(11, color: AppColors.textTertiary)),
+                  style: AppText.syne(13.5),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.body(11, color: AppColors.textTertiary),
+              ),
             ],
           ),
           Positioned(
             top: 0,
             right: 0,
-            child: Text(score,
-                style: AppText.syne(16, color: AppColors.textPrimary)),
+            child: Text(
+              score,
+              style: AppText.syne(16, color: AppColors.textPrimary),
+            ),
           ),
         ],
       ),
@@ -437,22 +483,24 @@ class RecCard extends StatelessWidget {
 
 /// `.chip` — pastilla pequeña uppercase con borde de color.
 class TagChip extends StatelessWidget {
-  const TagChip(this.label, {super.key, this.color = AppColors.textSecondary});
+  const TagChip(this.label, {super.key, this.color});
 
   final String label;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        border: Border.all(
-            color:
-                color == AppColors.textSecondary ? AppColors.border1 : color),
+        border: Border.all(color: color == null ? AppColors.border1 : color!),
         borderRadius: BorderRadius.circular(99),
       ),
-      child: Text(label.toUpperCase(), style: AppText.mono(8.5, color: color)),
+      child: Text(
+        label.toUpperCase(),
+        style: AppText.mono(8.5, color: color ?? AppColors.textSecondary),
+      ),
     );
   }
 }
@@ -466,6 +514,7 @@ class ScoreBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Container(
       width: width,
       height: 5,
@@ -478,8 +527,7 @@ class ScoreBar extends StatelessWidget {
         widthFactor: fraction.clamp(0.02, 1.0),
         child: Container(
           decoration: BoxDecoration(
-            gradient:
-                const LinearGradient(colors: [AppColors.cyan, AppColors.lime]),
+            gradient: LinearGradient(colors: [AppColors.cyan, AppColors.lime]),
             borderRadius: BorderRadius.circular(99),
           ),
         ),
@@ -490,25 +538,36 @@ class ScoreBar extends StatelessWidget {
 
 /// `.vpill` — precio y puntos-por-millón.
 class ValuePill extends StatelessWidget {
-  const ValuePill(
-      {super.key, required this.priceMillions, required this.pointsPerMillion});
+  const ValuePill({
+    super.key,
+    required this.priceMillions,
+    required this.pointsPerMillion,
+  });
 
   final double priceMillions;
   final double pointsPerMillion;
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
       children: [
-        Text('${priceMillions.toStringAsFixed(1)} M\$',
-            style: AppText.syne(12, color: AppColors.textSecondary)),
+        Text(
+          '${priceMillions.toStringAsFixed(1)} M\$',
+          style: AppText.syne(12, color: AppColors.textSecondary),
+        ),
         const SizedBox(width: 6),
-        Text('${pointsPerMillion.toStringAsFixed(2)} pts/M',
-            style: AppText.body(10,
-                color: AppColors.cyan, weight: FontWeight.w700)),
+        Text(
+          '${pointsPerMillion.toStringAsFixed(2)} pts/M',
+          style: AppText.body(
+            10,
+            color: AppColors.cyan,
+            weight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
@@ -544,6 +603,7 @@ class RankingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -568,10 +628,12 @@ class RankingRow extends StatelessWidget {
                       child: Center(
                         child: Text(
                           '$rank',
-                          style: AppText.syne(16,
-                              color: rank <= 3
-                                  ? AppColors.lime
-                                  : AppColors.textSecondary),
+                          style: AppText.syne(
+                            16,
+                            color: rank <= 3
+                                ? AppColors.lime
+                                : AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ),
@@ -582,16 +644,24 @@ class RankingRow extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppText.body(14.5,
-                                    weight: FontWeight.w600)),
-                            Text(teamName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppText.body(11,
-                                    color: AppColors.textTertiary)),
+                            Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.body(
+                                14.5,
+                                weight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              teamName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.body(
+                                11,
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
                             if (chips.isNotEmpty) ...[
                               const SizedBox(height: 5),
                               Wrap(spacing: 5, runSpacing: 4, children: chips),
@@ -606,16 +676,20 @@ class RankingRow extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(score.toStringAsFixed(1),
-                              style: AppText.syne(19)),
+                          Text(
+                            score.toStringAsFixed(1),
+                            style: AppText.syne(19),
+                          ),
                           const SizedBox(height: 4),
                           ScoreBar(
-                              fraction: maxScore <= 0 ? 0 : score / maxScore),
+                            fraction: maxScore <= 0 ? 0 : score / maxScore,
+                          ),
                           const SizedBox(height: 4),
                           ValuePill(
                             priceMillions: priceMillions,
-                            pointsPerMillion:
-                                priceMillions <= 0 ? 0 : score / priceMillions,
+                            pointsPerMillion: priceMillions <= 0
+                                ? 0
+                                : score / priceMillions,
                           ),
                         ],
                       ),
@@ -647,16 +721,19 @@ class FeatureBarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
           SizedBox(
             width: 118,
-            child: Text(label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppText.body(11, color: AppColors.textSecondary)),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.body(11, color: AppColors.textSecondary),
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -671,8 +748,9 @@ class FeatureBarRow extends StatelessWidget {
                 widthFactor: (value / 100).clamp(0.02, 1.0),
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                        colors: [AppColors.cyan, AppColors.lime]),
+                    gradient: LinearGradient(
+                      colors: [AppColors.cyan, AppColors.lime],
+                    ),
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
@@ -682,9 +760,11 @@ class FeatureBarRow extends StatelessWidget {
           const SizedBox(width: 8),
           SizedBox(
             width: 26,
-            child: Text('${value.round()}',
-                textAlign: TextAlign.right,
-                style: AppText.body(11, color: AppColors.textTertiary)),
+            child: Text(
+              '${value.round()}',
+              textAlign: TextAlign.right,
+              style: AppText.body(11, color: AppColors.textTertiary),
+            ),
           ),
         ],
       ),
@@ -701,6 +781,7 @@ class TotalPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
       decoration: BoxDecoration(
@@ -709,19 +790,27 @@ class TotalPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: AppColors.lime.withValues(alpha: 0.14), blurRadius: 24),
+            color: AppColors.lime.withValues(alpha: 0.14),
+            blurRadius: 24,
+          ),
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          Text(value, style: AppText.syne(21, color: AppColors.lime)),
-          const SizedBox(width: 8),
-          Text(label.toUpperCase(),
-              style: AppText.mono(9, color: AppColors.textSecondary)),
-        ],
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(value, style: AppText.syne(21, color: AppColors.lime)),
+            const SizedBox(width: 8),
+            Text(
+              label.toUpperCase(),
+              style: AppText.mono(9, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -748,6 +837,7 @@ class AssetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -768,22 +858,29 @@ class AssetCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(tag.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.mono(8,
-                            color: tagColor ?? AppColors.textSecondary)),
+                    Text(
+                      tag.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.mono(
+                        8,
+                        color: tagColor ?? AppColors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 3),
-                    Text(name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.syne(12)),
+                    Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.syne(12),
+                    ),
                     const SizedBox(height: 2),
-                    Text(subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style:
-                            AppText.body(9.5, color: AppColors.textTertiary)),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.body(9.5, color: AppColors.textTertiary),
+                    ),
                   ],
                 ),
               ),
@@ -805,6 +902,7 @@ class TransferNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final color = isError ? AppColors.error : AppColors.lime;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -836,6 +934,7 @@ class SubTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Row(
       children: [
         for (var i = 0; i < labels.length; i++) ...[
@@ -850,19 +949,22 @@ class SubTabs extends StatelessWidget {
                       ? AppColors.lime.withValues(alpha: 0.07)
                       : AppColors.surface3,
                   border: Border.all(
-                    color:
-                        i == selectedIndex ? AppColors.lime : AppColors.border1,
+                    color: i == selectedIndex
+                        ? AppColors.lime
+                        : AppColors.border1,
                   ),
                   borderRadius: BorderRadius.circular(AppRadii.sm),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   labels[i],
-                  style: AppText.body(13,
-                      weight: FontWeight.w600,
-                      color: i == selectedIndex
-                          ? AppColors.lime
-                          : AppColors.textSecondary),
+                  style: AppText.body(
+                    13,
+                    weight: FontWeight.w600,
+                    color: i == selectedIndex
+                        ? AppColors.lime
+                        : AppColors.textSecondary,
+                  ),
                 ),
               ),
             ),
@@ -891,24 +993,28 @@ class StatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: isError
             ? AppColors.error.withValues(alpha: 0.08)
             : AppColors.surface2,
-        border:
-            Border.all(color: isError ? AppColors.error : AppColors.border1),
+        border: Border.all(
+          color: isError ? AppColors.error : AppColors.border1,
+        ),
         borderRadius: BorderRadius.circular(AppRadii.sm),
       ),
       child: Row(
         children: [
           if (isLoading)
-            const SizedBox(
+            SizedBox(
               width: 14,
               height: 14,
               child: CircularProgressIndicator(
-                  strokeWidth: 2, color: AppColors.lime),
+                strokeWidth: 2,
+                color: AppColors.lime,
+              ),
             )
           else
             Icon(
@@ -920,16 +1026,21 @@ class StatusBanner extends StatelessWidget {
             ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(message,
-                style: AppText.body(12,
-                    color:
-                        isError ? AppColors.error : AppColors.textSecondary)),
+            child: Text(
+              message,
+              style: AppText.body(
+                12,
+                color: isError ? AppColors.error : AppColors.textSecondary,
+              ),
+            ),
           ),
           if (onRetry != null)
             TextButton(
               onPressed: onRetry,
-              child: Text('Reintentar',
-                  style: AppText.body(12, color: AppColors.cyan)),
+              child: Text(
+                'Reintentar',
+                style: AppText.body(12, color: AppColors.cyan),
+              ),
             ),
         ],
       ),
@@ -946,8 +1057,9 @@ class AppBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return DecoratedBox(
-      decoration: const BoxDecoration(color: AppColors.background),
+      decoration: BoxDecoration(color: AppColors.background),
       child: Stack(
         children: [
           Positioned(
@@ -961,7 +1073,7 @@ class AppBackground extends StatelessWidget {
                 gradient: RadialGradient(
                   colors: [
                     AppColors.lime.withValues(alpha: 0.10),
-                    Colors.transparent
+                    Colors.transparent,
                   ],
                 ),
               ),
@@ -978,7 +1090,7 @@ class AppBackground extends StatelessWidget {
                 gradient: RadialGradient(
                   colors: [
                     AppColors.cyan.withValues(alpha: 0.09),
-                    Colors.transparent
+                    Colors.transparent,
                   ],
                 ),
               ),

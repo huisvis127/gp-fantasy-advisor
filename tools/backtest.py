@@ -1,26 +1,13 @@
 #!/usr/bin/env python3
-"""
-Backtesting y calibración del motor de predicción (PLAN_DESARROLLO.md,
-sección 5.2). NO se ejecuta dentro de la app: es una herramienta de
-desarrollo que corre en el PC del programador, con conexión a internet real
-(Jolpica-F1), y produce `assets/model_weights.json`.
+"""Backtest walk-forward reproducible del modelo de GP Fantasy Advisor.
 
-Metodología (walk-forward, sin mirar el futuro):
-  1. Descarga resultados y clasificaciones de las temporadas pedidas.
-  2. Para cada GP de cada temporada, calcula las 8 features SOLO con datos
-     anteriores a ese GP.
-  3. Puntúa cada combinación de pesos w1..w8 simulando los puntos fantasy
-     del equipo recomendado (5 pilotos + 2 constructores óptimos) frente al
-     equipo mediano y a un equipo aleatorio.
-  4. Grid search (o Optuna si está instalado) sobre 2023-2024, validación en
-     2025. Exporta los pesos ganadores.
-
-Criterio de aceptación (sección 5.2): Spearman >= 0.65 en la temporada de
-validación, y el equipo recomendado supera al equipo mediano simulado en
->= 80% de los GP. Si no se alcanza, iterar features antes de tocar la UI.
+Entrena en 2023-2024 y valida una sola vez en 2025. Todas las características
+de una carrera se calculan exclusivamente con fechas anteriores. El script
+guarda las respuestas de Jolpica en caché, exporta los pesos ganadores y crea
+un informe JSON y Markdown con métricas por temporada y por carrera.
 
 Uso:
-    python backtest.py --seasons 2023 2024 2025 --out ../assets/model_weights.json
+    python tools/backtest.py --seasons 2023 2024 2025 --trials 300
 """
 
 from __future__ import annotations
@@ -28,392 +15,537 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
-import sys
+import math
+import random
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterable
 
 import numpy as np
+import optuna
 import pandas as pd
 import requests
 from scipy.stats import spearmanr
 
 JOLPICA_BASE = "https://api.jolpi.ca/ergast/f1"
-REQUEST_DELAY_SECONDS = 0.3  # cortesía con el rate limit (~500 req/hora)
+FEATURE_NAMES = (
+    "ritmo_carrera",
+    "ritmo_clasificacion",
+    "vuelta_rapida",
+    "consistencia",
+    "forma",
+    "afinidad_circuito",
+    "forma_equipo",
+    "riesgo_dnf",
+)
+RACE_POINTS = {1: 25, 2: 18, 3: 15, 4: 12, 5: 10, 6: 8, 7: 6, 8: 4, 9: 2, 10: 1}
+QUALI_POINTS = {position: 11 - position for position in range(1, 11)}
+_MEDIAN_CACHE: dict[tuple[int, int], float] = {}
 
 
-# ---------------------------------------------------------------------------
-# 1. Descarga de datos (Jolpica-F1)
-# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class RaceSample:
+    season: int
+    round: int
+    race_name: str
+    driver_ids: tuple[str, ...]
+    constructor_ids: tuple[str, ...]
+    features: np.ndarray
+    actual_driver_points: np.ndarray
+    actual_finish: np.ndarray
+    actual_constructor_points: dict[str, float]
 
-def _get_json(url: str) -> dict:
-    for attempt in range(3):
+
+def _get_json(url: str, cache_path: Path) -> dict:
+    if cache_path.exists():
+        return json.loads(cache_path.read_text(encoding="utf-8"))
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    last_error: Exception | None = None
+    for attempt in range(8):
         try:
-            resp = requests.get(url, timeout=15)
-            resp.raise_for_status()
-            time.sleep(REQUEST_DELAY_SECONDS)
-            return resp.json()
-        except requests.RequestException as exc:
-            if attempt == 2:
-                raise
-            print(f"  reintentando {url} ({exc})", file=sys.stderr)
-            time.sleep(1.5 * (attempt + 1))
-    raise RuntimeError("inalcanzable")
+            response = requests.get(url, timeout=30)
+            if response.status_code == 429:
+                retry_after = float(response.headers.get("Retry-After", 0) or 0)
+                time.sleep(max(retry_after, min(20.0, 2.5 * (attempt + 1))))
+                continue
+            response.raise_for_status()
+            payload = response.json()
+            cache_path.write_text(json.dumps(payload), encoding="utf-8")
+            time.sleep(0.45)
+            return payload
+        except (requests.RequestException, ValueError) as error:
+            last_error = error
+            time.sleep(min(20.0, 2.0 * (attempt + 1)))
+    raise RuntimeError(f"No se pudo descargar {url}: {last_error}")
 
 
-def fetch_season_results(season: int) -> pd.DataFrame:
-    """Descarga resultados de carrera de toda una temporada, carrera a carrera."""
-    calendar = _get_json(f"{JOLPICA_BASE}/{season}.json")
-    races = calendar["MRData"]["RaceTable"]["Races"]
-
-    rows = []
-    for race in races:
-        round_ = int(race["round"])
-        data = _get_json(f"{JOLPICA_BASE}/{season}/{round_}/results.json")
-        race_results = data["MRData"]["RaceTable"]["Races"]
-        if not race_results:
-            continue  # carrera futura, sin resultados todavía
-        for r in race_results[0]["Results"]:
-            status = r["status"]
-            finished = status == "Finished" or "Lap" in status
-            rows.append({
-                "season": season,
-                "round": round_,
-                "circuit_id": race["Circuit"]["circuitId"],
-                "date": race["date"],
-                "driver_id": r["Driver"]["driverId"],
-                "constructor_id": r["Constructor"]["constructorId"],
-                "grid": int(r.get("grid", 0) or 0),
-                "finish_position": int(r["position"]) if finished else None,
-                "status": status,
-                "fastest_lap": r.get("FastestLap", {}).get("rank") == "1",
-            })
-        print(f"  {season} ronda {round_}: {len(race_results[0]['Results']) if race_results else 0} resultados")
-    return pd.DataFrame(rows)
+def _races(payload: dict) -> list[dict]:
+    return payload["MRData"]["RaceTable"].get("Races", [])
 
 
-def fetch_season_qualifying(season: int) -> pd.DataFrame:
-    calendar = _get_json(f"{JOLPICA_BASE}/{season}.json")
-    races = calendar["MRData"]["RaceTable"]["Races"]
-
-    rows = []
-    for race in races:
-        round_ = int(race["round"])
-        data = _get_json(f"{JOLPICA_BASE}/{season}/{round_}/qualifying.json")
-        quali_results = data["MRData"]["RaceTable"]["Races"]
-        if not quali_results:
-            continue
-        for q in quali_results[0]["QualifyingResults"]:
-            rows.append({
-                "season": season,
-                "round": round_,
-                "driver_id": q["Driver"]["driverId"],
-                "position": int(q["position"]),
-                "reached_q3": "Q3" in q and bool(q["Q3"]),
-            })
-    return pd.DataFrame(rows)
+def _lap_seconds(value: str | None) -> float:
+    if not value:
+        return float("nan")
+    try:
+        minutes, seconds = value.split(":", 1)
+        return int(minutes) * 60 + float(seconds)
+    except (ValueError, TypeError):
+        return float("nan")
 
 
-# ---------------------------------------------------------------------------
-# 2. Features (misma lógica que lib/domain/engine/prediction_engine.dart;
-#    si se cambia una, cambiar la otra y comparar con el test Dart-vs-Python
-#    de la sección "Fase 2" del plan, tolerancia < 0.1%)
-# ---------------------------------------------------------------------------
-
-@dataclass
-class Weights:
-    w1_ritmo_carrera: float = 0.24
-    w2_ritmo_clasificacion: float = 0.18
-    w3_vuelta_rapida: float = 0.08
-    w4_consistencia: float = 0.14
-    w5_forma: float = 0.12
-    w6_afinidad_circuito: float = 0.08
-    w7_forma_equipo: float = 0.10
-    w8_riesgo_dnf: float = 0.06
-
-    def as_dict(self) -> dict:
-        return self.__dict__.copy()
+def _download_paginated(season: int, kind: str, cache_dir: Path) -> dict:
+    first = _get_json(
+        f"{JOLPICA_BASE}/{season}/{kind}.json?limit=100&offset=0",
+        cache_dir / f"{season}_{kind}.json",
+    )
+    total = int(first["MRData"].get("total", 0))
+    page_size = int(first["MRData"].get("limit", 100)) or 100
+    merged = list(_races(first))
+    for offset in range(page_size, total, page_size):
+        page = _get_json(
+            f"{JOLPICA_BASE}/{season}/{kind}.json?limit={page_size}&offset={offset}",
+            cache_dir / f"{season}_{kind}_{offset}.json",
+        )
+        merged.extend(_races(page))
+    payload = json.loads(json.dumps(first))
+    payload["MRData"]["RaceTable"]["Races"] = merged
+    return payload
 
 
-def _position_to_score(position: int, grid_size: int) -> float:
-    if grid_size <= 1:
-        return 100.0
-    return float(np.clip(100 * (grid_size - position) / (grid_size - 1), 0, 100))
+def download_history(seasons: Iterable[int], cache_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+    result_rows: list[dict] = []
+    qualifying_rows: list[dict] = []
+    for season in seasons:
+        print(f"Descargando/cargando {season}…")
+        results_payload = _download_paginated(season, "results", cache_dir)
+        qualifying_payload = _download_paginated(season, "qualifying", cache_dir)
+        race_dates: dict[int, tuple[str, str, str]] = {}
+        for race in _races(results_payload):
+            round_number = int(race["round"])
+            race_dates[round_number] = (
+                race["date"],
+                race["Circuit"]["circuitId"],
+                race["raceName"],
+            )
+            for result in race.get("Results", []):
+                status = str(result.get("status", ""))
+                finished = status == "Finished" or "Lap" in status
+                finish = int(result["position"]) if finished else np.nan
+                grid = int(result.get("grid", 0) or 0)
+                result_rows.append(
+                    {
+                        "season": season,
+                        "round": round_number,
+                        "date": race["date"],
+                        "race_name": race["raceName"],
+                        "circuit_id": race["Circuit"]["circuitId"],
+                        "driver_id": result["Driver"]["driverId"],
+                        "constructor_id": result["Constructor"]["constructorId"],
+                        "grid": grid,
+                        "finish": finish,
+                        "dnf": not finished,
+                        "fastest_lap": result.get("FastestLap", {}).get("rank") == "1",
+                        "fastest_lap_seconds": _lap_seconds(
+                            result.get("FastestLap", {}).get("Time", {}).get("time")
+                        ),
+                        "status": status,
+                    }
+                )
+        for race in _races(qualifying_payload):
+            round_number = int(race["round"])
+            date, circuit_id, race_name = race_dates.get(
+                round_number,
+                (race.get("date", f"{season}-12-31"), race["Circuit"]["circuitId"], race["raceName"]),
+            )
+            for result in race.get("QualifyingResults", []):
+                qualifying_rows.append(
+                    {
+                        "season": season,
+                        "round": round_number,
+                        "date": date,
+                        "race_name": race_name,
+                        "circuit_id": circuit_id,
+                        "driver_id": result["Driver"]["driverId"],
+                        "constructor_id": result["Constructor"]["constructorId"],
+                        "position": int(result["position"]),
+                        "reached_q3": bool(result.get("Q3")),
+                    }
+                )
+    results = pd.DataFrame(result_rows).sort_values(["date", "round"]).reset_index(drop=True)
+    best_laps = results.groupby(["season", "round"])["fastest_lap_seconds"].transform("min")
+    results["fastest_lap_gap_percent"] = np.where(
+        best_laps > 0,
+        100 * (results.fastest_lap_seconds - best_laps) / best_laps,
+        np.nan,
+    )
+    qualifying = pd.DataFrame(qualifying_rows).sort_values(["date", "round"]).reset_index(drop=True)
+    return results, qualifying
 
 
-def compute_features_for_driver(
-    driver_id: str,
-    constructor_id: str,
-    upto_date: str,
+def position_score(position: float, grid_size: int) -> float:
+    if not math.isfinite(position):
+        position = float(grid_size)
+    return float(np.clip(100 * (grid_size - position) / max(1, grid_size - 1), 0, 100))
+
+
+def fantasy_points(row: pd.Series, qualifying_position: int | None) -> float:
+    finish = None if pd.isna(row["finish"]) else int(row["finish"])
+    points = float(QUALI_POINTS.get(qualifying_position or 99, 0))
+    if qualifying_position is not None and qualifying_position <= 10:
+        points += 1  # aparición en Q3
+    if bool(row["dnf"]):
+        points -= 20
+    else:
+        points += RACE_POINTS.get(finish or 99, 0)
+        start = int(row["grid"] or 0) or qualifying_position or finish or 20
+        points += start - (finish or start)
+    if bool(row["fastest_lap"]):
+        points += 5
+    return points
+
+
+def weighted_mean(values: list[float], weights: list[int]) -> float:
+    return float(np.average(values, weights=weights[: len(values)])) if values else 50.0
+
+
+def build_samples(
     results: pd.DataFrame,
     qualifying: pd.DataFrame,
-    circuit_id: str,
-    grid_size: int,
-) -> dict:
-    """Replica las features de prediction_engine.dart usando solo datos con
-    fecha anterior a `upto_date` (walk-forward, sin mirar el futuro)."""
-    past = results[(results.driver_id == driver_id) & (results.date < upto_date)]
-    past = past.sort_values("date", ascending=False)
-
-    recent5 = past.head(5)
-    positions = recent5.finish_position.fillna(grid_size).tolist()
-    race_weights = [5, 4, 3, 2, 1][: len(positions)]
-    ritmo_carrera = (
-        np.average([_position_to_score(p, grid_size) for p in positions], weights=race_weights)
-        if positions else 50.0
-    )
-
-    past_quali = qualifying[(qualifying.driver_id == driver_id) & (qualifying.round < 999)]
-    # (el filtro de fecha real de quali se hace por round/season en el caller;
-    # aquí se asume que `qualifying` ya viene recortado a "pasado")
-    quali_positions = past_quali.position.head(8).tolist()
-    ritmo_quali = (
-        np.mean([_position_to_score(p, grid_size) for p in quali_positions])
-        if quali_positions else 50.0
-    )
-
-    recent8 = past.head(8)
-    pos8 = recent8.finish_position.fillna(grid_size).tolist()
-    consistencia = 100 - np.std([_position_to_score(p, grid_size) for p in pos8]) if len(pos8) >= 2 else 50.0
-
-    last3 = positions[:3]
-    prev3 = positions[3:6]
-    if last3 and prev3:
-        forma = 50 + (
-            np.mean([_position_to_score(p, grid_size) for p in last3])
-            - np.mean([_position_to_score(p, grid_size) for p in prev3])
-        )
-    else:
-        forma = 50.0
-
-    circuit_hist = past[past.circuit_id == circuit_id].finish_position.fillna(grid_size).tolist()
-    afinidad = (
-        np.mean([_position_to_score(p, grid_size) for p in circuit_hist]) if circuit_hist else 50.0
-    )
-
-    constructor_recent = results[
-        (results.constructor_id == constructor_id) & (results.date < upto_date)
-    ].sort_values("date", ascending=False).head(6)
-    # Puntos reales aproximados por posición (no fantasy) para "forma de equipo".
-    forma_equipo = 50.0  # placeholder simplificado; afinar con tabla FIA real
-
-    dnf_recent = past.head(20)
-    riesgo_dnf = (
-        100 * dnf_recent.finish_position.isna().mean() if len(dnf_recent) else 10.0
-    )
-
-    return {
-        "ritmo_carrera": ritmo_carrera,
-        "ritmo_clasificacion": ritmo_quali,
-        "vuelta_rapida": 50.0,  # requiere datos OpenF1, no cubiertos por Jolpica
-        "consistencia": float(np.clip(consistencia, 0, 100)),
-        "forma": float(np.clip(forma, 0, 100)),
-        "afinidad_circuito": afinidad,
-        "forma_equipo": forma_equipo,
-        "riesgo_dnf": float(np.clip(riesgo_dnf, 0, 100)),
-    }
-
-
-def score_driver(features: dict, weights: Weights) -> float:
-    return (
-        weights.w1_ritmo_carrera * features["ritmo_carrera"]
-        + weights.w2_ritmo_clasificacion * features["ritmo_clasificacion"]
-        + weights.w3_vuelta_rapida * features["vuelta_rapida"]
-        + weights.w4_consistencia * features["consistencia"]
-        + weights.w5_forma * features["forma"]
-        + weights.w6_afinidad_circuito * features["afinidad_circuito"]
-        + weights.w7_forma_equipo * features["forma_equipo"]
-        - weights.w8_riesgo_dnf * features["riesgo_dnf"]
-    )
-
-
-# ---------------------------------------------------------------------------
-# 3. Evaluación: Spearman, acierto top-10, puntos fantasy simulados
-# ---------------------------------------------------------------------------
-
-def evaluate_weights(weights: Weights, results: pd.DataFrame, qualifying: pd.DataFrame, seasons: list[int]) -> dict:
-    spearman_scores = []
-    top10_hits = []
-    recommended_beats_median = []
-
-    races = results[results.season.isin(seasons)][["season", "round", "date", "circuit_id"]].drop_duplicates()
-
-    for _, race in races.iterrows():
-        race_results = results[
-            (results.season == race.season) & (results.round == race.round)
+    target_seasons: Iterable[int],
+) -> list[RaceSample]:
+    target = set(target_seasons)
+    samples: list[RaceSample] = []
+    races = results[results.season.isin(target)][
+        ["season", "round", "date", "race_name", "circuit_id"]
+    ].drop_duplicates()
+    for race in races.itertuples(index=False):
+        current = results[
+            (results.season == race.season) & (results["round"] == race.round)
+        ].copy()
+        if len(current) < 15:
+            continue
+        current_quali = qualifying[
+            (qualifying.season == race.season)
+            & (qualifying["round"] == race.round)
         ]
-        if race_results.empty:
-            continue
-        grid_size = len(race_results)
+        quali_by_driver = dict(zip(current_quali.driver_id, current_quali.position))
+        grid_size = len(current)
+        feature_rows: list[list[float]] = []
+        actual_points: list[float] = []
+        actual_finish: list[float] = []
+        driver_ids: list[str] = []
+        constructor_ids: list[str] = []
 
-        scores = []
-        actual_positions = []
-        for _, row in race_results.iterrows():
-            features = compute_features_for_driver(
-                row.driver_id, row.constructor_id, race.date, results, qualifying,
-                race.circuit_id, grid_size,
+        for row in current.itertuples(index=False):
+            past = results[(results.driver_id == row.driver_id) & (results.date < race.date)]
+            past = past.sort_values(["date", "round"], ascending=False)
+            past_quali = qualifying[
+                (qualifying.driver_id == row.driver_id) & (qualifying.date < race.date)
+            ].sort_values(["date", "round"], ascending=False)
+            recent5 = past.head(5)
+            race_scores = [position_score(value, grid_size) for value in recent5.finish]
+            race_pace = weighted_mean(race_scores, [5, 4, 3, 2, 1])
+            quali_scores = [position_score(value, grid_size) for value in past_quali.head(8).position]
+            quali_pace = weighted_mean(quali_scores, [8, 7, 6, 5, 4, 3, 2, 1])
+            recent8 = past.head(8)
+            consistency_scores = [position_score(value, grid_size) for value in recent8.finish]
+            consistency = 50.0 if len(consistency_scores) < 2 else 100 - float(np.std(consistency_scores))
+            last3 = race_scores[:3]
+            previous3 = race_scores[3:6]
+            form = 50.0 if not last3 or not previous3 else 50 + float(np.mean(last3) - np.mean(previous3))
+            circuit = past[past.circuit_id == race.circuit_id].head(4)
+            affinity = (
+                float(np.mean([position_score(value, grid_size) for value in circuit.finish]))
+                if not circuit.empty
+                else 50.0
             )
-            scores.append(score_driver(features, weights))
-            actual_positions.append(row.finish_position if pd.notna(row.finish_position) else grid_size)
+            recent_lap_gaps = past.head(8).fastest_lap_gap_percent.dropna()
+            fastest_lap_form = (
+                float(np.mean(np.clip(100 - recent_lap_gaps.to_numpy() / 3.0 * 100, 0, 100)))
+                if not recent_lap_gaps.empty
+                else 50.0
+            )
+            constructor_past = results[
+                (results.constructor_id == row.constructor_id) & (results.date < race.date)
+            ].sort_values(["date", "round"], ascending=False)
+            recent_constructor_races = constructor_past[["season", "round"]].drop_duplicates().head(3)
+            constructor_scores: list[float] = []
+            for constructor_race in recent_constructor_races.itertuples(index=False):
+                rows = constructor_past[
+                    (constructor_past.season == constructor_race.season)
+                    & (constructor_past["round"] == constructor_race.round)
+                ]
+                constructor_scores.extend(position_score(value, grid_size) for value in rows.finish)
+            team_form = float(np.mean(constructor_scores)) if constructor_scores else 50.0
+            two_year_cutoff = race.season - 2
+            driver_reliability = past[past.season >= two_year_cutoff].head(44)
+            constructor_reliability = constructor_past[constructor_past.season >= two_year_cutoff].head(88)
+            driver_dnf = float(driver_reliability.dnf.mean()) if not driver_reliability.empty else 0.1
+            constructor_dnf = float(constructor_reliability.dnf.mean()) if not constructor_reliability.empty else 0.1
+            risk = 100 * (0.65 * driver_dnf + 0.35 * constructor_dnf)
+            feature_rows.append(
+                [
+                    race_pace,
+                    quali_pace,
+                    fastest_lap_form,
+                    float(np.clip(consistency, 0, 100)),
+                    float(np.clip(form, 0, 100)),
+                    affinity,
+                    team_form,
+                    float(np.clip(risk, 0, 100)),
+                ]
+            )
+            current_row = current[current.driver_id == row.driver_id].iloc[0]
+            q_position = quali_by_driver.get(row.driver_id)
+            actual_points.append(fantasy_points(current_row, int(q_position) if q_position else None))
+            actual_finish.append(float(row.finish) if math.isfinite(row.finish) else float(grid_size))
+            driver_ids.append(row.driver_id)
+            constructor_ids.append(row.constructor_id)
 
-        if len(scores) < 3:
-            continue
+        actual_constructor_points: dict[str, float] = {}
+        for constructor in sorted(set(constructor_ids)):
+            indices = [index for index, value in enumerate(constructor_ids) if value == constructor]
+            value = sum(actual_points[index] for index in indices)
+            q3_count = sum((quali_by_driver.get(driver_ids[index], 99) <= 10) for index in indices)
+            top10_count = sum(actual_finish[index] <= 10 for index in indices)
+            if q3_count >= 2:
+                value += 10
+            if top10_count >= 2:
+                value += 5
+            actual_constructor_points[constructor] = value
+        samples.append(
+            RaceSample(
+                season=int(race.season),
+                round=int(race.round),
+                race_name=str(race.race_name),
+                driver_ids=tuple(driver_ids),
+                constructor_ids=tuple(constructor_ids),
+                features=np.asarray(feature_rows, dtype=float),
+                actual_driver_points=np.asarray(actual_points, dtype=float),
+                actual_finish=np.asarray(actual_finish, dtype=float),
+                actual_constructor_points=actual_constructor_points,
+            )
+        )
+    return samples
 
-        # Correlación esperada: más puntuación -> mejor (menor) posición final.
-        corr, _ = spearmanr(scores, [-p for p in actual_positions])
-        if not np.isnan(corr):
-            spearman_scores.append(corr)
 
-        predicted_top10_idx = set(np.argsort(scores)[::-1][:10])
-        actual_top10_idx = set(np.argsort(actual_positions)[:10])
-        overlap = len(predicted_top10_idx & actual_top10_idx) / min(10, grid_size)
-        top10_hits.append(overlap)
+def normalized_weights(raw: np.ndarray) -> np.ndarray:
+    raw = np.maximum(raw, 0.0001)
+    return raw / raw.sum()
 
-        # Puntos fantasy simulados del "equipo" top-5 por score vs mediana aleatoria.
-        top5_idx = np.argsort(scores)[::-1][:5]
-        median_points = np.median(
-            [_race_points(p) for p in actual_positions]
-        ) * 5
-        recommended_points = sum(_race_points(actual_positions[i]) for i in top5_idx)
-        recommended_beats_median.append(recommended_points > median_points)
 
+def score_features(features: np.ndarray, weights: np.ndarray) -> np.ndarray:
+    signed = weights.copy()
+    signed[-1] *= -1
+    return features @ signed
+
+
+def evaluate(weights: np.ndarray, samples: list[RaceSample], seed: int = 2026) -> dict:
+    rng = random.Random(seed)
+    race_rows: list[dict] = []
+    for sample in samples:
+        predicted = score_features(sample.features, weights)
+        corr = spearmanr(predicted, sample.actual_driver_points).statistic
+        corr = 0.0 if np.isnan(corr) else float(corr)
+        predicted_top10 = set(np.argsort(predicted)[::-1][: min(10, len(predicted))])
+        actual_top10 = set(np.argsort(sample.actual_driver_points)[::-1][: min(10, len(predicted))])
+        top10 = len(predicted_top10 & actual_top10) / len(actual_top10)
+        predicted_driver_indices = list(np.argsort(predicted)[::-1][:5])
+        predicted_constructor_scores: dict[str, float] = {}
+        for index, constructor in enumerate(sample.constructor_ids):
+            predicted_constructor_scores[constructor] = predicted_constructor_scores.get(constructor, 0) + float(predicted[index])
+        predicted_constructors = sorted(
+            predicted_constructor_scores,
+            key=predicted_constructor_scores.get,
+            reverse=True,
+        )[:2]
+        recommended_points = sum(sample.actual_driver_points[index] for index in predicted_driver_indices)
+        recommended_points += sum(sample.actual_constructor_points[name] for name in predicted_constructors)
+        constructor_names = list(sample.actual_constructor_points)
+        cache_key = (sample.season, sample.round)
+        median_points = _MEDIAN_CACHE.get(cache_key)
+        if median_points is None:
+            random_totals: list[float] = []
+            for _ in range(1500):
+                picked_drivers = rng.sample(range(len(sample.driver_ids)), 5)
+                picked_constructors = rng.sample(constructor_names, 2)
+                random_totals.append(
+                    sum(sample.actual_driver_points[index] for index in picked_drivers)
+                    + sum(sample.actual_constructor_points[name] for name in picked_constructors)
+                )
+            median_points = float(np.median(random_totals))
+            _MEDIAN_CACHE[cache_key] = median_points
+        race_rows.append(
+            {
+                "season": sample.season,
+                "round": sample.round,
+                "race": sample.race_name,
+                "spearman": corr,
+                "top10_capture": top10,
+                "recommended_points": float(recommended_points),
+                "random_median_points": median_points,
+                "uplift_vs_median": float(recommended_points - median_points),
+                "beats_median": bool(recommended_points > median_points),
+            }
+        )
+    frame = pd.DataFrame(race_rows)
+    if frame.empty:
+        return {"spearman_mean": 0.0, "top10_capture": 0.0, "beats_median_pct": 0.0, "uplift_mean": 0.0, "n_races": 0, "races": []}
     return {
-        "spearman_mean": float(np.mean(spearman_scores)) if spearman_scores else 0.0,
-        "top10_hit_rate": float(np.mean(top10_hits)) if top10_hits else 0.0,
-        "recommended_beats_median_pct": float(np.mean(recommended_beats_median)) if recommended_beats_median else 0.0,
-        "n_races": len(spearman_scores),
+        "spearman_mean": float(frame.spearman.mean()),
+        "top10_capture": float(frame.top10_capture.mean()),
+        "beats_median_pct": float(frame.beats_median.mean()),
+        "uplift_mean": float(frame.uplift_vs_median.mean()),
+        "n_races": int(len(frame)),
+        "races": race_rows,
     }
 
 
-_RACE_POINTS = {1: 25, 2: 18, 3: 15, 4: 12, 5: 10, 6: 8, 7: 6, 8: 4, 9: 2, 10: 1}
+def optimize(train_samples: list[RaceSample], trials: int) -> np.ndarray:
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-
-def _race_points(position) -> int:
-    if position is None:
-        return 0
-    return _RACE_POINTS.get(int(position), 0)
-
-
-# ---------------------------------------------------------------------------
-# 4. Grid search de pesos (Optuna si está disponible, si no grid coarse)
-# ---------------------------------------------------------------------------
-
-def grid_search(results: pd.DataFrame, qualifying: pd.DataFrame, train_seasons: list[int]) -> Weights:
-    try:
-        import optuna
-
-        def objective(trial: "optuna.Trial") -> float:
-            weights = Weights(
-                w1_ritmo_carrera=trial.suggest_float("w1", 0.05, 0.35),
-                w2_ritmo_clasificacion=trial.suggest_float("w2", 0.05, 0.30),
-                w3_vuelta_rapida=trial.suggest_float("w3", 0.0, 0.15),
-                w4_consistencia=trial.suggest_float("w4", 0.0, 0.25),
-                w5_forma=trial.suggest_float("w5", 0.0, 0.20),
-                w6_afinidad_circuito=trial.suggest_float("w6", 0.0, 0.15),
-                w7_forma_equipo=trial.suggest_float("w7", 0.0, 0.20),
-                w8_riesgo_dnf=trial.suggest_float("w8", 0.0, 0.15),
-            )
-            metrics = evaluate_weights(weights, results, qualifying, train_seasons)
-            return metrics["spearman_mean"] + metrics["recommended_beats_median_pct"]
-
-        study = optuna.create_study(direction="maximize")
-        study.optimize(objective, n_trials=200, show_progress_bar=False)
-        best = study.best_params
-        return Weights(
-            w1_ritmo_carrera=best["w1"], w2_ritmo_clasificacion=best["w2"],
-            w3_vuelta_rapida=best["w3"], w4_consistencia=best["w4"],
-            w5_forma=best["w5"], w6_afinidad_circuito=best["w6"],
-            w7_forma_equipo=best["w7"], w8_riesgo_dnf=best["w8"],
+    def objective(trial: optuna.Trial) -> float:
+        raw = np.asarray(
+            [trial.suggest_float(name, 0.005, 1.0, log=True) for name in FEATURE_NAMES],
+            dtype=float,
         )
-    except ImportError:
-        print("Optuna no instalado: usando grid search coarse (más lento, menos fino).")
-        best_weights = Weights()
-        best_score = -1.0
-        grid = [0.05, 0.15, 0.25]
-        for combo in itertools.product(grid, repeat=4):
-            w = Weights(w1_ritmo_carrera=combo[0], w2_ritmo_clasificacion=combo[1],
-                        w4_consistencia=combo[2], w5_forma=combo[3])
-            metrics = evaluate_weights(w, results, qualifying, train_seasons)
-            score = metrics["spearman_mean"] + metrics["recommended_beats_median_pct"]
-            if score > best_score:
-                best_score = score
-                best_weights = w
-        return best_weights
+        metrics = evaluate(normalized_weights(raw), train_samples)
+        return 0.70 * metrics["spearman_mean"] + 0.20 * metrics["top10_capture"] + 0.10 * metrics["beats_median_pct"]
+
+    study = optuna.create_study(direction="maximize", sampler=optuna.samplers.TPESampler(seed=2026))
+    study.optimize(objective, n_trials=trials, show_progress_bar=True)
+    return normalized_weights(np.asarray([study.best_params[name] for name in FEATURE_NAMES]))
 
 
-# ---------------------------------------------------------------------------
-# 5. CLI
-# ---------------------------------------------------------------------------
+def markdown_report(
+    train_seasons: list[int],
+    validation_season: int,
+    weights: np.ndarray,
+    train: dict,
+    validation: dict,
+    passed: bool,
+) -> str:
+    rows = "\n".join(
+        f"| {row['round']} | {row['race']} | {row['spearman']:.3f} | {row['top10_capture']:.0%} | {row['uplift_vs_median']:+.1f} |"
+        for row in validation["races"]
+    )
+    weight_rows = "\n".join(
+        f"| {name} | {value:.4f} |" for name, value in zip(FEATURE_NAMES, weights)
+    )
+    return f"""# Backtest completo del modelo
+
+Generado: {time.strftime('%Y-%m-%d %H:%M')}
+Entrenamiento: {', '.join(map(str, train_seasons))} · Validación fuera de muestra: {validation_season}
+
+## Resultado
+
+| Conjunto | GP | Spearman | Top-10 | Supera mediana | Mejora media |
+|---|---:|---:|---:|---:|---:|
+| Entrenamiento | {train['n_races']} | {train['spearman_mean']:.3f} | {train['top10_capture']:.1%} | {train['beats_median_pct']:.1%} | {train['uplift_mean']:+.1f} pts |
+| Validación | {validation['n_races']} | {validation['spearman_mean']:.3f} | {validation['top10_capture']:.1%} | {validation['beats_median_pct']:.1%} | {validation['uplift_mean']:+.1f} pts |
+
+**Criterio acordado:** Spearman ≥ 0,65 y superar la mediana en ≥ 80 % de los GP.
+**Estado:** {'CUMPLIDO' if passed else 'NO CUMPLIDO'}.
+
+## Pesos elegidos
+
+| Faceta | Peso |
+|---|---:|
+{weight_rows}
+
+## Validación 2025 carrera a carrera
+
+| Ronda | GP | Spearman | Top-10 | Mejora vs mediana |
+|---:|---|---:|---:|---:|
+{rows}
+
+## Alcance y límites
+
+- Walk-forward estricto: ninguna faceta usa carreras o clasificaciones posteriores al GP evaluado.
+- La puntuación reconstruye clasificación, resultado, posiciones ganadas/perdidas, vuelta rápida y DNF.
+- DOTD y Sprint se omiten porque Jolpica no ofrece un histórico Fantasy homogéneo.
+- La comparación de equipo usa 5 pilotos y 2 constructores sin presupuesto histórico: los precios de 2023-2025 no están publicados por Jolpica. Por ello valida la calidad deportiva del ranking, no decisiones económicas retrospectivas.
+- Los pesos de FP1/FP2/FP3 mantienen su backtest independiente con OpenF1.
+"""
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seasons", nargs="+", type=int, default=[2023, 2024, 2025])
-    parser.add_argument("--out", type=str, default="../assets/model_weights.json")
-    parser.add_argument("--report", type=str, default="../docs/backtest_report.md")
+    parser.add_argument("--history-start", type=int, default=2021)
+    parser.add_argument("--trials", type=int, default=300)
+    parser.add_argument("--cache", type=Path, default=Path("tools/.cache/backtest"))
+    parser.add_argument("--out", type=Path, default=Path("assets/model_weights.json"))
+    parser.add_argument("--report", type=Path, default=Path("docs/backtest_report.md"))
+    parser.add_argument("--details", type=Path, default=Path("docs/backtest_report.json"))
     args = parser.parse_args()
+    if len(args.seasons) < 2:
+        raise SystemExit("Se necesita al menos una temporada de entrenamiento y otra de validación.")
+    train_seasons = args.seasons[:-1]
+    validation_season = args.seasons[-1]
+    history_seasons = range(args.history_start, validation_season + 1)
+    results, qualifying = download_history(history_seasons, args.cache)
+    print("Construyendo muestras walk-forward…")
+    samples = build_samples(results, qualifying, args.seasons)
+    train_samples = [sample for sample in samples if sample.season in train_seasons]
+    validation_samples = [sample for sample in samples if sample.season == validation_season]
+    print(f"Optimizando {args.trials} pruebas sobre {len(train_samples)} GP…")
+    weights = optimize(train_samples, args.trials)
+    train_metrics = evaluate(weights, train_samples)
+    validation_metrics = evaluate(weights, validation_samples)
+    passed = validation_metrics["spearman_mean"] >= 0.65 and validation_metrics["beats_median_pct"] >= 0.80
 
-    *train_seasons, validation_season = args.seasons
-    print(f"Entrenamiento: {train_seasons} | Validación: {validation_season}")
-
-    all_results = []
-    all_qualifying = []
-    for season in args.seasons:
-        print(f"Descargando temporada {season}...")
-        all_results.append(fetch_season_results(season))
-        all_qualifying.append(fetch_season_qualifying(season))
-    results = pd.concat(all_results, ignore_index=True)
-    qualifying = pd.concat(all_qualifying, ignore_index=True)
-
-    print("Buscando pesos óptimos sobre temporadas de entrenamiento...")
-    best_weights = grid_search(results, qualifying, train_seasons)
-
-    print("Validando en temporada de validación...")
-    validation_metrics = evaluate_weights(best_weights, results, qualifying, [validation_season])
-    print(json.dumps(validation_metrics, indent=2))
-
-    passed = (
-        validation_metrics["spearman_mean"] >= 0.65
-        and validation_metrics["recommended_beats_median_pct"] >= 0.80
-    )
-    print(f"\nCriterio de aceptación (sección 5.2): {'CUMPLIDO' if passed else 'NO CUMPLIDO'}")
-
-    out_path = Path(args.out)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "version": f"backtest-{int(time.time())}",
-        "calibrated_on": train_seasons,
+    details = {
+        "method": "walk-forward-jolpica-v2",
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "train_seasons": train_seasons,
         "validation_season": validation_season,
-        "validation_spearman": validation_metrics["spearman_mean"],
-        "validation_passed": passed,
-        "feature_weights": best_weights.as_dict(),
-        "session_weights_by_objective": {
-            "race_fp1_fp2": {"fp1": 0.50, "fp2": 0.50},
-            "race_fp1_fp2_fp3": {"fp1": 0.42, "fp2": 0.13, "fp3": 0.45},
-        },
-        "pace_stint_metric": "median_top2_stints",
-        "recent_form_window_races": 5,
-        "consistency_window_races": 8,
-        "circuit_affinity_window_years": 4,
-        "dnf_risk_window_seasons": 2,
+        "weights": dict(zip(FEATURE_NAMES, map(float, weights))),
+        "train": train_metrics,
+        "validation": validation_metrics,
+        "acceptance_passed": passed,
     }
-    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"Pesos escritos en {out_path}")
-
-    report_path = Path(args.report)
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(
-        f"# Informe de backtesting\n\n"
-        f"- Temporadas de entrenamiento: {train_seasons}\n"
-        f"- Temporada de validación: {validation_season}\n"
-        f"- Spearman (validación): {validation_metrics['spearman_mean']:.3f}\n"
-        f"- Acierto top-10 (validación): {validation_metrics['top10_hit_rate']:.1%}\n"
-        f"- Equipo recomendado supera al mediano en: {validation_metrics['recommended_beats_median_pct']:.1%} de los GP\n"
-        f"- Criterio de aceptación (Spearman >= 0.65 y >= 80% de GP): "
-        f"{'CUMPLIDO' if passed else 'NO CUMPLIDO'}\n\n"
-        f"Pesos ganadores: {json.dumps(best_weights.as_dict(), indent=2)}\n",
+    args.details.parent.mkdir(parents=True, exist_ok=True)
+    args.details.write_text(json.dumps(details, indent=2, ensure_ascii=False), encoding="utf-8")
+    args.report.write_text(
+        markdown_report(train_seasons, validation_season, weights, train_metrics, validation_metrics, passed),
         encoding="utf-8",
     )
-    print(f"Informe escrito en {report_path}")
+    existing = json.loads(args.out.read_text(encoding="utf-8")) if args.out.exists() else {}
+    existing.update(
+        {
+            "_comment": (
+                "Pesos generales calibrados con walk-forward estricto: "
+                f"entrenamiento {train_seasons} y validación fuera de muestra "
+                f"{validation_season}. Los pesos de sesiones conservan su "
+                "validación independiente con OpenF1."
+            ),
+            "version": f"walk-forward-{time.strftime('%Y%m%d')}",
+            "calibrated_on": time.strftime("%Y-%m-%d"),
+            "validation_spearman": validation_metrics["spearman_mean"],
+            "validation_note": (
+                f"{validation_metrics['race_count']} GP de {validation_season}: "
+                f"Spearman {validation_metrics['spearman_mean']:.3f}, "
+                f"top-10 {validation_metrics['top10_capture']:.1%} y supera "
+                f"la mediana en {validation_metrics['beats_median_pct']:.1%}. "
+                f"Criterio de aceptación {'cumplido' if passed else 'no cumplido'}."
+            ),
+            "validation_passed": passed,
+            "feature_weights": {
+                "w1_ritmo_carrera": float(weights[0]),
+                "w2_ritmo_clasificacion": float(weights[1]),
+                "w3_vuelta_rapida": float(weights[2]),
+                "w4_consistencia": float(weights[3]),
+                "w5_forma": float(weights[4]),
+                "w6_afinidad_circuito": float(weights[5]),
+                "w7_forma_equipo": float(weights[6]),
+                "w8_riesgo_dnf": float(weights[7]),
+            },
+        }
+    )
+    args.out.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(json.dumps({"validation": validation_metrics, "passed": passed}, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

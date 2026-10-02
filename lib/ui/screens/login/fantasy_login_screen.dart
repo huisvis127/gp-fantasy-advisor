@@ -42,7 +42,9 @@ class _FantasyLoginScreenState extends ConsumerState<FantasyLoginScreen> {
       _error = null;
     });
     try {
-      await ref.read(fantasyAuthServiceProvider).loginWithPassword(
+      await ref
+          .read(fantasyAuthServiceProvider)
+          .loginWithPassword(
             username: _userController.text.trim(),
             password: _passController.text,
           );
@@ -56,6 +58,7 @@ class _FantasyLoginScreenState extends ConsumerState<FantasyLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Cuenta F1 Fantasy')),
       body: ListView(
@@ -65,8 +68,10 @@ class _FantasyLoginScreenState extends ConsumerState<FantasyLoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Acceso seguro',
-                    style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Acceso seguro',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: AppSpacing.sm),
                 const Text(
                   'Inicia sesión en la web oficial. La app copiará únicamente '
@@ -111,8 +116,9 @@ class _FantasyLoginScreenState extends ConsumerState<FantasyLoginScreen> {
                 children: [
                   TextField(
                     controller: _userController,
-                    decoration:
-                        const InputDecoration(labelText: 'Correo o usuario'),
+                    decoration: const InputDecoration(
+                      labelText: 'Correo o usuario',
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   TextField(
@@ -139,7 +145,7 @@ class _FantasyLoginScreenState extends ConsumerState<FantasyLoginScreen> {
             ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              Text(_error!, style: const TextStyle(color: AppColors.error)),
+              Text(_error!, style: TextStyle(color: AppColors.error)),
             ],
           ],
         ],

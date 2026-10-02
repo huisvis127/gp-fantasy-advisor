@@ -14,6 +14,7 @@ class CircuitScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    Theme.of(context);
     final raceAsync = ref.watch(selectedRaceProvider);
     final predictions = ref.watch(driverPredictionsProvider);
     final weekend = ref.watch(weekendDataProvider);
@@ -52,7 +53,7 @@ class CircuitScreen extends ConsumerWidget {
                         color: AppColors.cyan,
                       ),
                       if (race.hasSprint)
-                        const TagChip('Sprint', color: AppColors.orange),
+                        TagChip('Sprint', color: AppColors.orange),
                     ],
                   ),
                 ],
@@ -137,7 +138,7 @@ class CircuitScreen extends ConsumerWidget {
               ],
             );
           },
-          loading: () => const LinearProgressIndicator(
+          loading: () => LinearProgressIndicator(
             color: AppColors.cyan,
             backgroundColor: AppColors.surface3,
           ),

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/app_providers.dart';
+import '../../../core/league_colors.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/league_analytics.dart';
 import '../../../domain/models/live_fantasy.dart';
@@ -26,6 +27,7 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final auth = ref.watch(fantasyAuthServiceProvider);
     return FutureBuilder<List<String?>>(
       key: ValueKey(_refreshKey),
@@ -108,6 +110,8 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
   late Future<Map<String, dynamic>> _request;
   Map<String, dynamic>? _snapshot;
   String? _selectedLeagueId;
+  String? _colorsLeagueId;
+  Map<String, int> _teamColors = const {};
 
   @override
   void initState() {
@@ -146,6 +150,7 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final myTeam = ref.watch(myTeamProvider).valueOrNull;
     final liveAssets =
         ref.watch(liveFantasyProvider).valueOrNull?.assets ?? const [];
@@ -191,9 +196,19 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
           _selectedLeagueId = ids.firstOrNull;
         }
         final selectedId = _selectedLeagueId;
-        final analytics = selectedId == null || _snapshot == null
+        if (selectedId != null && _colorsLeagueId != selectedId) {
+          _colorsLeagueId = selectedId;
+          _teamColors = const {};
+          LeagueColors.load(selectedId).then((colors) {
+            if (mounted && _colorsLeagueId == selectedId) {
+              setState(() => _teamColors = {...colors, ..._teamColors});
+            }
+          });
+        }
+        final fullAnalytics = selectedId == null || _snapshot == null
             ? const LeagueAnalytics(events: [], members: [])
             : LeagueAnalytics.fromSnapshot(_snapshot!, selectedId);
+        final analytics = fullAnalytics.limitedForDisplay;
         final selectedLeague = leagues.firstWhere(
           (league) => _leagueId(league) == selectedId,
           orElse: () => leagues.first,
@@ -226,6 +241,17 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
                 label: const Text('ACTUALIZAR LIGAS E HISTORIAL'),
               ),
               const SizedBox(height: 18),
+              if (fullAnalytics.members.length >
+                  LeagueAnalytics.maxDisplayedTeams)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: StatusBanner(
+                    message:
+                        'Esta liga tiene ${fullAnalytics.members.length} equipos. '
+                        'La app muestra los ${LeagueAnalytics.maxDisplayedTeams} primeros '
+                        'de la clasificación para mantener una vista fluida y legible.',
+                  ),
+                ),
               if (analytics.members.isEmpty)
                 StatusBanner(
                   message:
@@ -238,7 +264,19 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
                   analytics: analytics,
                 ),
                 const SizedBox(height: 20),
-                _CurrentStandings(analytics: analytics),
+                _CurrentStandings(
+                  analytics: analytics,
+                  leagueId: selectedId ?? '',
+                  teamColors: _teamColors,
+                  onColorSelected: (memberKey, colorIndex) async {
+                    if (selectedId == null) return;
+                    setState(
+                      () =>
+                          _teamColors = {..._teamColors, memberKey: colorIndex},
+                    );
+                    await LeagueColors.save(selectedId, memberKey, colorIndex);
+                  },
+                ),
                 const SizedBox(height: 22),
                 _RivalStrategy(
                   analytics: analytics,
@@ -246,9 +284,17 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
                   liveAssets: liveAssets,
                 ),
                 const SizedBox(height: 22),
-                _TrendSection(analytics: analytics),
+                _TrendSection(
+                  analytics: analytics,
+                  leagueId: selectedId ?? '',
+                  teamColors: _teamColors,
+                ),
                 const SizedBox(height: 22),
-                _MedalTable(analytics: analytics),
+                _MedalTable(
+                  analytics: analytics,
+                  leagueId: selectedId ?? '',
+                  teamColors: _teamColors,
+                ),
               ],
             ],
           ),
@@ -271,6 +317,7 @@ class _LeagueSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return RefCard(
       child: DropdownButtonFormField<String>(
         key: ValueKey(selectedId),
@@ -306,6 +353,7 @@ class _LeagueSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return HeroCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,7 +372,7 @@ class _LeagueSummary extends StatelessWidget {
               ),
               TagChip('${analytics.events.length} GP', color: AppColors.cyan),
               if (analytics.hasHistory)
-                const TagChip('Historial completo', color: AppColors.ok),
+                TagChip('Historial completo', color: AppColors.ok),
             ],
           ),
         ],
@@ -334,17 +382,121 @@ class _LeagueSummary extends StatelessWidget {
 }
 
 class _CurrentStandings extends StatelessWidget {
-  const _CurrentStandings({required this.analytics});
+  const _CurrentStandings({
+    required this.analytics,
+    required this.leagueId,
+    required this.teamColors,
+    required this.onColorSelected,
+  });
 
   final LeagueAnalytics analytics;
+  final String leagueId;
+  final Map<String, int> teamColors;
+  final Future<void> Function(String memberKey, int colorIndex) onColorSelected;
+
+  Future<void> _chooseColor(
+    BuildContext context,
+    LeagueMemberTrend member,
+  ) async {
+    final currentIndex =
+        teamColors[member.key] ??
+        LeagueColors.indexForIdentity(leagueId, member.key);
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'Color de ${member.name}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        content: SizedBox(
+          width: 340,
+          height: 360,
+          child: GridView.builder(
+            itemCount: LeagueColors.palette.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1.12,
+            ),
+            itemBuilder: (context, index) {
+              final choice = LeagueColors.palette[index];
+              final isSelected = index == currentIndex;
+              return Tooltip(
+                message: choice.name,
+                child: Semantics(
+                  button: true,
+                  selected: isSelected,
+                  label: choice.name,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => Navigator.of(dialogContext).pop(index),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).dividerColor,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundColor: choice.color,
+                            child: isSelected
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    size: 15,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            choice.name,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.body(8.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('CERRAR'),
+          ),
+        ],
+      ),
+    );
+    if (selected != null) await onColorSelected(member.key, selected);
+  }
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SectionHead(kicker: 'Ahora', title: 'Clasificación'),
         const SizedBox(height: 10),
+        Text(
+          '${LeagueColors.palette.length} colores · ${analytics.members.length}/${LeagueAnalytics.maxDisplayedTeams} equipos visibles como máximo.',
+          style: AppText.body(11, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 8),
         for (var i = 0; i < analytics.members.length; i++) ...[
           RefCard(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -355,6 +507,19 @@ class _CurrentStandings extends StatelessWidget {
                   child: Text(
                     '#${analytics.members[i].currentRank ?? i + 1}',
                     style: AppText.mono(11, color: _rankColor(i + 1)),
+                  ),
+                ),
+                Container(
+                  width: 9,
+                  height: 30,
+                  margin: const EdgeInsets.only(right: 9),
+                  decoration: BoxDecoration(
+                    color: _memberColor(
+                      leagueId,
+                      analytics.members[i].key,
+                      teamColors,
+                    ),
+                    borderRadius: BorderRadius.circular(5),
                   ),
                 ),
                 Expanded(
@@ -368,6 +533,12 @@ class _CurrentStandings extends StatelessWidget {
                 Text(
                   '${_formatPoints(analytics.members[i].currentTotal ?? _lastValue(analytics.members[i].cumulativePoints))} pts',
                   style: AppText.mono(10, color: AppColors.cyan),
+                ),
+                IconButton(
+                  tooltip: 'Cambiar color de ${analytics.members[i].name}',
+                  icon: const Icon(Icons.palette_outlined, size: 18),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => _chooseColor(context, analytics.members[i]),
                 ),
               ],
             ),
@@ -392,6 +563,7 @@ class _RivalStrategy extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final me = analytics.members
         .where((member) => member.isCurrentUser)
         .firstOrNull;
@@ -484,12 +656,19 @@ class _RivalStrategy extends StatelessWidget {
 }
 
 class _TrendSection extends StatelessWidget {
-  const _TrendSection({required this.analytics});
+  const _TrendSection({
+    required this.analytics,
+    required this.leagueId,
+    required this.teamColors,
+  });
 
   final LeagueAnalytics analytics;
+  final String leagueId;
+  final Map<String, int> teamColors;
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -506,12 +685,16 @@ class _TrendSection extends StatelessWidget {
           title: 'Puntos de Fantasy',
           analytics: analytics,
           positions: false,
+          leagueId: leagueId,
+          teamColors: teamColors,
         ),
         const SizedBox(height: 12),
         _LeagueChartCard(
           title: 'Posición en la liga',
           analytics: analytics,
           positions: true,
+          leagueId: leagueId,
+          teamColors: teamColors,
         ),
       ],
     );
@@ -523,24 +706,20 @@ class _LeagueChartCard extends StatelessWidget {
     required this.title,
     required this.analytics,
     required this.positions,
+    required this.leagueId,
+    required this.teamColors,
   });
 
   final String title;
   final LeagueAnalytics analytics;
   final bool positions;
-
-  static const colors = [
-    AppColors.lime,
-    AppColors.cyan,
-    AppColors.magenta,
-    AppColors.violet,
-    AppColors.orange,
-    AppColors.ok,
-  ];
+  final String leagueId;
+  final Map<String, int> teamColors;
 
   @override
   Widget build(BuildContext context) {
-    final members = analytics.members.take(colors.length).toList();
+    Theme.of(context);
+    final members = analytics.members;
     return RefCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -551,7 +730,7 @@ class _LeagueChartCard extends StatelessWidget {
             spacing: 10,
             runSpacing: 5,
             children: [
-              for (var i = 0; i < members.length; i++)
+              for (final member in members)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -559,13 +738,13 @@ class _LeagueChartCard extends StatelessWidget {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: colors[i],
+                        color: _memberColor(leagueId, member.key, teamColors),
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      members[i].name,
+                      member.name,
                       style: AppText.body(10, color: AppColors.textSecondary),
                     ),
                   ],
@@ -580,7 +759,10 @@ class _LeagueChartCard extends StatelessWidget {
   }
 
   LineChartData _chartData(List<LeagueMemberTrend> members) {
-    final maxPosition = math.max(1, analytics.members.length);
+    final maxPosition = members
+        .expand((member) => member.positions)
+        .whereType<int>()
+        .fold(math.max(1, members.length), math.max);
     final allPointValues = members
         .expand((member) => member.cumulativePoints)
         .whereType<double>()
@@ -597,7 +779,7 @@ class _LeagueChartCard extends StatelessWidget {
         show: true,
         drawVerticalLine: false,
         getDrawingHorizontalLine: (_) =>
-            const FlLine(color: AppColors.border1, strokeWidth: 1),
+            FlLine(color: AppColors.border1, strokeWidth: 1),
       ),
       borderData: FlBorderData(show: false),
       titlesData: FlTitlesData(
@@ -665,7 +847,7 @@ class _LeagueChartCard extends StatelessWidget {
                     positions ? maxPosition + 1 - value : value,
                   ),
             ],
-            color: colors[i],
+            color: _memberColor(leagueId, members[i].key, teamColors),
             barWidth: 2.4,
             isCurved: true,
             dotData: FlDotData(show: analytics.events.length <= 8),
@@ -677,12 +859,19 @@ class _LeagueChartCard extends StatelessWidget {
 }
 
 class _MedalTable extends StatelessWidget {
-  const _MedalTable({required this.analytics});
+  const _MedalTable({
+    required this.analytics,
+    required this.leagueId,
+    required this.teamColors,
+  });
 
   final LeagueAnalytics analytics;
+  final String leagueId;
+  final Map<String, int> teamColors;
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final rows = [...analytics.members]
       ..sort((a, b) {
         final gold = b.gold.compareTo(a.gold);
@@ -717,11 +906,30 @@ class _MedalTable extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        rows[i].name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.body(12, weight: FontWeight.w700),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: _memberColor(
+                                leagueId,
+                                rows[i].key,
+                                teamColors,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              rows[i].name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.body(12, weight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     _medalValue(rows[i].gold, AppColors.gold),
@@ -829,6 +1037,19 @@ Color _rankColor(int rank) => switch (rank) {
   3 => AppColors.orange,
   _ => AppColors.lime,
 };
+
+Color _memberColor(
+  String leagueId,
+  String memberKey,
+  Map<String, int> selectedColors,
+) {
+  final index = selectedColors[memberKey];
+  return index == null
+      ? LeagueColors.forIdentity(leagueId, memberKey)
+      : LeagueColors
+            .palette[index.clamp(0, LeagueColors.palette.length - 1)]
+            .color;
+}
 
 double? _lastValue(List<double?> values) {
   for (final value in values.reversed) {

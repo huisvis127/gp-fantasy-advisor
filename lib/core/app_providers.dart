@@ -292,6 +292,29 @@ final teamOptimizerProvider = Provider<TeamOptimizer>(
   (ref) => const TeamOptimizer(),
 );
 
+/// Centro de decisión inspirado en el calculador de MotoGP: plantilla base,
+/// mejor plan con 1 cambio, mejor plan con 2 y techo absoluto del GP.
+final teamDecisionCenterProvider = FutureProvider<TeamDecisionCenter?>((
+  ref,
+) async {
+  final team = await ref.watch(myTeamProvider.future);
+  if (team == null || !team.isComplete) return null;
+  final drivers = await ref.watch(driverPredictionsProvider.future);
+  final constructors = await ref.watch(
+    engineConstructorPredictionsProvider.future,
+  );
+  if (drivers.isEmpty || constructors.isEmpty) return null;
+  return ref
+      .watch(teamOptimizerProvider)
+      .buildDecisionCenter(
+        currentDriverIds: team.driverIds,
+        currentConstructorIds: team.constructorIds,
+        driverPredictions: drivers,
+        constructorPredictions: constructors,
+        remainingBudgetMillions: team.remainingBudgetMillions,
+      );
+});
+
 final priceForecastEngineProvider = Provider<PriceForecastEngine>(
   (ref) => const PriceForecastEngine(),
 );
