@@ -1,6 +1,6 @@
 # GP Fantasy Advisor
 
-Aplicación Android no oficial para preparar equipos de F1 Fantasy, consultar datos de pista y analizar ligas. Versión actual: **1.3.2+17**. No está afiliada a Formula One Licensing B.V.
+Aplicación Android no oficial para preparar equipos de F1 Fantasy, consultar datos de pista y analizar ligas. Versión actual: **1.4.1+29**. No está afiliada a Formula One Licensing B.V.
 
 ## Empezar
 
@@ -15,7 +15,7 @@ flutter test
 flutter build apk --release
 ```
 
-La APK se genera en `build/app/outputs/flutter-apk/app-release.apk`. La copia local entregada de la versión 1.3.2 está en `dist/GP-Fantasy-Advisor-1.3.2.apk`. Los instaladores quedan fuera de Git; el repositorio contiene el código fuente.
+La APK se genera en `build/app/outputs/flutter-apk/app-release.apk`. La copia local entregada de la versión 1.4.1 está en `dist/GP-Fantasy-Advisor-1.4.1.apk`. Los instaladores quedan fuera de Git; el repositorio contiene el código fuente.
 
 ## Funciones actuales
 
@@ -66,6 +66,8 @@ git push -u origin feature/nombre-del-cambio
 `.gitignore` excluye compilaciones, cachés, capturas locales, instaladores, sesiones del editor y credenciales.
 
 ## Firma y distribución
+
+La numeración de Android (`versionCode`, después de `+` en `pubspec.yaml`) debe superar todas las APK distribuidas anteriormente. El Android de prueba tenía instalada la versión 1.4.0 con código 28; por eso la siguiente entrega es 1.4.1+29. Antes de entregar una APK, verifica la firma y prueba la actualización sobre una versión anterior, además de comprobar que la copia de `dist/` coincida con la compilación.
 
 Sin `android/key.properties`, la APK de release se firma con la clave de desarrollo y sirve para instalación y pruebas locales. Para Google Play, configura una clave de subida privada con `android/key.properties.example` como referencia y genera:
 
