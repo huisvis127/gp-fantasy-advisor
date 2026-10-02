@@ -101,7 +101,7 @@ class PredictionEngine {
           100,
     };
 
-    // Predicción por etapas (docs/PLAN_PREDICCION_SESIONES.md): si hay
+    // Predicción por etapas (docs/plans/PLAN_PREDICCION_SESIONES.md): si hay
     // agregados del fin de semana en curso (claves 'onelap:fp1',
     // 'pace:fp2'... con gap % contra el mejor de cada sesión), la vuelta
     // única del finde SUSTITUYE a la aproximación histórica y el ritmo de

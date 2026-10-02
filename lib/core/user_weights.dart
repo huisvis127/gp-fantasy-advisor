@@ -95,7 +95,7 @@ class UserWeightsNotifier extends Notifier<Map<String, double>> {
 
   /// Valores calibrados por defecto (model_weights.json), en % que suman 100.
   /// Recalibrados el 05/07/2026 con el mini-backtest de 2026 (ver
-  /// docs/backtest_mini_2026.md): la vuelta única (clasificación + vuelta
+  /// docs/reports/backtest_mini_2026.md): la vuelta única (clasificación + vuelta
   /// rápida) domina; los avanzados aportan poco en muestra corta pero se
   /// mantienen con peso pequeño.
   static Map<String, double> defaultPercentages() {

@@ -60,7 +60,7 @@ final driverPredictionsProvider = FutureProvider<List<AssetPrediction>>((
 
   // Predicción por etapas: si hay sesiones del finde (OpenF1), se inyectan
   // los gaps por sesión en los contextos y el motor los mezcla según la
-  // tabla de pesos por sesión (docs/PLAN_PREDICCION_SESIONES.md).
+  // tabla de pesos por sesión (docs/plans/PLAN_PREDICCION_SESIONES.md).
   final weekend = await ref.watch(weekendDataProvider.future);
   if (!weekend.isEmpty) {
     contexts = contexts.map((c) {

@@ -7,7 +7,7 @@ import 'providers.dart';
 import 'selected_gp.dart';
 
 /// Datos del fin de semana en curso (o del finde de un GP pasado) desde
-/// OpenF1, agregados por sesión (docs/PLAN_PREDICCION_SESIONES.md).
+/// OpenF1, agregados por sesión (docs/plans/PLAN_PREDICCION_SESIONES.md).
 /// Es lo que hace que la predicción mejore por etapas: pre-finde -> con FP1
 /// -> con FP1+FP2 -> con FP1+FP2+FP3. Se detiene antes de clasificación.
 class WeekendData {
