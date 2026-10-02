@@ -163,4 +163,38 @@ void main() {
       isTrue,
     );
   });
+  test('no fusiona dos equipos del mismo dueño ni sus puntos', () {
+    final rows = [
+      {
+        'yuserGuid': 'owner',
+        'teamno': 1,
+        'teamName': 'Equipo 1',
+        'ovRank': 1,
+        'ovPoints': 90,
+        'gdPoints': 30,
+      },
+      {
+        'yuserGuid': 'owner',
+        'teamno': 2,
+        'teamName': 'Equipo 2',
+        'ovRank': 2,
+        'ovPoints': 70,
+        'gdPoints': 10,
+      },
+    ];
+    final result = LeagueAnalytics.fromSnapshot({
+      'gameDay': 2,
+      'leaderboards': {
+        'l': {'memRank': rows},
+      },
+      'leagueHistory': {
+        'l': {
+          '2': {'memRank': rows},
+        },
+      },
+    }, 'l');
+    expect(result.members.map((member) => member.key), ['owner:1', 'owner:2']);
+    expect(result.members.map((member) => member.currentTotal), [90, 70]);
+    expect(result.members.map((member) => member.eventPoints.single), [30, 10]);
+  });
 }

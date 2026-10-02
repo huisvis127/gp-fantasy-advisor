@@ -311,6 +311,7 @@ bool _isCurrentUser(Map<String, dynamic> row) =>
       'Participante';
   final name = _displayValue(rawName);
   final rawId = _first(row, const [
+    'yuserguid',
     'userguid',
     'user_guid',
     'userid',
@@ -326,7 +327,8 @@ bool _isCurrentUser(Map<String, dynamic> row) =>
   final key = rawId?.toString().trim().isNotEmpty == true
       ? rawId.toString()
       : name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-  return (key: key, name: name);
+  final teamNo = _first(row, const ['teamno', 'team_no', 'teamnumber']);
+  return (key: teamNo == null ? key : '$key:$teamNo', name: name);
 }
 
 List<Map<String, dynamic>> extractLeagueRows(dynamic node) {

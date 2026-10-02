@@ -20,7 +20,9 @@ import '../../../core/theme.dart';
 /// manual y una barra de estado que dice exactamente qué está pasando
 /// (nada de fallos silenciosos).
 class FantasyLoginWebViewScreen extends ConsumerStatefulWidget {
-  const FantasyLoginWebViewScreen({super.key});
+  const FantasyLoginWebViewScreen({super.key, this.leagueId});
+
+  final String? leagueId;
 
   @override
   ConsumerState<FantasyLoginWebViewScreen> createState() =>
@@ -42,18 +44,17 @@ class _FantasyLoginWebViewScreenState
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(
-        'F1Bridge',
-        onMessageReceived: _onBridgeMessage,
+      ..addJavaScriptChannel('F1Bridge', onMessageReceived: _onBridgeMessage)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (url) async {
+            await _fitPageToPhone();
+            if (!_tokenCaptured && url.contains('formula1.com')) {
+              await _tryCapture(silent: true);
+            }
+          },
+        ),
       )
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (url) async {
-          await _fitPageToPhone();
-          if (!_tokenCaptured && url.contains('formula1.com')) {
-            await _tryCapture(silent: true);
-          }
-        },
-      ))
       ..loadRequest(Uri.parse(_loginUrl));
   }
 
@@ -88,8 +89,10 @@ class _FantasyLoginWebViewScreenState
         if (!silent) {
           await _controller.loadRequest(Uri.parse(_loginUrl));
           if (mounted) {
-            setState(() => _status =
-                'Volviendo a F1 Fantasy. Espera a ver tu cuenta y pulsa Capturar.');
+            setState(
+              () => _status =
+                  'Volviendo a F1 Fantasy. Espera a ver tu cuenta y pulsa Capturar.',
+            );
           }
         }
         return;
@@ -115,8 +118,10 @@ class _FantasyLoginWebViewScreenState
         final auth = ref.read(fantasyAuthServiceProvider);
         await auth.saveExternalToken(token);
         if (mounted) {
-          setState(() => _status =
-              'Cuenta detectada. Pulsa Capturar para copiar equipo y ligas.');
+          setState(
+            () => _status =
+                'Cuenta detectada. Pulsa Capturar para copiar equipo y ligas.',
+          );
         }
       }
       // La web recarga varias veces durante y después del login. No debemos
@@ -125,9 +130,11 @@ class _FantasyLoginWebViewScreenState
       if (silent) return;
       await _captureOfficialSnapshot();
       if (!silent && mounted) {
-        setState(() => _status =
-            'Comprobando la sesión con la web oficial. Si acabas de entrar, '
-                'espera unos segundos y vuelve a pulsar "Capturar sesión".');
+        setState(
+          () => _status =
+              'Comprobando la sesión con la web oficial. Si acabas de entrar, '
+              'espera unos segundos y vuelve a pulsar "Capturar sesión".',
+        );
       }
     } catch (e) {
       if (!silent && mounted) {
@@ -137,6 +144,9 @@ class _FantasyLoginWebViewScreenState
   }
 
   Future<void> _captureOfficialSnapshot() async {
+    await _controller.runJavaScript(
+      'window.f1RequestedLeagueId = ${jsonEncode(widget.leagueId)};',
+    );
     await _controller.runJavaScript(r'''
 (async function () {
   let stage = 'session';
@@ -218,7 +228,7 @@ class _FantasyLoginWebViewScreenState
           const detailValue = valueOf(detail) || {};
           if (Array.isArray(detailValue.userTeam) &&
               detailValue.userTeam.length > 0) {
-            teamDetails[String(teamNo)] = detail;
+            teamDetails[String(teamNo)] = Object.assign({}, detail, {gameDay:candidate.day});
             break;
           }
         } catch (error) {
@@ -295,12 +305,73 @@ class _FantasyLoginWebViewScreenState
         if (days.length) leaderboards[String(id)] = history[days[days.length - 1]];
       }
     }
+    // Captura solo la liga activa y como máximo 20 alineaciones. Tres
+    // peticiones simultáneas mantienen acotados memoria y trabajo de red.
+    const leagueTeamDetails = {};
+    const field = (row, keys) => {
+      if (!row || typeof row !== 'object') return null;
+      for (const key of keys) {
+        const entry = Object.entries(row).find(([name]) =>
+          name.toLowerCase().replace(/_/g, '') === key);
+        if (entry && entry[1] !== null && entry[1] !== undefined) return entry[1];
+      }
+      return null;
+    };
+    const activeLeague = leagueRows.find(row =>
+      String(field(row, ['leagueid','id'])) === String(window.f1RequestedLeagueId)) ||
+      leagueRows.find(row => String(field(row, ['leaguetype','type']) || '').toLowerCase() === 'private');
+    const activeId = activeLeague && String(field(activeLeague, ['leagueid','id']));
+    if (activeId && leaderboards[activeId]) {
+      const boardRows = [];
+      const collectRows = node => {
+        if (!node || typeof node !== 'object') return;
+        if (Array.isArray(node)) return;
+        for (const [name, value] of Object.entries(node)) {
+          if (Array.isArray(value) && ['userrank','memrank','leaderboard','members','entries'].includes(name.toLowerCase())) {
+            boardRows.push(...value.filter(row => row && typeof row === 'object'));
+          } else if (value && typeof value === 'object') collectRows(value);
+        }
+      };
+      collectRows(leaderboards[activeId]);
+      const unique = new Map();
+      for (const row of boardRows) {
+        const owner = field(row, ['yuserguid','userguid','userid','guid','socialid']);
+        const teamNo = Number(field(row, ['teamno','teamnumber']));
+        if (!owner || !Number.isInteger(teamNo) || teamNo < 1 || teamNo > 3) continue;
+        unique.set(String(owner) + ':' + teamNo, {owner:String(owner), teamNo:teamNo, row:row});
+      }
+      const jobs = Array.from(unique.entries()).sort((a,b) =>
+        Number(field(a[1].row, ['ovrank','curank','currank','userrank','rank','position']) || 999) -
+        Number(field(b[1].row, ['ovrank','curank','currank','userrank','rank','position']) || 999)).slice(0,20);
+      leagueTeamDetails[activeId] = {};
+      let next = 0;
+      await Promise.all(Array.from({length:Math.min(3,jobs.length)}, async () => {
+        while (next < jobs.length) {
+          const [key, job] = jobs[next++];
+          const own = job.owner === String(guid) && teamDetails[String(job.teamNo)];
+          if (own && Number(own.gameDay) === gameDay) {
+            leagueTeamDetails[activeId][key] = own;
+            continue;
+          }
+          try {
+            const detail = await readJson('/services/user/gameplay/' + encodeURIComponent(job.owner) +
+              '/getteam/1/' + job.teamNo + '/' + gameDay + '/' + schedulePhaseId);
+            const value = valueOf(detail) || {};
+            if (Array.isArray(value.userTeam) && value.userTeam.length) {
+              leagueTeamDetails[activeId][key] = Object.assign({}, detail, {gameDay:gameDay});
+            }
+          } catch (_) {
+            // El servicio puede ocultar alineaciones antes del cierre.
+          }
+        }
+      }));
+    }
     F1Bridge.postMessage(JSON.stringify({
       capturedAt:new Date().toISOString(), guid:guid, gameDay:gameDay,
       session:session, teams:teams, teamDetails:teamDetails,
       teamDetailErrors:teamDetailErrors,
       leagues:leagues, leaderboards:leaderboards,
-      leagueEvents:leagueEvents, leagueHistory:leagueHistory
+      leagueEvents:leagueEvents, leagueHistory:leagueHistory, leagueTeamDetails:leagueTeamDetails
     }));
   } catch (error) {
     F1Bridge.postMessage(JSON.stringify({
@@ -317,7 +388,8 @@ class _FantasyLoginWebViewScreenState
       final decoded = jsonDecode(message.message);
       if (kDebugMode) {
         debugPrint(
-            '[F1_CAPTURE_STRUCTURE] ${jsonEncode(_structureOf(decoded))}');
+          '[F1_CAPTURE_STRUCTURE] ${jsonEncode(_structureOf(decoded))}',
+        );
         final board = _firstLeagueBoard(
           decoded is Map ? decoded['leagueHistory'] : null,
         );
@@ -328,18 +400,22 @@ class _FantasyLoginWebViewScreenState
           debugPrint('[F1_CAPTURE_ERROR_STAGE] ${decoded['errorStage']}');
         }
         if (_showBridgeErrors && mounted) {
-          setState(() => _status =
-              'Todavía no se detecta una cuenta conectada. Inicia sesión en '
-                  'la web y vuelve a pulsar "Capturar sesión".');
+          setState(
+            () => _status =
+                'Todavía no se detecta una cuenta conectada. Inicia sesión en '
+                'la web y vuelve a pulsar "Capturar sesión".',
+          );
         }
         return;
       }
       final details = decoded is Map ? decoded['teamDetails'] : null;
       if (details is! Map || details.isEmpty) {
         if (mounted) {
-          setState(() =>
-              _status = 'La cuenta esta abierta, pero aun no llego el equipo. '
-                  'Abre "Mi equipo", espera unos segundos y pulsa Capturar.');
+          setState(
+            () => _status =
+                'La cuenta esta abierta, pero aun no llego el equipo. '
+                'Abre "Mi equipo", espera unos segundos y pulsa Capturar.',
+          );
         }
         return;
       }
@@ -354,7 +430,8 @@ class _FantasyLoginWebViewScreenState
     } catch (error) {
       if (mounted) {
         setState(
-            () => _status = 'La web respondió con datos no válidos: $error');
+          () => _status = 'La web respondió con datos no válidos: $error',
+        );
       }
     }
   }
@@ -383,20 +460,17 @@ class _FantasyLoginWebViewScreenState
     return league.values.first;
   }
 
-  void _logLeagueBoardShape(dynamic value,
-      [String path = r'$', int depth = 0]) {
+  void _logLeagueBoardShape(
+    dynamic value, [
+    String path = r'$',
+    int depth = 0,
+  ]) {
     if (depth > 5) return;
     if (value is Map) {
-      debugPrint(
-        '[F1_LEAGUE_SHAPE] $path keys=${value.keys.join('|')}',
-      );
+      debugPrint('[F1_LEAGUE_SHAPE] $path keys=${value.keys.join('|')}');
       for (final entry in value.entries) {
         if (entry.value is Map || entry.value is List) {
-          _logLeagueBoardShape(
-            entry.value,
-            '$path.${entry.key}',
-            depth + 1,
-          );
+          _logLeagueBoardShape(entry.value, '$path.${entry.key}', depth + 1);
         }
       }
     } else if (value is List) {
@@ -438,7 +512,7 @@ class _FantasyLoginWebViewScreenState
     text = text.replaceAll(r'\"', '"');
     final match =
         RegExp('"subscriptionToken"\\s*:\\s*"([^"]+)"').firstMatch(text) ??
-            RegExp('subscriptionToken=([A-Za-z0-9._-]+)').firstMatch(text);
+        RegExp('subscriptionToken=([A-Za-z0-9._-]+)').firstMatch(text);
     return match?.group(1);
   }
 
@@ -465,15 +539,19 @@ class _FantasyLoginWebViewScreenState
             child: Row(
               children: [
                 Expanded(
-                  child: Text(_status,
-                      style: AppText.body(12, color: AppColors.textSecondary)),
+                  child: Text(
+                    _status,
+                    style: AppText.body(12, color: AppColors.textSecondary),
+                  ),
                 ),
                 const SizedBox(width: 6),
                 ElevatedButton(
                   onPressed: () => _tryCapture(silent: false),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                   ),
                   child: const Text('CAPTURAR'),
                 ),

@@ -6,17 +6,31 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('LeagueColors', () {
-    test('offers twenty distinct colors with Spanish names', () {
-      const palette = LeagueColors.palette;
+    test(
+      'offers combined neon and normal colors without losing previous colors',
+      () {
+        const palette = LeagueColors.palette;
 
-      expect(palette, hasLength(20));
-      expect(palette.map((choice) => choice.name).toSet(), hasLength(20));
-      expect(
-        palette.map((choice) => choice.color.toARGB32()).toSet(),
-        hasLength(20),
-      );
-      expect(palette.every((choice) => choice.name.isNotEmpty), isTrue);
-    });
+        expect(palette, hasLength(40));
+        expect(palette.map((choice) => choice.name).toSet(), hasLength(40));
+        expect(
+          palette.map((choice) => choice.color.toARGB32()).toSet(),
+          hasLength(40),
+        );
+        expect(palette.every((choice) => choice.name.isNotEmpty), isTrue);
+        expect(palette.where((choice) => choice.isNeon), hasLength(20));
+        expect(palette.where((choice) => !choice.isNeon), hasLength(20));
+        expect(LeagueColors.displayOrder.take(4), [20, 0, 21, 1]);
+        expect(
+          LeagueColors.resolve('league', 'member:1', {'member': 7}),
+          palette[7].color,
+        );
+        expect(
+          palette[LeagueColors.indexForIdentity('league', 'member')].isNeon,
+          isTrue,
+        );
+      },
+    );
 
     test('fallback color stays stable for the same league and identity', () {
       final original = LeagueColors.indexForIdentity('league-42', 'team-123');

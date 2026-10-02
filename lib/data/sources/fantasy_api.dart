@@ -115,6 +115,11 @@ class FantasyApi {
     return _getOfficialAssets();
   }
 
+  Future<List<Map<String, dynamic>>> getGameDayAssets(int gameDay) {
+    if (gameDay < 1) throw ArgumentError.value(gameDay, 'gameDay');
+    return _getOfficialAssetsForGameDay(gameDay);
+  }
+
   /// La web 2026 publica precios y catálogo como feeds JSON. Primero se
   /// resuelve la jornada actual desde el calendario y después se descarga
   /// `drivers/{gameday}_en.json`, que incluye pilotos y constructores.

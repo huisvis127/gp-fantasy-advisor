@@ -120,4 +120,19 @@ void main() {
       expect(live.assets.first.assetId, 'antonelli');
     },
   );
+  test(
+    'el detalle usa el GP capturado aunque el calendario esté en otro',
+    () async {
+      final adapter = _FeedAdapter();
+      final api = FantasyApi(
+        Dio()..httpClientAdapter = adapter,
+        publicBaseUrl: 'https://fantasy.formula1.com',
+      );
+      final assets = await api.getGameDayAssets(7);
+      expect(adapter.paths, [
+        'https://fantasy.formula1.com/feeds/drivers/7_en.json',
+      ]);
+      expect(assets.every((asset) => asset['round'] == 7), isTrue);
+    },
+  );
 }

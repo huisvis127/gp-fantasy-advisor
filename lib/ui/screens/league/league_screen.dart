@@ -8,6 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
 import '../../../core/app_providers.dart';
 import '../../../core/league_colors.dart';
+import '../../../core/league_colors_provider.dart';
+import '../../../core/league_team_details_provider.dart';
+import '../../../domain/models/league_team_details.dart';
+import '../../widgets/league_team_weekend_details.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/league_analytics.dart';
 import '../../../domain/models/live_fantasy.dart';
@@ -110,8 +114,6 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
   late Future<Map<String, dynamic>> _request;
   Map<String, dynamic>? _snapshot;
   String? _selectedLeagueId;
-  String? _colorsLeagueId;
-  Map<String, int> _teamColors = const {};
 
   @override
   void initState() {
@@ -141,9 +143,11 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
   }
 
   Future<void> _captureHistory() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const FantasyLoginScreen()));
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FantasyLoginScreen(leagueId: _selectedLeagueId),
+      ),
+    );
     if (!mounted) return;
     widget.onSessionUpdated();
   }
@@ -196,15 +200,6 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
           _selectedLeagueId = ids.firstOrNull;
         }
         final selectedId = _selectedLeagueId;
-        if (selectedId != null && _colorsLeagueId != selectedId) {
-          _colorsLeagueId = selectedId;
-          _teamColors = const {};
-          LeagueColors.load(selectedId).then((colors) {
-            if (mounted && _colorsLeagueId == selectedId) {
-              setState(() => _teamColors = {...colors, ..._teamColors});
-            }
-          });
-        }
         final fullAnalytics = selectedId == null || _snapshot == null
             ? const LeagueAnalytics(events: [], members: [])
             : LeagueAnalytics.fromSnapshot(_snapshot!, selectedId);
@@ -214,90 +209,129 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
           orElse: () => leagues.first,
         );
 
-        return RefreshIndicator(
-          color: AppColors.lime,
-          onRefresh: _captureHistory,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 30),
-            children: [
-              const SectionHead(kicker: 'Competición', title: 'Tu liga F1'),
-              const SizedBox(height: 6),
-              Text(
-                leagues.length == 1
-                    ? 'Tienes una liga capturada.'
-                    : 'Tienes ${leagues.length} ligas. Elige cuál quieres analizar.',
-                style: AppText.body(12, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 12),
-              _LeagueSelector(
-                leagues: leagues,
-                selectedId: selectedId,
-                onChanged: (id) => setState(() => _selectedLeagueId = id),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: _captureHistory,
-                icon: const Icon(Icons.sync_rounded, size: 18),
-                label: const Text('ACTUALIZAR LIGAS E HISTORIAL'),
-              ),
-              const SizedBox(height: 18),
-              if (fullAnalytics.members.length >
-                  LeagueAnalytics.maxDisplayedTeams)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: StatusBanner(
-                    message:
-                        'Esta liga tiene ${fullAnalytics.members.length} equipos. '
-                        'La app muestra los ${LeagueAnalytics.maxDisplayedTeams} primeros '
-                        'de la clasificación para mantener una vista fluida y legible.',
+        return Consumer(
+          builder: (context, colorRef, child) {
+            final teamColors = colorRef.watch(
+              leagueTeamColorsProvider(selectedId ?? ''),
+            );
+            final gameDay =
+                int.tryParse(_snapshot?['gameDay']?.toString() ?? '') ?? 0;
+            final weekendAssets = gameDay > 0
+                ? colorRef
+                          .watch(leagueWeekendAssetsProvider(gameDay))
+                          .valueOrNull ??
+                      const <Map<String, dynamic>>[]
+                : const <Map<String, dynamic>>[];
+            return RefreshIndicator(
+              color: AppColors.lime,
+              onRefresh: _captureHistory,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 30),
+                children: [
+                  const SectionHead(kicker: 'Competición', title: 'Tu liga F1'),
+                  const SizedBox(height: 6),
+                  Text(
+                    leagues.length == 1
+                        ? 'Tienes una liga capturada.'
+                        : 'Tienes ${leagues.length} ligas. Elige cuál quieres analizar.',
+                    style: AppText.body(12, color: AppColors.textSecondary),
                   ),
-                ),
-              if (analytics.members.isEmpty)
-                StatusBanner(
-                  message:
-                      'Esta captura aún no incluye el historial por GP. Pulsa actualizar para añadir gráficas y medallero.',
-                  onRetry: _captureHistory,
-                )
-              else ...[
-                _LeagueSummary(
-                  name: _leagueName(selectedLeague),
-                  analytics: analytics,
-                ),
-                const SizedBox(height: 20),
-                _CurrentStandings(
-                  analytics: analytics,
-                  leagueId: selectedId ?? '',
-                  teamColors: _teamColors,
-                  onColorSelected: (memberKey, colorIndex) async {
-                    if (selectedId == null) return;
-                    setState(
-                      () =>
-                          _teamColors = {..._teamColors, memberKey: colorIndex},
-                    );
-                    await LeagueColors.save(selectedId, memberKey, colorIndex);
-                  },
-                ),
-                const SizedBox(height: 22),
-                _RivalStrategy(
-                  analytics: analytics,
-                  team: myTeam,
-                  liveAssets: liveAssets,
-                ),
-                const SizedBox(height: 22),
-                _TrendSection(
-                  analytics: analytics,
-                  leagueId: selectedId ?? '',
-                  teamColors: _teamColors,
-                ),
-                const SizedBox(height: 22),
-                _MedalTable(
-                  analytics: analytics,
-                  leagueId: selectedId ?? '',
-                  teamColors: _teamColors,
-                ),
-              ],
-            ],
-          ),
+                  const SizedBox(height: 12),
+                  _LeagueSelector(
+                    leagues: leagues,
+                    selectedId: selectedId,
+                    onChanged: (id) => setState(() => _selectedLeagueId = id),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _captureHistory,
+                    icon: const Icon(Icons.sync_rounded, size: 18),
+                    label: const Text('ACTUALIZAR LIGAS E HISTORIAL'),
+                  ),
+                  const SizedBox(height: 18),
+                  if (fullAnalytics.members.length >
+                      LeagueAnalytics.maxDisplayedTeams)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: StatusBanner(
+                        message:
+                            'Esta liga tiene ${fullAnalytics.members.length} equipos. '
+                            'La app muestra los ${LeagueAnalytics.maxDisplayedTeams} primeros '
+                            'de la clasificación para mantener una vista fluida y legible.',
+                      ),
+                    ),
+                  if (analytics.members.isEmpty)
+                    StatusBanner(
+                      message:
+                          'Esta captura aún no incluye el historial por GP. Pulsa actualizar para añadir gráficas y medallero.',
+                      onRetry: _captureHistory,
+                    )
+                  else ...[
+                    _LeagueSummary(
+                      name: _leagueName(selectedLeague),
+                      analytics: analytics,
+                    ),
+                    const SizedBox(height: 20),
+                    _CurrentStandings(
+                      analytics: analytics,
+                      leagueId: selectedId ?? '',
+                      teamColors: teamColors,
+                      details: {
+                        for (final member in analytics.members)
+                          member.key: LeagueTeamDetails.fromSnapshot(
+                            _snapshot ?? const {},
+                            selectedId ?? '',
+                            member,
+                            weekendAssets,
+                          ),
+                      },
+                      onRefreshDetails: _captureHistory,
+                      onColorSelected: (memberKey, colorIndex) async {
+                        if (selectedId == null) return;
+                        try {
+                          await colorRef
+                              .read(
+                                leagueTeamColorsProvider(selectedId).notifier,
+                              )
+                              .select(memberKey, colorIndex);
+                        } catch (_) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'No se pudo guardar el color. Vuelve a elegirlo.',
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 22),
+                    _RivalStrategy(
+                      analytics: analytics,
+                      team: myTeam,
+                      liveAssets: liveAssets,
+                      leagueId: selectedId ?? '',
+                      teamColors: teamColors,
+                    ),
+                    const SizedBox(height: 22),
+                    _TrendSection(
+                      analytics: analytics,
+                      leagueId: selectedId ?? '',
+                      teamColors: teamColors,
+                    ),
+                    const SizedBox(height: 22),
+                    _MedalTable(
+                      analytics: analytics,
+                      leagueId: selectedId ?? '',
+                      teamColors: teamColors,
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -387,8 +421,12 @@ class _CurrentStandings extends StatelessWidget {
     required this.leagueId,
     required this.teamColors,
     required this.onColorSelected,
+    required this.details,
+    required this.onRefreshDetails,
   });
 
+  final Map<String, LeagueTeamDetails> details;
+  final VoidCallback onRefreshDetails;
   final LeagueAnalytics analytics;
   final String leagueId;
   final Map<String, int> teamColors;
@@ -400,12 +438,13 @@ class _CurrentStandings extends StatelessWidget {
   ) async {
     final currentIndex =
         teamColors[member.key] ??
+        teamColors[member.key.split(':').first] ??
         LeagueColors.indexForIdentity(leagueId, member.key);
     final selected = await showDialog<int>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(
-          'Color de ${member.name}',
+          'Color de ${member.name} · Neón y normal',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -418,9 +457,10 @@ class _CurrentStandings extends StatelessWidget {
               crossAxisCount: 4,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
-              childAspectRatio: 1.12,
+              mainAxisExtent: 78,
             ),
-            itemBuilder: (context, index) {
+            itemBuilder: (context, displayIndex) {
+              final index = LeagueColors.displayOrder[displayIndex];
               final choice = LeagueColors.palette[index];
               final isSelected = index == currentIndex;
               return Tooltip(
@@ -449,10 +489,12 @@ class _CurrentStandings extends StatelessWidget {
                             radius: 12,
                             backgroundColor: choice.color,
                             child: isSelected
-                                ? const Icon(
+                                ? Icon(
                                     Icons.check_rounded,
                                     size: 15,
-                                    color: Colors.white,
+                                    color: choice.color.computeLuminance() > .45
+                                        ? Colors.black
+                                        : Colors.white,
                                   )
                                 : null,
                           ),
@@ -462,7 +504,7 @@ class _CurrentStandings extends StatelessWidget {
                             maxLines: 2,
                             textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
-                            style: AppText.body(8.5),
+                            style: AppText.body(10.5),
                           ),
                         ],
                       ),
@@ -498,50 +540,17 @@ class _CurrentStandings extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         for (var i = 0; i < analytics.members.length; i++) ...[
-          RefCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 40,
-                  child: Text(
-                    '#${analytics.members[i].currentRank ?? i + 1}',
-                    style: AppText.mono(11, color: _rankColor(i + 1)),
-                  ),
-                ),
-                Container(
-                  width: 9,
-                  height: 30,
-                  margin: const EdgeInsets.only(right: 9),
-                  decoration: BoxDecoration(
-                    color: _memberColor(
-                      leagueId,
-                      analytics.members[i].key,
-                      teamColors,
-                    ),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    analytics.members[i].name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.body(13, weight: FontWeight.w700),
-                  ),
-                ),
-                Text(
-                  '${_formatPoints(analytics.members[i].currentTotal ?? _lastValue(analytics.members[i].cumulativePoints))} pts',
-                  style: AppText.mono(10, color: AppColors.cyan),
-                ),
-                IconButton(
-                  tooltip: 'Cambiar color de ${analytics.members[i].name}',
-                  icon: const Icon(Icons.palette_outlined, size: 18),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => _chooseColor(context, analytics.members[i]),
-                ),
-              ],
-            ),
+          LeagueTeamStandingCard(
+            key: ValueKey('$leagueId:${analytics.members[i].key}'),
+            name: analytics.members[i].name,
+            rank: analytics.members[i].currentRank ?? i + 1,
+            totalPoints:
+                analytics.members[i].currentTotal ??
+                _lastValue(analytics.members[i].cumulativePoints),
+            color: _memberColor(leagueId, analytics.members[i].key, teamColors),
+            details: details[analytics.members[i].key]!,
+            onChooseColor: () => _chooseColor(context, analytics.members[i]),
+            onRefresh: onRefreshDetails,
           ),
           if (i != analytics.members.length - 1) const SizedBox(height: 7),
         ],
@@ -555,11 +564,15 @@ class _RivalStrategy extends StatelessWidget {
     required this.analytics,
     required this.team,
     required this.liveAssets,
+    required this.leagueId,
+    required this.teamColors,
   });
 
   final LeagueAnalytics analytics;
   final MyTeam? team;
   final List<LiveAssetScore> liveAssets;
+  final String leagueId;
+  final Map<String, int> teamColors;
 
   @override
   Widget build(BuildContext context) {
@@ -610,7 +623,13 @@ class _RivalStrategy extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (me != null && rival != null) ...[
-                Text('Objetivo: ${rival.name}', style: AppText.syne(14)),
+                Text(
+                  'Objetivo: ${rival.name}',
+                  style: AppText.syne(
+                    14,
+                    color: _memberTextColor(leagueId, rival.key, teamColors),
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   gap == null
@@ -745,7 +764,14 @@ class _LeagueChartCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       member.name,
-                      style: AppText.body(10, color: AppColors.textSecondary),
+                      style: AppText.body(
+                        10,
+                        color: _memberTextColor(
+                          leagueId,
+                          member.key,
+                          teamColors,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -775,6 +801,27 @@ class _LeagueChartCard extends StatelessWidget {
       maxX: math.max(1, analytics.events.length - 1).toDouble(),
       minY: positions ? 1 : 0,
       maxY: positions ? maxPosition.toDouble() : math.max(1, pointMax),
+      lineTouchData: LineTouchData(
+        touchTooltipData: LineTouchTooltipData(
+          getTooltipColor: (_) => AppColors.surface3,
+          fitInsideHorizontally: true,
+          fitInsideVertically: true,
+          getTooltipItems: (spots) => [
+            for (final spot in spots)
+              LineTooltipItem(
+                '${members[spot.barIndex].name}\n${positions ? 'P${(maxPosition + 1 - spot.y).round()}' : leaguePointsLabel(spot.y)}',
+                AppText.body(
+                  11,
+                  color: _memberTextColor(
+                    leagueId,
+                    members[spot.barIndex].key,
+                    teamColors,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
       gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
@@ -926,7 +973,15 @@ class _MedalTable extends StatelessWidget {
                               rows[i].name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppText.body(12, weight: FontWeight.w700),
+                              style: AppText.body(
+                                12,
+                                weight: FontWeight.w700,
+                                color: _memberTextColor(
+                                  leagueId,
+                                  rows[i].key,
+                                  teamColors,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -1031,36 +1086,24 @@ String _decode(String value) {
   }
 }
 
-Color _rankColor(int rank) => switch (rank) {
-  1 => AppColors.gold,
-  2 => AppColors.silver,
-  3 => AppColors.orange,
-  _ => AppColors.lime,
-};
-
 Color _memberColor(
   String leagueId,
   String memberKey,
-  Map<String, int> selectedColors,
-) {
-  final index = selectedColors[memberKey];
-  return index == null
-      ? LeagueColors.forIdentity(leagueId, memberKey)
-      : LeagueColors
-            .palette[index.clamp(0, LeagueColors.palette.length - 1)]
-            .color;
-}
+  Map<String, int> teamColors,
+) => LeagueColors.resolve(leagueId, memberKey, teamColors);
+
+Color _memberTextColor(
+  String leagueId,
+  String memberKey,
+  Map<String, int> teamColors,
+) => LeagueColors.textColor(
+  _memberColor(leagueId, memberKey, teamColors),
+  AppColors.brightness,
+);
 
 double? _lastValue(List<double?> values) {
   for (final value in values.reversed) {
     if (value != null) return value;
   }
   return null;
-}
-
-String _formatPoints(double? value) {
-  if (value == null) return '—';
-  return value == value.roundToDouble()
-      ? value.toStringAsFixed(0)
-      : value.toStringAsFixed(1);
 }

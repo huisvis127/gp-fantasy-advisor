@@ -9,7 +9,9 @@ import '../my_team/manual_team_entry_screen.dart';
 import 'fantasy_login_webview_screen.dart';
 
 class FantasyLoginScreen extends ConsumerStatefulWidget {
-  const FantasyLoginScreen({super.key});
+  const FantasyLoginScreen({super.key, this.leagueId});
+
+  final String? leagueId;
 
   @override
   ConsumerState<FantasyLoginScreen> createState() => _FantasyLoginScreenState();
@@ -31,7 +33,9 @@ class _FantasyLoginScreenState extends ConsumerState<FantasyLoginScreen> {
 
   Future<void> _openBrowser() async {
     final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const FantasyLoginWebViewScreen()),
+      MaterialPageRoute(
+        builder: (_) => FantasyLoginWebViewScreen(leagueId: widget.leagueId),
+      ),
     );
     if (result == true && mounted) Navigator.of(context).pop(true);
   }
