@@ -11,12 +11,21 @@ class TeamCombo {
     required this.constructorIds,
     required this.totalCostMillions,
     required this.totalExpectedPoints,
+    this.boostedDriverId,
+    this.boostGain = 0,
   });
 
   final List<String> driverIds;
   final List<String> constructorIds;
   final double totalCostMillions;
+
+  /// Puntuación base, sin contar el efecto del boost x2.
   final double totalExpectedPoints;
+  final String? boostedDriverId;
+  final double boostGain;
+
+  double get baseExpectedPoints => totalExpectedPoints;
+  double get boostedExpectedPoints => totalExpectedPoints + boostGain;
 }
 
 class TransferPlan {
@@ -107,6 +116,7 @@ class TeamOptimizer {
     required double remainingBudgetMillions,
     int maxTransfersToConsider = 3,
     int extraTransferPenalty = -10,
+    String? currentBoostedDriverId,
   }) {
     final plans = transferCandidates(
       currentDriverIds: currentDriverIds,
@@ -117,6 +127,7 @@ class TeamOptimizer {
       maxTransfersToConsider: maxTransfersToConsider,
       extraTransferPenalty: extraTransferPenalty,
       candidatesPerTransferCount: 1,
+      currentBoostedDriverId: currentBoostedDriverId,
     );
     plans.sort((a, b) => b.netExpectedGain.compareTo(a.netExpectedGain));
     return plans;
@@ -134,13 +145,21 @@ class TeamOptimizer {
     int maxTransfersToConsider = 3,
     int extraTransferPenalty = -10,
     int candidatesPerTransferCount = 2,
+    String? currentBoostedDriverId,
   }) {
     final currentTeamCost =
         _sumCost(currentDriverIds, driverPredictions) +
         _sumCost(currentConstructorIds, constructorPredictions);
-    final currentTeamPoints =
+    final currentBasePoints =
         _sumPoints(currentDriverIds, driverPredictions) +
         _sumPoints(currentConstructorIds, constructorPredictions);
+    final currentBoostId =
+        currentBoostedDriverId != null &&
+            currentDriverIds.contains(currentBoostedDriverId)
+        ? currentBoostedDriverId
+        : recommendBoost(currentDriverIds, driverPredictions);
+    final currentBoostGain = _pointsForId(currentBoostId, driverPredictions);
+    final currentTeamPoints = currentBasePoints + currentBoostGain;
     final availableBudget = remainingBudgetMillions + currentTeamCost;
     final currentDrivers = currentDriverIds.toSet();
     final currentConstructors = currentConstructorIds.toSet();
@@ -153,7 +172,9 @@ class TeamOptimizer {
         driverIds: List.unmodifiable(currentDriverIds),
         constructorIds: List.unmodifiable(currentConstructorIds),
         totalCostMillions: currentTeamCost,
-        totalExpectedPoints: currentTeamPoints,
+        totalExpectedPoints: currentBasePoints,
+        boostedDriverId: currentBoostId,
+        boostGain: currentBoostGain,
       ),
     );
     bestByChanges[0] = [current];
@@ -174,6 +195,17 @@ class TeamOptimizer {
         if (cost > availableBudget + 0.0001) continue;
         final nextDrivers = drivers.driverIds;
         final nextConstructors = constructors.driverIds;
+        final basePoints =
+            drivers.totalExpectedPoints + constructors.totalExpectedPoints;
+        final candidateCombo = _withBestDriverBoost(
+          TeamCombo(
+            driverIds: List.unmodifiable(nextDrivers),
+            constructorIds: List.unmodifiable(nextConstructors),
+            totalCostMillions: cost,
+            totalExpectedPoints: basePoints,
+          ),
+          driverPredictions,
+        );
         final candidate = _BestSwapResult(
           transfersOut: [
             ...currentDriverIds.where((id) => !nextDrivers.contains(id)),
@@ -187,18 +219,14 @@ class TeamOptimizer {
               (id) => !currentConstructors.contains(id),
             ),
           ],
-          combo: TeamCombo(
-            driverIds: List.unmodifiable(nextDrivers),
-            constructorIds: List.unmodifiable(nextConstructors),
-            totalCostMillions: cost,
-            totalExpectedPoints:
-                drivers.totalExpectedPoints + constructors.totalExpectedPoints,
-          ),
+          combo: candidateCombo,
         );
         final list = bestByChanges.putIfAbsent(changes, () => []);
         list.add(candidate);
         list.sort(
-          (a, b) => b.totalExpectedPoints.compareTo(a.totalExpectedPoints),
+          (a, b) => b.combo.boostedExpectedPoints.compareTo(
+            a.combo.boostedExpectedPoints,
+          ),
         );
         if (list.length > candidatesPerTransferCount) list.removeLast();
       }
@@ -218,7 +246,9 @@ class TeamOptimizer {
             extraTransferPenaltyApplied: penalty,
             resultingTeam: candidate.combo,
             netExpectedGain:
-                candidate.totalExpectedPoints + penalty - currentTeamPoints,
+                candidate.combo.boostedExpectedPoints +
+                penalty -
+                currentTeamPoints,
           ),
         );
       }
@@ -236,13 +266,20 @@ class TeamOptimizer {
     required List<AssetPrediction> driverPredictions,
     required List<AssetPrediction> constructorPredictions,
     required double remainingBudgetMillions,
+    String? currentBoostedDriverId,
   }) {
     final currentCost =
         _sumCost(currentDriverIds, driverPredictions) +
         _sumCost(currentConstructorIds, constructorPredictions);
-    final currentPoints =
+    final currentBasePoints =
         _sumPoints(currentDriverIds, driverPredictions) +
         _sumPoints(currentConstructorIds, constructorPredictions);
+    final currentBoostId =
+        currentBoostedDriverId != null &&
+            currentDriverIds.contains(currentBoostedDriverId)
+        ? currentBoostedDriverId
+        : recommendBoost(currentDriverIds, driverPredictions);
+    final currentBoostGain = _pointsForId(currentBoostId, driverPredictions);
     final availableBudget = currentCost + remainingBudgetMillions;
     final plans = suggestTransfers(
       currentDriverIds: currentDriverIds,
@@ -251,6 +288,7 @@ class TeamOptimizer {
       constructorPredictions: constructorPredictions,
       remainingBudgetMillions: remainingBudgetMillions,
       maxTransfersToConsider: 2,
+      currentBoostedDriverId: currentBoostId,
     );
 
     TransferPlan? exact(int count) {
@@ -265,7 +303,9 @@ class TeamOptimizer {
         driverIds: List.unmodifiable(currentDriverIds),
         constructorIds: List.unmodifiable(currentConstructorIds),
         totalCostMillions: currentCost,
-        totalExpectedPoints: currentPoints,
+        totalExpectedPoints: currentBasePoints,
+        boostedDriverId: currentBoostId,
+        boostGain: currentBoostGain,
       ),
       oneTransfer: exact(1),
       twoTransfers: exact(2),
@@ -285,9 +325,33 @@ class TeamOptimizer {
   ) {
     final byId = {for (final p in driverPredictions) p.assetId: p};
     final inTeam = driverIds.map((id) => byId[id]).whereType<AssetPrediction>();
+    if (inTeam.isEmpty) return '';
     return inTeam
         .reduce((a, b) => a.expectedPoints >= b.expectedPoints ? a : b)
         .assetId;
+  }
+
+  TeamCombo _withBestDriverBoost(
+    TeamCombo combo,
+    List<AssetPrediction> driverPredictions,
+  ) {
+    if (combo.driverIds.isEmpty) return combo;
+    final boostedId = recommendBoost(combo.driverIds, driverPredictions);
+    return TeamCombo(
+      driverIds: combo.driverIds,
+      constructorIds: combo.constructorIds,
+      totalCostMillions: combo.totalCostMillions,
+      totalExpectedPoints: combo.totalExpectedPoints,
+      boostedDriverId: boostedId,
+      boostGain: _pointsForId(boostedId, driverPredictions),
+    );
+  }
+
+  double _pointsForId(String id, List<AssetPrediction> predictions) {
+    for (final prediction in predictions) {
+      if (prediction.assetId == id) return prediction.expectedPoints;
+    }
+    return 0;
   }
 
   // ---- Implementación ----
@@ -297,7 +361,11 @@ class TeamOptimizer {
     List<AssetPrediction> constructors,
     double budget,
   ) {
-    final driverCombos = _bestPointsPerBudget(_combinations(drivers, 5));
+    final boostedDriverCombos = _combinations(
+      drivers,
+      5,
+    ).map((combo) => _withBestDriverBoost(combo, drivers)).toList();
+    final driverCombos = _bestPointsPerBudget(boostedDriverCombos);
     final constructorCombos = _combinations(constructors, 2);
 
     TeamCombo? best;
@@ -307,14 +375,17 @@ class TeamOptimizer {
       final bestDrivers = _lookupBestForBudget(driverCombos, remaining);
       if (bestDrivers == null) continue;
       final total =
-          bestDrivers.totalExpectedPoints + cCombo.totalExpectedPoints;
-      if (best == null || total > best.totalExpectedPoints) {
+          bestDrivers.boostedExpectedPoints + cCombo.totalExpectedPoints;
+      if (best == null || total > best.boostedExpectedPoints) {
         best = TeamCombo(
           driverIds: bestDrivers.driverIds,
           constructorIds: cCombo.driverIds, // reutiliza el mismo campo de ids
           totalCostMillions:
               bestDrivers.totalCostMillions + cCombo.totalCostMillions,
-          totalExpectedPoints: total,
+          totalExpectedPoints:
+              bestDrivers.totalExpectedPoints + cCombo.totalExpectedPoints,
+          boostedDriverId: bestDrivers.boostedDriverId,
+          boostGain: bestDrivers.boostGain,
         );
       }
     }
@@ -336,7 +407,12 @@ class TeamOptimizer {
     final driverBudget = budget * driverBudgetFraction;
     final constructorBudget = budget - driverBudget;
 
-    final bestDrivers = _bestSingleGroup(drivers, 5, driverBudget);
+    final bestDrivers = _bestSingleGroup(
+      drivers,
+      5,
+      driverBudget,
+      boostDrivers: true,
+    );
     final bestConstructors = _bestSingleGroup(
       constructors,
       2,
@@ -351,20 +427,25 @@ class TeamOptimizer {
       totalExpectedPoints:
           bestDrivers.totalExpectedPoints +
           bestConstructors.totalExpectedPoints,
+      boostedDriverId: bestDrivers.boostedDriverId,
+      boostGain: bestDrivers.boostGain,
     );
   }
 
   TeamCombo _bestSingleGroup(
     List<AssetPrediction> pool,
     int count,
-    double budget,
-  ) {
+    double budget, {
+    bool boostDrivers = false,
+  }) {
     final combos = _combinations(pool, count);
     TeamCombo? best;
     for (final c in combos) {
       if (c.totalCostMillions > budget) continue;
-      if (best == null || c.totalExpectedPoints > best.totalExpectedPoints) {
-        best = c;
+      final scored = boostDrivers ? _withBestDriverBoost(c, pool) : c;
+      if (best == null ||
+          scored.boostedExpectedPoints > best.boostedExpectedPoints) {
+        best = scored;
       }
     }
     return best ??
@@ -417,7 +498,7 @@ class TeamOptimizer {
     final prefixed = <TeamCombo>[];
     for (final c in sorted) {
       if (runningBest == null ||
-          c.totalExpectedPoints > runningBest.totalExpectedPoints) {
+          c.boostedExpectedPoints > runningBest.boostedExpectedPoints) {
         runningBest = c;
       }
       prefixed.add(runningBest);

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/sources/openf1_api.dart';
@@ -110,22 +111,30 @@ final weekendDataProvider = FutureProvider<WeekendData>((ref) async {
 
   final api = ref.watch(openF1ApiProvider);
   try {
-    return await _loadWeekend(api, ref, race, now);
+    final catalog = await ref.watch(fantasyAssetNameProvider.future);
+    return await loadWeekendData(
+      api: api,
+      race: race,
+      now: now,
+      catalog: catalog,
+    );
   } catch (e) {
     return WeekendData(
       error:
-          'OpenF1 no respondió (${e.toString().split('\n').first}). '
-          'Predicción en modo pre-finde.',
+          'OpenF1 no pudo cargar ${race.raceName}: '
+          '${_describeOpenF1Error(e)}. Predicción en modo pre-finde.',
     );
   }
 });
 
-Future<WeekendData> _loadWeekend(
-  OpenF1Api api,
-  Ref ref,
-  Race race,
-  DateTime now,
-) async {
+/// Separa la descarga de OpenF1 del provider para probar selección de sesión,
+/// correspondencia de pilotos y degradación cuando falla una sesión.
+Future<WeekendData> loadWeekendData({
+  required OpenF1Api api,
+  required Race race,
+  required DateTime now,
+  required Map<String, FantasyAssetInfo> catalog,
+}) async {
   final countryName = _countryNameMap[race.country] ?? race.country;
   final sessions = await api.getSessions(
     year: race.season,
@@ -149,13 +158,24 @@ Future<WeekendData> _loadWeekend(
   if (completed.isEmpty) return const WeekendData();
 
   // Mapa dorsal -> driverId usando los nombres del catálogo.
-  final catalog = await ref.watch(fantasyAssetNameProvider.future);
   final driverNames = <String, String>{
     for (final e in catalog.entries)
       if (e.value.kind == FantasyAssetKind.driver)
         e.key: _normalize(e.value.name),
   };
-  final openF1Drivers = await api.getSessionDrivers(completed.values.first);
+  List<Map<String, dynamic>> openF1Drivers = const [];
+  final driverLookupErrors = <String>[];
+  for (final session in completed.entries.toList().reversed) {
+    try {
+      openF1Drivers = await api.getSessionDrivers(session.value);
+      if (openF1Drivers.isNotEmpty) break;
+    } catch (error) {
+      // Prueba otra sesión del mismo meeting por si ese key no está publicado.
+      driverLookupErrors.add(
+        '${session.key.toUpperCase()} (${_describeOpenF1Error(error)})',
+      );
+    }
+  }
   final numberToDriverId = <String, String>{};
   for (final d in openF1Drivers) {
     final number = d['driver_number']?.toString();
@@ -163,7 +183,7 @@ Future<WeekendData> _loadWeekend(
     final fullName = _normalize(d['full_name']?.toString() ?? '');
     if (number == null || lastName.isEmpty) continue;
     for (final entry in driverNames.entries) {
-      if (entry.value.contains(lastName) || fullName.contains(entry.value)) {
+      if (_matchesDriverName(entry.value, lastName, fullName)) {
         numberToDriverId[number] = entry.key;
         break;
       }
@@ -174,15 +194,31 @@ Future<WeekendData> _loadWeekend(
   final byDriverId = <String, Map<String, double>>{};
   final insightBuilders = <String, _InsightBuilder>{};
   final withData = <String>{};
+  final failedSessions = <String>[];
+  final emptySessions = <String>[];
+  var hasAggregates = false;
+  var hasMappedDrivers = false;
   for (final entry in completed.entries) {
-    final laps = await api.getLaps(entry.value);
+    List<Map<String, dynamic>> laps;
+    try {
+      laps = await api.getLaps(entry.value);
+    } catch (error) {
+      // Una respuesta ausente para FP2/FP3 no invalida vueltas ya recibidas
+      // en FP1. Se conserva la etapa parcial y se indica el dato faltante.
+      failedSessions.add(_sessionFailureLabel(entry.key, error));
+      continue;
+    }
     final aggregates = api.aggregateStints(
       laps: laps,
       season: race.season,
       round: race.round,
       sessionKey: entry.key,
     );
-    if (aggregates.isEmpty) continue;
+    if (aggregates.isEmpty) {
+      emptySessions.add(entry.key.toUpperCase());
+      continue;
+    }
+    hasAggregates = true;
 
     double bestLap = double.infinity;
     double bestPace = double.infinity;
@@ -191,11 +227,10 @@ Future<WeekendData> _loadWeekend(
       if (a.top2StintsAvgMs < bestPace) bestPace = a.top2StintsAvgMs;
     }
     if (bestLap <= 0 || bestLap.isInfinite) continue;
-    withData.add(entry.key);
-
     aggregates.forEach((driverNumber, a) {
       final driverId = numberToDriverId[driverNumber];
       if (driverId == null) return;
+      hasMappedDrivers = true;
       final map = byDriverId.putIfAbsent(driverId, () => <String, double>{});
       map['onelap:${entry.key}'] = (a.bestLapMs - bestLap) / bestLap * 100.0;
       map['pace:${entry.key}'] =
@@ -212,16 +247,61 @@ Future<WeekendData> _loadWeekend(
         (a.top2StintsAvgMs - a.bestLapMs) / a.bestLapMs * 100,
       );
     });
+    if (aggregates.keys.any(numberToDriverId.containsKey)) {
+      withData.add(entry.key);
+    }
   }
 
   return WeekendData(
     sessions: withData,
     byDriverId: byDriverId,
+    error: hasAggregates && !hasMappedDrivers
+        ? 'OpenF1 no pudo asociar las vueltas de ${race.raceName} '
+              'a los pilotos del catálogo'
+              '${driverLookupErrors.isEmpty ? '.' : ': ${driverLookupErrors.join(', ')}.'}'
+        : (failedSessions.isEmpty && emptySessions.isEmpty
+              ? null
+              : 'OpenF1 no devolvió datos de '
+                    '${[...failedSessions, ...emptySessions].join(', ')} '
+                    'para ${race.raceName}; se usan las sesiones disponibles.'),
     insights: {
       for (final entry in insightBuilders.entries)
         entry.key: entry.value.build(),
     },
   );
+}
+
+String _sessionFailureLabel(String sessionKey, Object error) =>
+    '${sessionKey.toUpperCase()} (${_describeOpenF1Error(error)})';
+
+String _describeOpenF1Error(Object error) {
+  if (error is DioException) {
+    final status = error.response?.statusCode;
+    final path = error.requestOptions.uri.path;
+    if (status != null) return 'HTTP $status en $path';
+    final message = error.message;
+    if (message != null && message.isNotEmpty) return message;
+    return error.type.name;
+  }
+  return error.toString().split('\n').first;
+}
+
+bool _matchesDriverName(String catalogName, String lastName, String fullName) {
+  if (catalogName == fullName) return true;
+  final catalogTokens = catalogName.split(RegExp(r'[^a-z0-9]+'))
+    ..removeWhere((token) => token.isEmpty);
+  final surnameTokens = lastName.split(RegExp(r'[^a-z0-9]+'))
+    ..removeWhere((token) => token.isEmpty);
+  if (surnameTokens.isEmpty || surnameTokens.length > catalogTokens.length) {
+    return false;
+  }
+  final suffix = catalogTokens.sublist(
+    catalogTokens.length - surnameTokens.length,
+  );
+  return List.generate(
+    surnameTokens.length,
+    (i) => suffix[i] == surnameTokens[i],
+  ).every((matches) => matches);
 }
 
 class _InsightBuilder {

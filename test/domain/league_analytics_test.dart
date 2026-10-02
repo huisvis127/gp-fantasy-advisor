@@ -197,4 +197,119 @@ void main() {
     expect(result.members.map((member) => member.currentTotal), [90, 70]);
     expect(result.members.map((member) => member.eventPoints.single), [30, 10]);
   });
+  test(
+    'cuatro equipos siguen siendo cuatro al mezclar GUID, social_id y team_no',
+    () {
+      final current = List.generate(
+        4,
+        (i) => <String, dynamic>{
+          // El orden del JSON anterior favorecía social_id y rompía el cruce.
+          'social_id': 'social-$i',
+          'team_no': 1,
+          'team_name': 'Equipo $i',
+          'user_guid': 'guid-$i',
+          'cur_rank': i + 1,
+          'cur_points': 400 - i * 20,
+        },
+      );
+      final historical = List.generate(
+        4,
+        (i) => <String, dynamic>{
+          'userGuid': 'guid-$i',
+          'teamName': 'Equipo $i',
+          'gdPoints': 100 - i * 10,
+        },
+      );
+      final older = List.generate(
+        4,
+        (i) => <String, dynamic>{
+          'social_id': 'social-$i',
+          'team_name': 'Equipo $i',
+          'cur_points': 80 - i * 10,
+        },
+      );
+      final result = LeagueAnalytics.fromSnapshot({
+        'leaderboards': {
+          'l': {
+            'Value': {'leaderboard': current},
+          },
+        },
+        'leagueHistory': {
+          'l': {
+            '1': {'memRank': older},
+            '2': {'memRank': historical},
+          },
+        },
+      }, 'l');
+      expect(result.members, hasLength(4));
+      expect(result.members.map((m) => m.key), [
+        'guid-0:1',
+        'guid-1:1',
+        'guid-2:1',
+        'guid-3:1',
+      ]);
+      expect(result.members.first.eventPoints, [80, 100]);
+      expect(result.members.first.currentTotal, 400);
+      expect(result.members.every((m) => m.currentTotal != null), isTrue);
+    },
+  );
+
+  test(
+    'no añade a la clasificación actual miembros de un historial antiguo',
+    () {
+      final result = LeagueAnalytics.fromSnapshot({
+        'leaderboards': {
+          'l': {
+            'memRank': [
+              {'userGuid': 'a', 'teamName': 'Actual', 'ovPoints': 90},
+            ],
+          },
+        },
+        'leagueHistory': {
+          'l': {
+            '1': {
+              'memRank': [
+                {'userGuid': 'a', 'teamName': 'Actual', 'gdPoints': 50},
+                {'userGuid': 'gone', 'teamName': 'Anterior', 'gdPoints': 80},
+              ],
+            },
+          },
+        },
+      }, 'l');
+      expect(result.members.map((m) => m.key), ['a']);
+      expect(result.members.single.currentTotal, 90);
+    },
+  );
+
+  test('lee el historial current/rounds de las capturas Polewise previas', () {
+    final row = {
+      'user_guid': 'a',
+      'team_no': 1,
+      'team_name': 'A',
+      'cur_points': 50,
+    };
+    final result = LeagueAnalytics.fromSnapshot({
+      'leaderboards': {
+        'l': {
+          'current': {
+            'Value': {
+              'leaderboard': [
+                {...row, 'cur_points': 150},
+              ],
+            },
+          },
+          'rounds': {
+            '1': {
+              'Value': {
+                'leaderboard': [row],
+              },
+            },
+          },
+        },
+      },
+    }, 'l');
+    expect(result.members, hasLength(1));
+    expect(result.members.single.currentTotal, 150);
+    expect(result.members.single.eventPoints, [50]);
+  });
 }

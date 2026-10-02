@@ -27,13 +27,18 @@ class LeagueMemberTrend {
 }
 
 class LeagueAnalytics {
-  const LeagueAnalytics({required this.events, required this.members});
+  const LeagueAnalytics({
+    required this.events,
+    required this.members,
+    this.identityAliases = const {},
+  });
 
   /// Máximo de equipos que la app representa a la vez por liga.
   static const maxDisplayedTeams = 20;
 
   final List<LeagueEvent> events;
   final List<LeagueMemberTrend> members;
+  final Map<String, String> identityAliases;
 
   bool get hasHistory => events.length > 1;
 
@@ -41,6 +46,7 @@ class LeagueAnalytics {
       ? this
       : LeagueAnalytics(
           events: events,
+          identityAliases: identityAliases,
           members: members.take(maxDisplayedTeams).toList(growable: false),
         );
 
@@ -53,7 +59,14 @@ class LeagueAnalytics {
         ? Map<dynamic, dynamic>.from(historyRoot[leagueId] as Map)
         : <dynamic, dynamic>{};
     final currentRoot = snapshot['leaderboards'];
-    final current = currentRoot is Map ? currentRoot[leagueId] : null;
+    final rawCurrent = currentRoot is Map ? currentRoot[leagueId] : null;
+    // También acepta las capturas Polewise anteriores, con current/rounds.
+    final current = rawCurrent is Map && rawCurrent['current'] != null
+        ? rawCurrent['current']
+        : rawCurrent;
+    if (history.isEmpty && rawCurrent is Map && rawCurrent['rounds'] is Map) {
+      history.addAll(Map<dynamic, dynamic>.from(rawCurrent['rounds'] as Map));
+    }
 
     final eventLabels = <int, String>{};
     final eventCompletion = <int, bool>{};
@@ -101,11 +114,20 @@ class LeagueAnalytics {
           ),
         )
         .toList();
+    final currentRows = extractLeagueRows(current);
+    final identities = _LeagueIdentities([
+      ...currentRows,
+      for (final rows in eventBoards.values) ...rows,
+    ]);
+    final currentKeys = currentRows
+        .map((row) => identities.of(row).key)
+        .toSet();
     final builders = <String, _MemberBuilder>{};
 
     for (var eventIndex = 0; eventIndex < events.length; eventIndex++) {
       for (final row in eventBoards[events[eventIndex].gameDayId] ?? const []) {
-        final identity = _identity(row);
+        if (_asBool(_first(row, const ['_has_event'])) == false) continue;
+        final identity = identities.of(row);
         final builder = builders.putIfAbsent(
           identity.key,
           () => _MemberBuilder(identity.key, identity.name, events.length),
@@ -120,6 +142,7 @@ class LeagueAnalytics {
             'matchdaypoints',
             'racepoints',
             'eventpoints',
+            'event_points',
             'weekpoints',
             'cur_points',
           ]),
@@ -128,6 +151,7 @@ class LeagueAnalytics {
           _first(row, const [
             'gdrank',
             'eventrank',
+            'race_rank',
             'cur_rank',
             'rank',
             'position',
@@ -140,6 +164,7 @@ class LeagueAnalytics {
             'overall_points',
             'totalpoints',
             'total_points',
+            'cumulative_points',
             'points',
             'score',
           ]),
@@ -147,8 +172,8 @@ class LeagueAnalytics {
       }
     }
 
-    for (final row in extractLeagueRows(current)) {
-      final identity = _identity(row);
+    for (final row in currentRows) {
+      final identity = identities.of(row);
       final builder = builders.putIfAbsent(
         identity.key,
         () => _MemberBuilder(identity.key, identity.name, events.length),
@@ -180,6 +205,11 @@ class LeagueAnalytics {
       );
     }
 
+    // La clasificación actual determina quién sigue en la liga. No contamos
+    // alias históricos ni antiguos miembros como equipos adicionales.
+    if (currentKeys.isNotEmpty) {
+      builders.removeWhere((key, _) => !currentKeys.contains(key));
+    }
     for (final builder in builders.values) {
       double running = 0;
       double? previousReportedTotal;
@@ -246,7 +276,11 @@ class LeagueAnalytics {
         }
         return (b.currentTotal ?? 0).compareTo(a.currentTotal ?? 0);
       });
-    return LeagueAnalytics(events: events, members: members);
+    return LeagueAnalytics(
+      events: events,
+      members: members,
+      identityAliases: identities.aliasKeys,
+    );
   }
 }
 
@@ -297,7 +331,9 @@ bool _isCurrentUser(Map<String, dynamic> row) =>
     ) ??
     false;
 
-({String key, String name}) _identity(Map<String, dynamic> row) {
+({String key, String name, String? owner, String? teamNo}) _identity(
+  Map<String, dynamic> row,
+) {
   final rawName =
       _first(row, const [
         'teamname',
@@ -325,10 +361,133 @@ bool _isCurrentUser(Map<String, dynamic> row) =>
     'entry_id',
   ]);
   final key = rawId?.toString().trim().isNotEmpty == true
-      ? rawId.toString()
+      ? rawId.toString().trim()
       : name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-  final teamNo = _first(row, const ['teamno', 'team_no', 'teamnumber']);
-  return (key: teamNo == null ? key : '$key:$teamNo', name: name);
+  final rawTeamNo = _first(row, const ['teamno', 'team_no', 'teamnumber']);
+  final teamNo = _asInt(rawTeamNo)?.toString();
+  return (
+    key: teamNo == null ? key : '$key:$teamNo',
+    name: name,
+    owner: rawId?.toString().trim(),
+    teamNo: teamNo,
+  );
+}
+
+class _LeagueIdentities {
+  _LeagueIdentities(this.rows) {
+    for (final row in rows) {
+      final guid = _first(row, const [
+        'yuserguid',
+        'userguid',
+        'user_guid',
+        'guid',
+      ]);
+      if (guid == null) continue;
+      final owner = guid.toString().trim();
+      for (final field in const [
+        'yuserguid',
+        'userguid',
+        'user_guid',
+        'guid',
+        'userid',
+        'user_id',
+        'socialid',
+        'social_id',
+      ]) {
+        final alias = _first(row, [field]);
+        if (alias != null) {
+          aliases
+              .putIfAbsent(alias.toString().trim(), () => <String>{})
+              .add(owner);
+        }
+      }
+    }
+  }
+
+  final List<Map<String, dynamic>> rows;
+  final aliases = <String, Set<String>>{};
+
+  ({String key, String name, String? owner, String? teamNo}) _canonical(
+    Map<String, dynamic> row,
+  ) {
+    final identity = _identity(row);
+    final owners = aliases[identity.owner];
+    final owner = owners?.length == 1 ? owners!.single : identity.owner;
+    return (
+      key: owner == null
+          ? identity.key
+          : identity.teamNo == null
+          ? owner
+          : '$owner:${identity.teamNo}',
+      name: identity.name,
+      owner: owner,
+      teamNo: identity.teamNo,
+    );
+  }
+
+  ({String key, String name}) of(Map<String, dynamic> row) {
+    final identity = _canonical(row);
+    if (identity.teamNo != null) {
+      return (key: identity.key, name: identity.name);
+    }
+    final sameOwner = rows
+        .map(_canonical)
+        .where(
+          (candidate) =>
+              identity.owner != null &&
+              candidate.owner == identity.owner &&
+              candidate.teamNo != null,
+        )
+        .toList();
+    final sameName = sameOwner
+        .where(
+          (candidate) =>
+              _normalizedName(candidate.name) == _normalizedName(identity.name),
+        )
+        .toList();
+    final matches = sameName.isNotEmpty ? sameName : sameOwner;
+    final keys = matches.map((candidate) => candidate.key).toSet();
+    if (keys.length == 1) return (key: keys.single, name: identity.name);
+    // Una fila sin número de equipo no se atribuye a uno de varios equipos
+    // del mismo dueño por posición ni por azar.
+    return (key: identity.key, name: identity.name);
+  }
+
+  Map<String, String> get aliasKeys {
+    final targets = <String, Set<String>>{};
+    for (final row in rows) {
+      final identity = _identity(row);
+      final canonical = of(row).key;
+      final keys = <String>{identity.key};
+      for (final field in const [
+        'social_id',
+        'socialid',
+        'user_id',
+        'userid',
+        'user_guid',
+        'userguid',
+        'yuserguid',
+        'guid',
+      ]) {
+        final raw = _first(row, [field]);
+        if (raw != null) {
+          final owner = raw.toString().trim();
+          keys.add(owner);
+          if (identity.teamNo != null) keys.add('$owner:${identity.teamNo}');
+        }
+      }
+      for (final alias in keys) {
+        targets.putIfAbsent(alias, () => <String>{}).add(canonical);
+      }
+    }
+    return {
+      for (final entry in targets.entries)
+        if (entry.value.length == 1) entry.key: entry.value.single,
+    };
+  }
+
+  String _normalizedName(String name) =>
+      name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
 List<Map<String, dynamic>> extractLeagueRows(dynamic node) {
@@ -382,11 +541,14 @@ List<Map<String, dynamic>> extractLeagueRows(dynamic node) {
 }
 
 dynamic _first(Map map, List<String> keys) {
-  final wanted = keys.map((key) => key.toLowerCase()).toSet();
-  for (final entry in map.entries) {
-    if (!wanted.contains(entry.key.toString().toLowerCase())) continue;
-    final value = entry.value;
-    if (value != null && value.toString().trim().isNotEmpty) return value;
+  // La prioridad de identificadores debe ser estable, no depender del orden
+  // de campos del JSON (social_id y user_guid no son intercambiables).
+  for (final key in keys) {
+    for (final entry in map.entries) {
+      if (entry.key.toString().toLowerCase() != key.toLowerCase()) continue;
+      final value = entry.value;
+      if (value != null && value.toString().trim().isNotEmpty) return value;
+    }
   }
   return null;
 }

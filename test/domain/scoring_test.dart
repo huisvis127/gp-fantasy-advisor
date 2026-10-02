@@ -16,11 +16,16 @@ Map<String, dynamic> _sampleScoringJson() {
         '9': 2,
         '10': 1,
       },
-      'fastest_lap': 5,
+      'fastest_lap': 10,
       'dnf': -20,
     },
     'qualifying': {
       'position_points': {'1': 10, '2': 9, '3': 8},
+    },
+    'sprint': {
+      'position_points': {'1': 8, '2': 7, '3': 6},
+      'fastest_lap': 5,
+      'dnf': -10,
     },
     'constructor': {'both_cars_q3_bonus': 10},
   };
@@ -58,6 +63,37 @@ void main() {
       // 50% de posibilidades de acabar P1 (25 pts) + 50% de DNF (-20 pts).
       expect(expected, closeTo(0.5 * 25 + 0.5 * -20, 0.001));
     });
+
+    test(
+      'expectedQualifyingPoints suma solo los puntos oficiales por posición',
+      () {
+        final table = ScoringTable.fromJson(_sampleScoringJson());
+        expect(
+          table.expectedQualifyingPoints(
+            positionProbabilities: [1.0, ...List<double>.filled(16, 0)],
+          ),
+          10,
+        );
+        expect(
+          table.expectedQualifyingPoints(
+            positionProbabilities: [...List<double>.filled(16, 0), 1.0, 0, 0],
+          ),
+          0,
+        );
+      },
+    );
+
+    test(
+      'expectedSprintPoints usa la tabla y la penalización propia de Sprint',
+      () {
+        final table = ScoringTable.fromJson(_sampleScoringJson());
+        final expected = table.expectedSprintPoints(
+          positionProbabilities: [1, 0, 0],
+          dnfProbability: 0.25,
+        );
+        expect(expected, closeTo(0.75 * 8 + 0.25 * -10, 0.001));
+      },
+    );
   });
 
   group('SoftmaxDistribution', () {

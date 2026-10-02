@@ -119,7 +119,7 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
       children: [
         Center(
           child: TotalPill(
-            value: combo.totalExpectedPoints.toStringAsFixed(1),
+            value: combo.boostedExpectedPoints.toStringAsFixed(1),
             label: strings.t('expected_points').toLowerCase(),
           ),
         ),
@@ -140,7 +140,8 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
             for (final id in combo.driverIds)
               AssetCard(
                 tag: '${priceOf(id).toStringAsFixed(1)} M\$',
-                name: nameOf(id),
+                name:
+                    '${nameOf(id)}${combo.boostedDriverId == id ? ' ×2' : ''}',
                 subtitle: teamOf(id),
                 barColor: colorOfDriver(id),
               ),

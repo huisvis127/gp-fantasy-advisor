@@ -32,7 +32,8 @@ class PredictionEngine {
 
     for (final ctx in drivers) {
       final features = _extractFeatures(ctx, isSprintWeekend: isSprintWeekend);
-      final score = _weights.w1RitmoCarrera * features['ritmo_carrera']! +
+      final score =
+          _weights.w1RitmoCarrera * features['ritmo_carrera']! +
           _weights.w2RitmoClasificacion * features['ritmo_clasificacion']! +
           _weights.w3VueltaRapida * features['vuelta_rapida']! +
           _weights.w4Consistencia * features['consistencia']! +
@@ -47,8 +48,31 @@ class PredictionEngine {
     final ids = drivers.map((d) => d.driverId).toList();
     final scoreList = ids.map((id) => rawScores[id]!).toList();
     final winProbs = SoftmaxDistribution.winProbabilities(scoreList);
-    final positionMatrix =
-        SoftmaxDistribution.positionProbabilityMatrix(scoreList);
+    final positionMatrix = SoftmaxDistribution.positionProbabilityMatrix(
+      scoreList,
+    );
+    final qualifyingScores = drivers.map((ctx) {
+      final features = breakdowns[ctx.driverId]!;
+      final components = <(double, double)>[
+        (_weights.w2RitmoClasificacion, features['ritmo_clasificacion']!),
+        (_weights.w3VueltaRapida, features['vuelta_rapida']!),
+        (_weights.w5Forma, features['forma']!),
+        (_weights.w6AfinidadCircuito, features['afinidad_circuito']!),
+        (_weights.w7FormaEquipo, features['forma_equipo']!),
+      ];
+      final totalWeight = components.fold<double>(
+        0,
+        (sum, component) => sum + component.$1,
+      );
+      if (totalWeight == 0) return features['ritmo_clasificacion']!;
+      return components.fold<double>(
+            0,
+            (sum, component) => sum + component.$1 * component.$2,
+          ) /
+          totalWeight;
+    }).toList();
+    final qualifyingPositionMatrix =
+        SoftmaxDistribution.positionProbabilityMatrix(qualifyingScores);
 
     final predictions = <AssetPrediction>[];
     for (var i = 0; i < drivers.length; i++) {
@@ -57,25 +81,43 @@ class PredictionEngine {
       final podiumProb = positionProbs.length >= 3
           ? positionProbs[0] + positionProbs[1] + positionProbs[2]
           : 0.0;
-      final top10Prob =
-          positionProbs.take(10).fold<double>(0, (sum, p) => sum + p);
-      final dnfProb = ctx.driverDnfRateLast2Seasons;
-      final expectedPoints = _scoring.expectedRacePoints(
+      final top10Prob = positionProbs
+          .take(10)
+          .fold<double>(0, (sum, p) => sum + p);
+      final dnfProb =
+          (ctx.driverDnfRateLast2Seasons * 0.6 +
+                  ctx.constructorDnfRateLast2Seasons * 0.4)
+              .clamp(0.0, 1.0);
+      final qualifyingPoints = _scoring.expectedQualifyingPoints(
+        positionProbabilities: qualifyingPositionMatrix[i],
+      );
+      final racePoints = _scoring.expectedRacePoints(
         positionProbabilities: positionProbs,
         fastestLapProbability:
             breakdowns[ctx.driverId]!['vuelta_rapida']! / 100 * 0.15,
         dnfProbability: dnfProb,
       );
+      final sprintPoints = isSprintWeekend
+          ? _scoring.expectedSprintPoints(
+              positionProbabilities: positionProbs,
+              dnfProbability: (dnfProb * 0.5).clamp(0.0, 1.0),
+              fastestLapProbability:
+                  breakdowns[ctx.driverId]!['vuelta_rapida']! / 100 * 0.15,
+            )
+          : 0.0;
+      final expectedPoints = qualifyingPoints + racePoints + sprintPoints;
 
-      predictions.add(AssetPrediction(
-        assetId: ctx.driverId,
-        expectedPoints: expectedPoints,
-        winProbability: winProbs[i],
-        podiumProbability: podiumProb,
-        top10Probability: top10Prob,
-        priceMillions: currentPricesMillions[ctx.driverId] ?? 0,
-        breakdown: breakdowns[ctx.driverId]!,
-      ));
+      predictions.add(
+        AssetPrediction(
+          assetId: ctx.driverId,
+          expectedPoints: expectedPoints,
+          winProbability: winProbs[i],
+          podiumProbability: podiumProb,
+          top10Probability: top10Prob,
+          priceMillions: currentPricesMillions[ctx.driverId] ?? 0,
+          breakdown: breakdowns[ctx.driverId]!,
+        ),
+      );
     }
     return predictions;
   }
@@ -86,17 +128,26 @@ class PredictionEngine {
   }) {
     final features = {
       'ritmo_carrera': _weightedRecentPositionScore(
-          ctx.recentRaceFinishPositions, ctx.gridSize),
-      'ritmo_clasificacion':
-          _averagePositionScore(ctx.recentQualifyingPositions, ctx.gridSize),
+        ctx.recentRaceFinishPositions,
+        ctx.gridSize,
+      ),
+      'ritmo_clasificacion': _averagePositionScore(
+        ctx.recentQualifyingPositions,
+        ctx.gridSize,
+      ),
       'vuelta_rapida': _fastestLapScore(ctx.recentFastestLapGapPercent),
-      'consistencia':
-          _consistencyScore(ctx.recentRaceFinishPositions, ctx.gridSize),
+      'consistencia': _consistencyScore(
+        ctx.recentRaceFinishPositions,
+        ctx.gridSize,
+      ),
       'forma': _formTrendScore(ctx.recentRaceFinishPositions, ctx.gridSize),
       'afinidad_circuito': _circuitAffinityScore(
-          ctx.circuitHistoryFinishPositions, ctx.gridSize),
+        ctx.circuitHistoryFinishPositions,
+        ctx.gridSize,
+      ),
       'forma_equipo': _constructorFormScore(ctx.constructorRecentPoints),
-      'riesgo_dnf': (ctx.driverDnfRateLast2Seasons * 0.6 +
+      'riesgo_dnf':
+          (ctx.driverDnfRateLast2Seasons * 0.6 +
               ctx.constructorDnfRateLast2Seasons * 0.4) *
           100,
     };
@@ -117,14 +168,22 @@ class PredictionEngine {
         isSprint: isSprintWeekend,
         availableSessions: available,
       );
-      final oneLapGap =
-          _sessionWeightedGap('onelap', sessionWeights, ctx.sessionAggregates);
-      final paceGap =
-          _sessionWeightedGap('pace', sessionWeights, ctx.sessionAggregates);
+      final oneLapGap = _sessionWeightedGap(
+        'onelap',
+        sessionWeights,
+        ctx.sessionAggregates,
+      );
+      final paceGap = _sessionWeightedGap(
+        'pace',
+        sessionWeights,
+        ctx.sessionAggregates,
+      );
       if (oneLapGap != null) {
         // 0% de gap = 100; 3% o más = 0 (misma escala que el histórico).
-        features['vuelta_rapida'] =
-            (100 - (oneLapGap / 3.0) * 100).clamp(0.0, 100.0);
+        features['vuelta_rapida'] = (100 - (oneLapGap / 3.0) * 100).clamp(
+          0.0,
+          100.0,
+        );
       }
       if (paceGap != null) {
         final weekendPace = (100 - (paceGap / 2.0) * 100).clamp(0.0, 100.0);
@@ -195,12 +254,13 @@ class PredictionEngine {
   double _consistencyScore(List<int?> positions, int gridSize) {
     final recent = positions.take(8).toList();
     if (recent.length < 2) return 50;
-    final scores =
-        recent.map((p) => _positionToScore(p ?? gridSize, gridSize)).toList();
+    final scores = recent
+        .map((p) => _positionToScore(p ?? gridSize, gridSize))
+        .toList();
     final mean = scores.reduce((a, b) => a + b) / scores.length;
     final variance =
         scores.map((s) => (s - mean) * (s - mean)).reduce((a, b) => a + b) /
-            scores.length;
+        scores.length;
     final stdDev = variance <= 0 ? 0.0 : _sqrt(variance);
     // Menor desviación típica = más consistente = puntuación más alta.
     return (100 - stdDev).clamp(0, 100);
@@ -208,8 +268,9 @@ class PredictionEngine {
 
   double _formTrendScore(List<int?> positions, int gridSize) {
     if (positions.length < 4) return 50;
-    final last3 =
-        positions.take(3).map((p) => _positionToScore(p ?? gridSize, gridSize));
+    final last3 = positions
+        .take(3)
+        .map((p) => _positionToScore(p ?? gridSize, gridSize));
     final prev3 = positions
         .skip(3)
         .take(3)
@@ -225,8 +286,9 @@ class PredictionEngine {
     if (circuitHistory.isEmpty) {
       return 50; // neutro si no hay datos (sección 5.1)
     }
-    final scores =
-        circuitHistory.map((p) => _positionToScore(p ?? gridSize, gridSize));
+    final scores = circuitHistory.map(
+      (p) => _positionToScore(p ?? gridSize, gridSize),
+    );
     return scores.reduce((a, b) => a + b) / scores.length;
   }
 

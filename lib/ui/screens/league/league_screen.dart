@@ -9,6 +9,7 @@ import '../../../core/providers.dart';
 import '../../../core/app_providers.dart';
 import '../../../core/league_colors.dart';
 import '../../../core/league_colors_provider.dart';
+import '../../../core/league_current_board_provider.dart';
 import '../../../core/league_team_details_provider.dart';
 import '../../../domain/models/league_team_details.dart';
 import '../../widgets/league_team_weekend_details.dart';
@@ -200,10 +201,6 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
           _selectedLeagueId = ids.firstOrNull;
         }
         final selectedId = _selectedLeagueId;
-        final fullAnalytics = selectedId == null || _snapshot == null
-            ? const LeagueAnalytics(events: [], members: [])
-            : LeagueAnalytics.fromSnapshot(_snapshot!, selectedId);
-        final analytics = fullAnalytics.limitedForDisplay;
         final selectedLeague = leagues.firstWhere(
           (league) => _leagueId(league) == selectedId,
           orElse: () => leagues.first,
@@ -211,9 +208,42 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
 
         return Consumer(
           builder: (context, colorRef, child) {
-            final teamColors = colorRef.watch(
+            final boardAsync =
+                selectedId == null || _leagueType(selectedLeague) != 'private'
+                ? null
+                : colorRef.watch(leagueCurrentBoardProvider(selectedId));
+            final liveBoard = boardAsync?.valueOrNull;
+            final dashboardSnapshot = {...?_snapshot};
+            if (liveBoard != null && extractLeagueRows(liveBoard).isNotEmpty) {
+              final boards = _snapshot?['leaderboards'];
+              final mergedBoards = boards is Map
+                  ? Map<String, dynamic>.from(boards)
+                  : <String, dynamic>{};
+              final previous = mergedBoards[selectedId];
+              mergedBoards[selectedId!] =
+                  previous is Map && previous['rounds'] is Map
+                  ? {
+                      ...Map<String, dynamic>.from(previous),
+                      'current': liveBoard,
+                    }
+                  : liveBoard;
+              dashboardSnapshot['leaderboards'] = mergedBoards;
+            }
+            final fullAnalytics = selectedId == null
+                ? const LeagueAnalytics(events: [], members: [])
+                : LeagueAnalytics.fromSnapshot(dashboardSnapshot, selectedId);
+            final analytics = fullAnalytics.limitedForDisplay;
+
+            final savedColors = colorRef.watch(
               leagueTeamColorsProvider(selectedId ?? ''),
             );
+            final teamColors = {...savedColors};
+            for (final alias in analytics.identityAliases.entries) {
+              final index = savedColors[alias.key];
+              if (index != null) {
+                teamColors.putIfAbsent(alias.value, () => index);
+              }
+            }
             final gameDay =
                 int.tryParse(_snapshot?['gameDay']?.toString() ?? '') ?? 0;
             final weekendAssets = gameDay > 0
@@ -249,6 +279,17 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
                     label: const Text('ACTUALIZAR LIGAS E HISTORIAL'),
                   ),
                   const SizedBox(height: 18),
+                  if (boardAsync?.hasError == true)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: StatusBanner(
+                        message:
+                            'No llegó la clasificación actual. Se muestra la última captura disponible.',
+                        onRetry: () => colorRef.invalidate(
+                          leagueCurrentBoardProvider(selectedId!),
+                        ),
+                      ),
+                    ),
                   if (fullAnalytics.members.length >
                       LeagueAnalytics.maxDisplayedTeams)
                     Padding(
@@ -406,7 +447,7 @@ class _LeagueSummary extends StatelessWidget {
               ),
               TagChip('${analytics.events.length} GP', color: AppColors.cyan),
               if (analytics.hasHistory)
-                TagChip('Historial completo', color: AppColors.ok),
+                TagChip('Historial disponible', color: AppColors.ok),
             ],
           ),
         ],
@@ -1069,11 +1110,12 @@ String _leagueType(Map<String, dynamic> league) =>
         .toLowerCase();
 
 dynamic _first(Map map, List<String> keys) {
-  final wanted = keys.map((key) => key.toLowerCase()).toSet();
-  for (final entry in map.entries) {
-    if (!wanted.contains(entry.key.toString().toLowerCase())) continue;
-    final value = entry.value;
-    if (value != null && value.toString().trim().isNotEmpty) return value;
+  for (final key in keys) {
+    for (final entry in map.entries) {
+      if (entry.key.toString().toLowerCase() != key.toLowerCase()) continue;
+      final value = entry.value;
+      if (value != null && value.toString().trim().isNotEmpty) return value;
+    }
   }
   return null;
 }

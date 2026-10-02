@@ -1,7 +1,8 @@
 {
-  "_comment": "Tabla de puntuación F1 Fantasy 2026. Verificar y completar contra fantasy.formula1.com al inicio del proyecto (sección 2 del plan). Placeholder con la estructura que consume domain/engine/scoring.dart.",
+  "_comment": "Reglas oficiales F1 Fantasy 2026. La predicción incluye resultados de clasificación, carrera y Sprint; los puntos por posiciones ganadas, adelantamientos y paradas dependen de eventos que este modelo no predice.",
   "season": 2026,
-  "last_verified": "2026-07-04",
+  "last_verified": "2026-10-02",
+  "source": "https://fantasy.formula1.com/it/game-rules",
   "race": {
     "position_points": {
       "1": 25, "2": 18, "3": 15, "4": 12, "5": 10,
@@ -9,7 +10,7 @@
     },
     "positions_gained_per_place": 1,
     "positions_lost_per_place": -1,
-    "fastest_lap": 5,
+    "fastest_lap": 10,
     "driver_of_the_day": 10,
     "dnf": -20,
     "disqualified": -20
@@ -19,22 +20,18 @@
       "1": 10, "2": 9, "3": 8, "4": 7, "5": 6,
       "6": 5, "7": 4, "8": 3, "9": 2, "10": 1
     },
-    "q1_elimination": -1,
-    "q2_elimination": 0,
-    "q3_appearance": 1
+    "no_time_set": -5
   },
   "sprint": {
     "position_points": {
       "1": 8, "2": 7, "3": 6, "4": 5, "5": 4,
       "6": 3, "7": 2, "8": 1
     },
+    "fastest_lap": 5,
     "dnf": -10
   },
   "constructor": {
-    "both_cars_q3_bonus": 10,
-    "both_cars_points_bonus": 5,
-    "pit_stop_bonus": 5,
-    "no_score_penalty": -1
+    "both_cars_q3_bonus": 10
   },
   "chips": {
     "limitless": { "uses_per_season": 1 },

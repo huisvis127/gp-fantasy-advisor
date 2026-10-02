@@ -309,6 +309,7 @@ final teamDecisionCenterProvider = FutureProvider<TeamDecisionCenter?>((
       .buildDecisionCenter(
         currentDriverIds: team.driverIds,
         currentConstructorIds: team.constructorIds,
+        currentBoostedDriverId: team.boostedDriverId,
         driverPredictions: drivers,
         constructorPredictions: constructors,
         remainingBudgetMillions: team.remainingBudgetMillions,
@@ -561,6 +562,7 @@ final transferPlansProvider = FutureProvider<List<TransferPlan>>((ref) async {
   final plans = optimizer.suggestTransfers(
     currentDriverIds: team.driverIds,
     currentConstructorIds: team.constructorIds,
+    currentBoostedDriverId: team.boostedDriverId,
     driverPredictions: driverPredictions,
     constructorPredictions: constructorPredictions,
     remainingBudgetMillions: team.remainingBudgetMillions,

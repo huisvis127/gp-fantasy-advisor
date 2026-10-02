@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gp_fantasy_advisor/core/app_providers.dart';
 import 'package:gp_fantasy_advisor/core/league_colors.dart';
+import 'package:gp_fantasy_advisor/core/league_current_board_provider.dart';
 import 'package:gp_fantasy_advisor/core/league_team_details_provider.dart';
 import 'package:gp_fantasy_advisor/core/providers.dart';
 import 'package:gp_fantasy_advisor/core/theme.dart';
@@ -83,6 +84,11 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            leagueCurrentBoardProvider('l').overrideWith(
+              (ref) async => {
+                'memRank': [row],
+              },
+            ),
             fantasyAuthServiceProvider.overrideWithValue(_SavedAuth(snapshot)),
             myTeamProvider.overrideWith(_NoTeam.new),
             leagueWeekendAssetsProvider(2).overrideWith((ref) async => []),
@@ -135,4 +141,95 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('la tabla oficial corrige una captura vieja con siete filas', (
+    tester,
+  ) async {
+    GoogleFonts.config.allowRuntimeFetching = false;
+    SharedPreferences.setMockInitialValues({});
+    AppColors.brightness = Brightness.dark;
+    tester.view.physicalSize = const Size(390, 2600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final liveRows = List.generate(
+      4,
+      (i) => {
+        'social_id': 's$i',
+        'user_guid': 'g$i',
+        'team_no': 1,
+        'team_name': 'Equipo $i',
+        'cur_rank': i + 1,
+        'cur_points': 400 - i * 10,
+      },
+    );
+    final snapshot = <String, dynamic>{
+      'gameDay': 2,
+      'leagues': {
+        'leagues': [
+          {'league_id': 'l', 'name': 'Liga', 'league_type': 'private'},
+        ],
+      },
+      'leaderboards': {
+        'l': {
+          'memRank': [
+            ...liveRows,
+            for (var i = 0; i < 3; i++)
+              {'userGuid': 'ghost$i', 'teamName': 'Duplicado $i'},
+          ],
+        },
+      },
+      'leagueHistory': {
+        'l': {
+          '1': {
+            'memRank': [
+              for (var i = 0; i < 4; i++)
+                {
+                  'userGuid': 'g$i',
+                  'teamName': 'Equipo $i',
+                  'gdPoints': 100 - i * 10,
+                },
+            ],
+          },
+        },
+      },
+    };
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          leagueCurrentBoardProvider('l').overrideWith(
+            (ref) async => {
+              'Value': {'leaderboard': liveRows},
+            },
+          ),
+          fantasyAuthServiceProvider.overrideWithValue(_SavedAuth(snapshot)),
+          myTeamProvider.overrideWith(_NoTeam.new),
+          liveFantasyProvider.overrideWith(
+            (ref) => Stream.value(
+              LiveFantasySnapshot(
+                season: 2026,
+                round: 2,
+                meetingName: 'GP2',
+                sessionName: 'Race',
+                isLive: false,
+                isLocked: true,
+                updatedAt: DateTime(2026),
+                assets: [],
+              ),
+            ),
+          ),
+          leagueWeekendAssetsProvider(2).overrideWith((ref) async => []),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(),
+          home: const Scaffold(body: LeagueScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('4 EQUIPOS'), findsOneWidget);
+    expect(find.textContaining('Duplicado'), findsNothing);
+    expect(find.text('#5'), findsNothing);
+    expect(find.text('Temporada: 400 pts'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

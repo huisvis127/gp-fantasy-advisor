@@ -22,6 +22,18 @@ class FantasyApi {
   final Dio _dio;
   final String _publicBaseUrl;
 
+  /// Feed que utiliza la web oficial para la clasificación general de una
+  /// liga privada. Permite refrescar la tabla sin repetir el login.
+  Future<Map<String, dynamic>> getPrivateLeagueStandings(
+    String leagueId,
+  ) async {
+    final id = Uri.encodeComponent(leagueId);
+    final response = await _dio.get<Map<String, dynamic>>(
+      '$_publicBaseUrl/feeds/leaderboard/privateleague/list_1_${id}_0_1.json',
+    );
+    return response.data ?? {};
+  }
+
   /// Precios actuales de pilotos y constructores. Público, sin token.
   Future<List<FantasyPrice>> getCurrentPrices(int season) async {
     final assets = await _getOfficialAssets();

@@ -25,8 +25,8 @@ class TeamImportException implements Exception {
 /// nuestro catálogo (ids de Jolpica) -> MyTeam listo para guardar.
 class TeamImportService {
   TeamImportService({required FantasyApi api, required FantasyAuthService auth})
-      : _api = api,
-        _auth = auth;
+    : _api = api,
+      _auth = auth;
 
   final FantasyApi _api;
   final FantasyAuthService _auth;
@@ -43,7 +43,8 @@ class TeamImportService {
     if ((token == null || token.isEmpty) &&
         (snapshotRaw == null || snapshotRaw.isEmpty)) {
       throw TeamImportException(
-          'No hay sesión guardada. Inicia sesión primero (Ajustes).');
+        'No hay sesión guardada. Inicia sesión primero (Ajustes).',
+      );
     }
 
     // 1. Equipo elegido (privado).
@@ -51,13 +52,18 @@ class TeamImportService {
     if (snapshotRaw != null && snapshotRaw.isNotEmpty) {
       try {
         final snapshot = jsonDecode(snapshotRaw) as Map<String, dynamic>;
-        final capturedTeams = snapshot['teamDetails'] ?? snapshot['teams'];
+        final capturedTeams = _firstNonEmptyMap([
+          snapshot['teamDetails'],
+          snapshot['teams'],
+          snapshot['teamHistory'],
+        ]);
         pickedJson = Map<String, dynamic>.from(
           capturedTeams as Map? ?? const <String, dynamic>{},
         );
       } catch (_) {
         throw TeamImportException(
-            'La sesión guardada está dañada. Inicia sesión de nuevo.');
+          'La sesión guardada está dañada. Inicia sesión de nuevo.',
+        );
       }
     } else {
       try {
@@ -67,24 +73,28 @@ class TeamImportService {
         );
       } catch (e) {
         throw TeamImportException(
-            'La API del Fantasy rechazó la petición del equipo '
-            '(¿sesión caducada?). Vuelve a iniciar sesión. Detalle: $e');
+          'La API del Fantasy rechazó la petición del equipo '
+          '(¿sesión caducada?). Vuelve a iniciar sesión. Detalle: $e',
+        );
       }
     }
 
     var pickedPlayers = _findPickedPlayerIds(pickedJson);
     if (pickedPlayers.isEmpty) {
       throw TeamImportException(
-          'Respuesta recibida pero sin equipo dentro. Claves de la respuesta: '
-          '${_describeKeys(pickedJson)}. Envíame esto para ajustar el parseo.');
+        'Respuesta recibida pero sin equipo dentro. Claves de la respuesta: '
+        '${_describeKeys(pickedJson)}. Envíame esto para ajustar el parseo.',
+      );
     }
     final captainId = _findCaptainId(pickedJson);
     if (captainId != null) {
       pickedPlayers = pickedPlayers
-          .map((picked) => _PickedPlayer(
-                playerId: picked.playerId,
-                isBoosted: picked.isBoosted || picked.playerId == captainId,
-              ))
+          .map(
+            (picked) => _PickedPlayer(
+              playerId: picked.playerId,
+              isBoosted: picked.isBoosted || picked.playerId == captainId,
+            ),
+          )
           .toList();
     }
 
@@ -95,9 +105,10 @@ class TeamImportService {
     } catch (_) {
       // Sin players no podemos traducir ids: mejor decirlo claro.
       throw TeamImportException(
-          'Tu equipo llegó (${pickedPlayers.length} fichajes) pero el listado '
-          'público de jugadores no respondió, así que no puedo traducir los '
-          'ids. Reintenta con conexión estable.');
+        'Tu equipo llegó (${pickedPlayers.length} fichajes) pero el listado '
+        'público de jugadores no respondió, así que no puedo traducir los '
+        'ids. Reintenta con conexión estable.',
+      );
     }
     final playerById = <String, Map<String, dynamic>>{};
     for (final p in players) {
@@ -136,8 +147,9 @@ class TeamImportService {
 
     if (driverIds.length != 5 || constructorIds.length != 2) {
       throw TeamImportException(
-          'No pude emparejar ningún fichaje con el catálogo. '
-          'Actualiza los datos y vuelve a intentarlo.');
+        'No pude emparejar ningún fichaje con el catálogo. '
+        'Actualiza los datos y vuelve a intentarlo.',
+      );
     }
 
     final budget = _findBudget(pickedJson);
@@ -202,12 +214,14 @@ class TeamImportService {
         // turning the whole collection into one invalid identifier.
         if (rawId is Map || rawId is List || rawId == null) continue;
         final id = rawId.toString();
-        final boosted = item.entries.any((e) =>
-            (e.key.toLowerCase().contains('captain') ||
-                e.key.toLowerCase().contains('boost') ||
-                e.key.toLowerCase().contains('turbo') ||
-                e.key.toLowerCase().contains('mega')) &&
-            (e.value == true || e.value == 1 || e.value == '1'));
+        final boosted = item.entries.any(
+          (e) =>
+              (e.key.toLowerCase().contains('captain') ||
+                  e.key.toLowerCase().contains('boost') ||
+                  e.key.toLowerCase().contains('turbo') ||
+                  e.key.toLowerCase().contains('mega')) &&
+              (e.value == true || e.value == 1 || e.value == '1'),
+        );
         out.add(_PickedPlayer(playerId: id, isBoosted: boosted));
       } else if (item is num || item is String) {
         out.add(_PickedPlayer(playerId: item.toString(), isBoosted: false));
@@ -253,25 +267,40 @@ class TeamImportService {
   }
 
   String? _findCaptainId(dynamic node) {
+    // capPlayerId es la selección de Boost x2 del equipo. Algunas capturas
+    // antiguas también incluyen mgCapPlayerId, así que úsalo solo si falta
+    // el campo de capitán normal.
+    return _findIdForKey(node, 'capplayerid') ??
+        _findIdForKey(node, 'mgcapplayerid');
+  }
+
+  String? _findIdForKey(dynamic node, String wantedKey) {
     if (node is Map) {
       for (final entry in node.entries) {
         final key = entry.key.toString().toLowerCase().replaceAll('_', '');
-        if ((key == 'capplayerid' || key == 'mgcapplayerid') &&
-            entry.value != null) {
-          return entry.value.toString();
+        final value = entry.value;
+        if (key == wantedKey && value != null && value.toString().isNotEmpty) {
+          return value.toString();
         }
       }
       for (final value in node.values) {
-        final found = _findCaptainId(value);
+        final found = _findIdForKey(value, wantedKey);
         if (found != null) return found;
       }
     } else if (node is List) {
       for (final value in node) {
-        final found = _findCaptainId(value);
+        final found = _findIdForKey(value, wantedKey);
         if (found != null) return found;
       }
     }
     return null;
+  }
+
+  dynamic _firstNonEmptyMap(List<dynamic> candidates) {
+    for (final candidate in candidates) {
+      if (candidate is Map && candidate.isNotEmpty) return candidate;
+    }
+    return const <String, dynamic>{};
   }
 
   bool _isConstructor(Map<String, dynamic> player) {
@@ -284,12 +313,13 @@ class TeamImportService {
   }
 
   String _playerName(Map<String, dynamic> player) {
-    final display = (player['display_name'] ??
-            player['full_name'] ??
-            player['team_name'] ??
-            '${player['first_name'] ?? ''} ${player['last_name'] ?? ''}')
-        .toString()
-        .trim();
+    final display =
+        (player['display_name'] ??
+                player['full_name'] ??
+                player['team_name'] ??
+                '${player['first_name'] ?? ''} ${player['last_name'] ?? ''}')
+            .toString()
+            .trim();
     return display.isEmpty ? player.toString() : display;
   }
 

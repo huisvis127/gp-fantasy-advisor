@@ -436,7 +436,12 @@ double? _eventPoints(
   String memberName,
 ) {
   final history = _value(snapshot, const ['leagueHistory']);
-  final league = history is Map ? _value(Map.from(history), [leagueId]) : null;
+  var league = history is Map ? _value(Map.from(history), [leagueId]) : null;
+  if (league == null) {
+    final boards = _value(snapshot, const ['leaderboards']);
+    final legacy = boards is Map ? _value(Map.from(boards), [leagueId]) : null;
+    league = legacy is Map ? _value(Map.from(legacy), const ['rounds']) : null;
+  }
   final board = league is Map
       ? _value(Map.from(league), [day.toString()])
       : null;
@@ -478,7 +483,8 @@ double? _eventPoints(
     }).toList();
     if (nameMatches.length == 1) selectedRow = nameMatches.single;
   }
-  return selectedRow == null
+  return selectedRow == null ||
+          _bool(_value(selectedRow, const ['_has_event'])) == false
       ? null
       : _double(
           _value(selectedRow, const [
@@ -538,17 +544,16 @@ String _normalizeName(String value) {
 }
 
 dynamic _value(Map map, List<String> keys) {
-  final normalized = keys
-      .map((key) => key.toLowerCase().replaceAll('_', ''))
-      .toSet();
-  for (final entry in map.entries) {
-    if (!normalized.contains(
-      entry.key.toString().toLowerCase().replaceAll('_', ''),
-    )) {
-      continue;
-    }
-    if (entry.value != null && entry.value.toString().trim().isNotEmpty) {
-      return entry.value;
+  for (final key in keys) {
+    final normalized = key.toLowerCase().replaceAll('_', '');
+    for (final entry in map.entries) {
+      if (entry.key.toString().toLowerCase().replaceAll('_', '') !=
+          normalized) {
+        continue;
+      }
+      if (entry.value != null && entry.value.toString().trim().isNotEmpty) {
+        return entry.value;
+      }
     }
   }
   return null;

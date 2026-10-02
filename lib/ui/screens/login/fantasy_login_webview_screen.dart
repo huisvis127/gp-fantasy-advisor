@@ -305,6 +305,12 @@ class _FantasyLoginWebViewScreenState
         if (days.length) leaderboards[String(id)] = history[days[days.length - 1]];
       }
     }
+    const requestedId = window.f1RequestedLeagueId && String(window.f1RequestedLeagueId);
+    if ((requestedId && !leaderboards[requestedId]) ||
+        (leagueRows.some(row => String(row.LeagueType || row.leagueType || row.league_type || '').toLowerCase() === 'private') && !Object.keys(leaderboards).length)) {
+      stage = 'league';
+      throw new Error('La liga seleccionada no devolvió su clasificación; se conserva la captura anterior');
+    }
     // Captura solo la liga activa y como máximo 20 alineaciones. Tres
     // peticiones simultáneas mantienen acotados memoria y trabajo de red.
     const leagueTeamDetails = {};
@@ -354,8 +360,12 @@ class _FantasyLoginWebViewScreenState
             continue;
           }
           try {
-            const detail = await readJson('/services/user/gameplay/' + encodeURIComponent(job.owner) +
-              '/getteam/1/' + job.teamNo + '/' + gameDay + '/' + schedulePhaseId);
+            const detailUrl = job.owner === String(guid)
+              ? '/services/user/gameplay/' + encodeURIComponent(job.owner) +
+                '/getteam/1/' + job.teamNo + '/' + gameDay + '/' + schedulePhaseId
+              : '/services/user/opponentteam/opponentgamedayplayerteamget/1/' +
+                encodeURIComponent(job.owner) + '/' + job.teamNo + '/' + gameDay + '/' + schedulePhaseId;
+            const detail = await readJson(detailUrl);
             const value = valueOf(detail) || {};
             if (Array.isArray(value.userTeam) && value.userTeam.length) {
               leagueTeamDetails[activeId][key] = Object.assign({}, detail, {gameDay:gameDay});
@@ -401,9 +411,10 @@ class _FantasyLoginWebViewScreenState
         }
         if (_showBridgeErrors && mounted) {
           setState(
-            () => _status =
-                'Todavía no se detecta una cuenta conectada. Inicia sesión en '
-                'la web y vuelve a pulsar "Capturar sesión".',
+            () => _status = decoded['errorStage'] == 'league'
+                ? 'No llegó la clasificación de la liga. La captura anterior se conserva; vuelve a intentarlo.'
+                : 'Todavía no se detecta una cuenta conectada. Inicia sesión en '
+                      'la web y vuelve a pulsar "Capturar sesión".',
           );
         }
         return;

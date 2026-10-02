@@ -41,6 +41,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
   bool _loadedFromStorage = false;
   bool _importing = false;
   String? _importError;
+  String? _boostedDriverId;
   double? _budgetCapMillions;
   double _storedBankMillions = 0;
 
@@ -48,6 +49,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
     if (_loadedFromStorage || team == null) return;
     _loadedFromStorage = true;
     _storedBankMillions = team.remainingBudgetMillions;
+    _boostedDriverId = team.boostedDriverId;
     for (var i = 0; i < _driverSlots && i < team.driverIds.length; i++) {
       _drivers[i] = team.driverIds[i];
     }
@@ -65,6 +67,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
     Theme.of(context);
     final strings = AppStrings(ref.watch(appLocaleProvider));
     final teamAsync = ref.watch(myTeamProvider);
+    final weekendAsync = ref.watch(weekendDataProvider);
     final driversAsync = ref.watch(driverPredictionsProvider);
     final constructorsAsync = ref.watch(engineConstructorPredictionsProvider);
     final catalog = ref.watch(fantasyAssetNameProvider).valueOrNull ?? const {};
@@ -77,7 +80,6 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
     final predById = {
       for (final p in [...driverPreds, ...constructorPreds]) p.assetId: p,
     };
-
     double priceOf(String? id) => id == null
         ? 0
         : (predById[id]?.priceMillions ?? catalog[id]?.priceMillions ?? 0);
@@ -91,11 +93,8 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
       ..._drivers,
       ..._constructors,
     ].whereType<String>().toList();
+    final predictionsReady = chosenIds.every(predById.containsKey);
     final totalCost = chosenIds.fold<double>(0, (sum, id) => sum + priceOf(id));
-    final totalPoints = chosenIds.fold<double>(
-      0,
-      (sum, id) => sum + pointsOf(id),
-    );
     final isComplete =
         !_drivers.contains(null) && !_constructors.contains(null);
     _budgetCapMillions ??= _loadedFromStorage && isComplete
@@ -105,13 +104,28 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
 
     // Boost: el piloto del equipo con más puntos esperados (×2).
     String? boostId;
-    double boostGain = 0;
-    for (final id in _drivers.whereType<String>()) {
-      if (pointsOf(id) > boostGain) {
-        boostGain = pointsOf(id);
-        boostId = id;
+    if (predictionsReady) {
+      for (final id in _drivers.whereType<String>()) {
+        if (boostId == null || pointsOf(id) > pointsOf(boostId)) {
+          boostId = id;
+        }
       }
     }
+    final selectedBoostId =
+        _boostedDriverId != null && _drivers.contains(_boostedDriverId)
+        ? _boostedDriverId
+        : boostId;
+    final expectedById = {
+      for (final prediction in [...driverPreds, ...constructorPreds])
+        prediction.assetId: prediction.expectedPoints,
+    };
+    final totalPoints = MyTeam(
+      driverIds: _drivers.whereType<String>().toList(),
+      constructorIds: _constructors.whereType<String>().toList(),
+      remainingBudgetMillions: _storedBankMillions,
+      boostedDriverId: selectedBoostId,
+    ).projectedPoints(expectedById, suggestedBoostedDriverId: boostId);
+    final weekend = weekendAsync.valueOrNull;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
@@ -166,13 +180,65 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                 ),
               ],
               const SizedBox(height: 14),
-              if (isComplete)
+              if (isComplete && predictionsReady)
                 Center(
                   child: TotalPill(
                     value: totalPoints.toStringAsFixed(1),
                     label: strings.t('expected_points'),
                   ),
                 ),
+              if (isComplete && !predictionsReady)
+                StatusBanner(
+                  message: driversAsync.hasError || constructorsAsync.hasError
+                      ? '${strings.t('no_valid_plan')} ${driversAsync.error ?? constructorsAsync.error}'
+                      : (driversAsync.isLoading || constructorsAsync.isLoading
+                            ? strings.t('loading')
+                            : 'Predicción no disponible para los activos seleccionados.'),
+                  isError: driversAsync.hasError || constructorsAsync.hasError,
+                  onRetry: () {
+                    ref.invalidate(driverPredictionsProvider);
+                    ref.invalidate(engineConstructorPredictionsProvider);
+                  },
+                ),
+              if (isComplete) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.center,
+                  child: TagChip(
+                    weekendAsync.isLoading && !weekendAsync.hasValue
+                        ? 'CARGANDO SESIONES'
+                        : weekend?.stageLabel ?? 'PRE-FINDE',
+                    color: weekendAsync.isLoading && !weekendAsync.hasValue
+                        ? AppColors.textTertiary
+                        : (weekend?.isEmpty ?? true)
+                        ? AppColors.textSecondary
+                        : AppColors.cyan,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Proyección de clasificación, carrera y Sprint cuando aplique; no es una puntuación oficial. No estima adelantamientos, posiciones ganadas, Driver of the Day ni paradas en boxes.',
+                  textAlign: TextAlign.center,
+                  style: AppText.body(10, color: AppColors.textTertiary),
+                ),
+                if (weekend?.error != null) ...[
+                  const SizedBox(height: 7),
+                  StatusBanner(
+                    message: weekend!.error!,
+                    isError: true,
+                    onRetry: () => ref.invalidate(weekendDataProvider),
+                  ),
+                ],
+                if (weekendAsync.hasError) ...[
+                  const SizedBox(height: 7),
+                  StatusBanner(
+                    message:
+                        '${strings.t('no_valid_plan')} ${weekendAsync.error}',
+                    isError: true,
+                    onRetry: () => ref.invalidate(weekendDataProvider),
+                  ),
+                ],
+              ],
               if (isComplete) const SizedBox(height: 14),
               Text(
                 strings.t('drivers'),
@@ -251,7 +317,9 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: isComplete ? () => _save(remaining) : null,
+                      onPressed: isComplete
+                          ? () => _save(remaining, selectedBoostId)
+                          : null,
                       child: Text(strings.t('save_team')),
                     ),
                   ),
@@ -264,6 +332,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
                       for (var i = 0; i < _constructorSlots; i++) {
                         _constructors[i] = null;
                       }
+                      _boostedDriverId = null;
                     }),
                     child: Text(strings.t('clear')),
                   ),
@@ -274,15 +343,17 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
         ),
 
         // ===== BOOST =====
-        if (isComplete && boostId != null) ...[
+        if (isComplete && predictionsReady && selectedBoostId != null) ...[
           const SizedBox(height: 14),
           RecCard(
-            tag: strings.t('recommended_boost'),
+            tag: selectedBoostId == _boostedDriverId
+                ? 'BOOST ×2 IMPORTADO'
+                : 'BOOST ×2 SUGERIDO',
             color: AppColors.cyan,
-            name: nameOf(boostId),
+            name: nameOf(selectedBoostId),
             subtitle:
-                '${strings.t('boost_gain')} · ${boostGain.toStringAsFixed(1)}',
-            score: '+${boostGain.toStringAsFixed(1)}',
+                '${strings.t('boost_gain')} · ${pointsOf(selectedBoostId).toStringAsFixed(1)}',
+            score: '+${pointsOf(selectedBoostId).toStringAsFixed(1)}',
           ),
         ],
 
@@ -355,6 +426,7 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
               : null;
         }
         _storedBankMillions = team.remainingBudgetMillions;
+        _boostedDriverId = team.boostedDriverId;
         _budgetCapMillions = null;
         _importing = false;
       });
@@ -449,14 +521,16 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
     if (chosen != null) setState(() => _constructors[slot] = chosen.assetId);
   }
 
-  Future<void> _save(double remainingBudget) async {
+  Future<void> _save(double remainingBudget, String? boostedDriverId) async {
     final strings = AppStrings(ref.read(appLocaleProvider));
     final team = MyTeam(
       driverIds: _drivers.whereType<String>().toList(),
       constructorIds: _constructors.whereType<String>().toList(),
       remainingBudgetMillions: remainingBudget < 0 ? 0 : remainingBudget,
+      boostedDriverId: boostedDriverId,
       source: MyTeamSource.manual,
     );
+    setState(() => _boostedDriverId = boostedDriverId);
     await ref.read(myTeamProvider.notifier).save(team);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -576,7 +650,7 @@ class _DecisionCard extends StatelessWidget {
     Theme.of(context);
     final gain = result == null
         ? null
-        : result!.totalExpectedPoints - current.totalExpectedPoints;
+        : result!.boostedExpectedPoints - current.boostedExpectedPoints;
     final positive = gain != null && gain >= 0;
     final ids = result == null
         ? const <String>[]
@@ -614,7 +688,7 @@ class _DecisionCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      result!.totalExpectedPoints.toStringAsFixed(1),
+                      result!.boostedExpectedPoints.toStringAsFixed(1),
                       style: AppText.syne(25, color: AppColors.lime),
                     ),
                     Text(strings.t('points'), style: AppText.mono(8)),

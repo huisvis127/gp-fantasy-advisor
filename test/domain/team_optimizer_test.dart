@@ -42,6 +42,11 @@ void main() {
       expect(result.driverIds.length, 5);
       expect(result.constructorIds.length, 2);
       expect(result.totalCostMillions, lessThanOrEqualTo(100));
+      expect(result.boostedDriverId, isNotNull);
+      expect(
+        result.boostedExpectedPoints,
+        result.totalExpectedPoints + result.boostGain,
+      );
 
       // Con presupuesto de sobra (30+20+15+10+8=83 + 25+15=40 -> 123 > 100),
       // no caben todos los mejores; el optimizador debe encontrar algo mejor
@@ -114,7 +119,12 @@ void main() {
       );
       expect(twoChanges.transfersIn, containsAll(['valor', 'barato']));
       expect(twoChanges.resultingTeam.totalCostMillions, lessThanOrEqualTo(70));
-      expect(twoChanges.netExpectedGain, 140);
+      // El mejor piloto entrante recibe el boost; el equipo actual también
+      // cuenta con el x2 de su mejor piloto (d1, 10 puntos).
+      expect(twoChanges.resultingTeam.boostedDriverId, 'valor');
+      expect(twoChanges.resultingTeam.totalExpectedPoints, 210);
+      expect(twoChanges.resultingTeam.boostedExpectedPoints, 300);
+      expect(twoChanges.netExpectedGain, 220);
     });
 
     test(
@@ -144,6 +154,9 @@ void main() {
         expect(center.twoTransfers?.numberOfTransfers, 2);
         expect(center.perfectTeam.driverIds, hasLength(5));
         expect(center.perfectTeam.constructorIds, hasLength(2));
+        expect(center.currentTeam.totalExpectedPoints, 70);
+        expect(center.currentTeam.boostedExpectedPoints, 80);
+        expect(center.currentTeam.boostedDriverId, 'd1');
         expect(
           center.perfectTeam.totalExpectedPoints,
           greaterThanOrEqualTo(center.currentTeam.totalExpectedPoints),

@@ -1,6 +1,6 @@
 # GP Fantasy Advisor
 
-Aplicación Android no oficial para preparar equipos de F1 Fantasy, consultar datos de pista y analizar ligas. Versión actual: **1.4.1+29**. No está afiliada a Formula One Licensing B.V.
+Aplicación Android no oficial para preparar equipos de F1 Fantasy, consultar datos de pista y analizar ligas. Versión actual: **1.4.2+30**. No está afiliada a Formula One Licensing B.V.
 
 ## Empezar
 
@@ -15,12 +15,12 @@ flutter test
 flutter build apk --release
 ```
 
-La APK se genera en `build/app/outputs/flutter-apk/app-release.apk`. La copia local entregada de la versión 1.4.1 está en `dist/GP-Fantasy-Advisor-1.4.1.apk`. Los instaladores quedan fuera de Git; el repositorio contiene el código fuente.
+La APK se genera en `build/app/outputs/flutter-apk/app-release.apk`. La copia local entregada de la versión 1.4.2 está en `dist/GP-Fantasy-Advisor-1.4.2.apk`. Los instaladores quedan fuera de Git; el repositorio contiene el código fuente.
 
 ## Funciones actuales
 
 - **Resumen y análisis:** próximo GP, sincronización, predicciones y pesos configurables.
-- **Fantasy:** equipo personal e ideal, mercado de precios, plan de tres GP, chips y puntuación provisional en directo.
+- **Fantasy:** equipo personal e ideal con el ×2 incluido en sus proyecciones, mercado de precios, plan de tres GP, chips y puntuación provisional en directo.
 - **Circuito:** contexto del GP y datos de sesiones.
 - **Liga:** clasificación, evolución, medallero y diferenciales. Se representan como máximo **20 equipos** por liga; si hay más, se muestran los 20 primeros y un aviso. Cada equipo puede elegir entre **40 colores (20 neón y 20 normales)**, combinados en la paleta y guardados por liga y equipo. El color se aplica a la clasificación, leyendas, gráficas, medallero y detalle desplegable. El detalle muestra pilotos, constructores, multiplicadores y puntos del fin de semana, separados del total de temporada.
 - **Ajustes:** modo claro u oscuro, idiomas, sincronización y alertas locales de cierre. La apariencia se conserva entre sesiones.
@@ -67,7 +67,7 @@ git push -u origin feature/nombre-del-cambio
 
 ## Firma y distribución
 
-La numeración de Android (`versionCode`, después de `+` en `pubspec.yaml`) debe superar todas las APK distribuidas anteriormente. El Android de prueba tenía instalada la versión 1.4.0 con código 28; por eso la siguiente entrega es 1.4.1+29. Antes de entregar una APK, verifica la firma y prueba la actualización sobre una versión anterior, además de comprobar que la copia de `dist/` coincida con la compilación.
+La numeración de Android (`versionCode`, después de `+` en `pubspec.yaml`) debe superar todas las APK distribuidas anteriormente. El Android de prueba tenía instalada la versión 1.4.0 con código 28; la entrega 1.4.1 usó código 29 y la actual 1.4.2 usa código 30. Antes de entregar una APK, verifica la firma y prueba la actualización sobre una versión anterior, además de comprobar que la copia de `dist/` coincida con la compilación.
 
 Sin `android/key.properties`, la APK de release se firma con la clave de desarrollo y sirve para instalación y pruebas locales. Para Google Play, configura una clave de subida privada con `android/key.properties.example` como referencia y genera:
 
@@ -84,3 +84,7 @@ Jolpica proporciona calendario y resultados; los feeds oficiales de F1 Fantasy a
 La validación histórica y sus limitaciones están documentadas en [los informes](docs/README.md). El acceso oficial y las notificaciones requieren comprobación adicional en un teléfono real.
 
 Después de instalar una actualización, usa **Liga → Actualizar** para capturar las alineaciones de los equipos visibles. Solo se muestran las alineaciones que permite consultar la web oficial; si falta acceso o puntuación del GP capturado, el detalle lo indica sin sustituir los puntos por el total de temporada. La captura solicita como máximo 20 equipos con tres peticiones simultáneas.
+
+La proyección Fantasy suma clasificación, carrera y Sprint cuando corresponde, con el ×2 del piloto elegido. Es una estimación parcial: no predice adelantamientos, posiciones ganadas, Driver of the Day ni puntos de paradas en boxes. La pantalla muestra la etapa de datos (pre-finde o prácticas disponibles) y explica fallos de sesiones. Un fallo de FP2/FP3 conserva las métricas válidas de las otras prácticas; las respuestas vacías no bloquean posteriores actualizaciones.
+
+La clasificación de liga se refresca desde el feed oficial y cruza GUID, identificadores sociales y número de equipo sin contar alias como miembros nuevos. Las capturas anteriores con estructura `current/rounds` siguen siendo legibles. El icono verde neón de Polewise se conserva en todos los tamaños y en los recursos adaptativos de Android.

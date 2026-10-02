@@ -16,7 +16,15 @@ class _FeedAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     paths.add(options.path);
-    final payload = options.path.contains('raceday_en.json')
+    final payload = options.path.contains('/privateleague/list_1_')
+        ? {
+            'Value': {
+              'leaderboard': [
+                {'user_guid': 'a', 'team_no': 1, 'cur_points': 100},
+              ],
+            },
+          }
+        : options.path.contains('raceday_en.json')
         ? {
             'Data': {
               'fixtures': [
@@ -135,4 +143,16 @@ void main() {
       expect(assets.every((asset) => asset['round'] == 7), isTrue);
     },
   );
+  test('la liga actual usa el feed oficial en vez del endpoint legacy', () async {
+    final adapter = _FeedAdapter();
+    final api = FantasyApi(
+      Dio()..httpClientAdapter = adapter,
+      publicBaseUrl: 'https://fantasy.formula1.com',
+    );
+    final board = await api.getPrivateLeagueStandings('4764009');
+    expect(adapter.paths, [
+      'https://fantasy.formula1.com/feeds/leaderboard/privateleague/list_1_4764009_0_1.json',
+    ]);
+    expect(board['Value']['leaderboard'], hasLength(1));
+  });
 }

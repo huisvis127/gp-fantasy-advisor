@@ -132,6 +132,7 @@ class _BranchingOptimizer extends TeamOptimizer {
   List<TransferPlan> transferCandidates({
     required List<String> currentDriverIds,
     required List<String> currentConstructorIds,
+    String? currentBoostedDriverId,
     required List<AssetPrediction> driverPredictions,
     required List<AssetPrediction> constructorPredictions,
     required double remainingBudgetMillions,
