@@ -1,3 +1,5 @@
+import 'league_access.dart';
+
 class LeagueEvent {
   const LeagueEvent({
     required this.gameDayId,
@@ -34,7 +36,7 @@ class LeagueAnalytics {
   });
 
   /// Máximo de equipos que la app representa a la vez por liga.
-  static const maxDisplayedTeams = 20;
+  static const maxDisplayedTeams = LeagueAccess.maxTeams;
 
   final List<LeagueEvent> events;
   final List<LeagueMemberTrend> members;
@@ -54,6 +56,17 @@ class LeagueAnalytics {
     Map<String, dynamic> snapshot,
     String leagueId,
   ) {
+    final accessRoot = snapshot['leagueAccess'];
+    final boards = snapshot['leaderboards'];
+    if (LeagueAccess.inspect(
+      league: const {},
+      board: boards is Map ? boards[leagueId] : null,
+      capturedAccess: accessRoot is Map && accessRoot[leagueId] is Map
+          ? accessRoot[leagueId] as Map
+          : null,
+    ).isBlocked) {
+      return const LeagueAnalytics(events: [], members: []);
+    }
     final historyRoot = snapshot['leagueHistory'];
     final history = historyRoot is Map && historyRoot[leagueId] is Map
         ? Map<dynamic, dynamic>.from(historyRoot[leagueId] as Map)
@@ -92,6 +105,12 @@ class LeagueAnalytics {
     for (final entry in history.entries) {
       final day = int.tryParse(entry.key.toString());
       if (day == null) continue;
+      if (LeagueAccess.inspect(
+        league: const {},
+        board: entry.value,
+      ).isBlocked) {
+        continue;
+      }
       final rows = extractLeagueRows(entry.value);
       if (rows.isNotEmpty) eventBoards[day] = rows;
     }

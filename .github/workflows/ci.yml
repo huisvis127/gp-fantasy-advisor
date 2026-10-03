@@ -19,6 +19,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.44.8"
@@ -27,6 +30,7 @@ jobs:
       - run: flutter pub run build_runner build --delete-conflicting-outputs
       - run: flutter analyze
       - run: flutter test
+      - run: node --test test/data/capture_league_limit_test.cjs
 
   build_apk:
     needs: analyze_and_test

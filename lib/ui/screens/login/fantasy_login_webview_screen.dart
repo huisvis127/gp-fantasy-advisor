@@ -240,6 +240,59 @@ class _FantasyLoginWebViewScreenState
       }
     }
     const leagueRows = findArray(valueOf(leagues));
+    const field = (row, keys) => {
+      if (!row || typeof row !== 'object') return null;
+      for (const key of keys) {
+        const entry = Object.entries(row).find(([name]) =>
+          name.toLowerCase().replace(/[_-]/g, '') === key);
+        if (entry && entry[1] !== null && entry[1] !== undefined) return entry[1];
+      }
+      return null;
+    };
+    // These are current-count fields. Capacity fields such as MaxMembers,
+    // MaximumTeams, or TeamLimit must never be mistaken for the league size.
+    const teamCountFields = [
+      'teamcount', 'totalteams', 'numberofteams', 'noofteams',
+      'membercount', 'memcount', 'totalmembers', 'numberofmembers',
+      'noofmembers', 'participantcount', 'totalparticipants',
+      'entrycount', 'totalentries', 'totalrecord', 'totalrecords'
+    ];
+    const parseTeamCount = raw => {
+      if (raw === null || raw === '') return null;
+      const count = Number(raw);
+      return Number.isInteger(count) && count >= 0 ? count : null;
+    };
+    const nestedTeamCount = node => {
+      let count = null;
+      const visit = value => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+        for (const [name, child] of Object.entries(value)) {
+          const key = name.toLowerCase().replace(/[_-]/g, '');
+          if (teamCountFields.includes(key)) {
+            const candidate = parseTeamCount(child);
+            if (candidate !== null) count = Math.max(count === null ? 0 : count, candidate);
+          }
+          if (child && typeof child === 'object' && !Array.isArray(child)) visit(child);
+        }
+      };
+      visit(node);
+      return count;
+    };
+    const actualTeamCount = row => nestedTeamCount(row);
+    const leagueIdOf = row => field(row, ['leagueid', 'id']);
+    const isPrivateLeague = row => String(
+      field(row, ['leaguetype', 'type']) || ''
+    ).toLowerCase() === 'private';
+    const leagueAccess = {};
+    for (const league of leagueRows) {
+      const id = leagueIdOf(league);
+      if (!id) continue;
+      const teamCount = actualTeamCount(league);
+      leagueAccess[String(id)] = {
+        teamCount: teamCount,
+        blocked: teamCount !== null && teamCount > 20
+      };
+    }
     const eventsByDay = new Map();
     for (const fixture of fixtures) {
       const day = Number(fixture.GamedayId || fixture.Gameday);
@@ -263,82 +316,93 @@ class _FantasyLoginWebViewScreenState
       .slice(-24);
     const leaderboards = {};
     const leagueHistory = {};
-    for (const league of leagueRows.slice(0, 20)) {
-      const id = league.LeagueId || league.LeagueID || league.leagueId || league.league_id || league.id;
-      if (!id) continue;
-      const h2h = Number(league.IsHTHLeague || league.isHTHLeague || 0);
-      const leagueType = String(
-        league.LeagueType || league.leagueType || league.league_type || ''
-      ).toLowerCase();
-      const history = {};
-      if (leagueType === 'private') {
-        // Since the 2026 redesign, standings are static feeds. `list_1` is
-        // the overall table and `list_2` is the score for one Grand Prix.
+    // A login snapshot captures one league only. If a league was explicitly
+    // selected, never silently switch to another one (especially when it is
+    // blocked by the team-count policy).
+    const requestedId = window.f1RequestedLeagueId && String(window.f1RequestedLeagueId);
+    const activeLeague = requestedId
+      ? leagueRows.find(row => String(leagueIdOf(row)) === requestedId)
+      : leagueRows.find(row => {
+          const access = leagueAccess[String(leagueIdOf(row))];
+          return isPrivateLeague(row) && access && !access.blocked;
+        });
+    const activeId = activeLeague && String(leagueIdOf(activeLeague));
+    const activeAccess = activeId ? leagueAccess[activeId] : null;
+    const leagueTeamDetails = {};
+    const boardRows = [];
+    if (activeLeague && isPrivateLeague(activeLeague) && activeAccess && !activeAccess.blocked) {
+      const h2h = Number(field(activeLeague, ['isthleague']) || 0);
+      let board = null;
+      // If metadata omits the current size, fetch one board to inspect its
+      // actual entries before deciding whether any history/details are safe.
+      try {
+        board = await readJson(
+          '/feeds/leaderboard/privateleague/list_1_' + activeId + '_0_1.json'
+        );
+      } catch (_) {
         try {
-          leaderboards[String(id)] = await readJson(
-            '/feeds/leaderboard/privateleague/list_1_' + id + '_0_1.json'
+          board = await readJson(
+            '/services/user/league/' + guid + '/getuserleaguemembers/1/' + activeId + '/' + h2h + '/' + gameDay + '/1/100/'
           );
-        } catch (_) {
-          try {
-            leaderboards[String(id)] = await readJson(
-              '/services/user/league/' + guid + '/getuserleaguemembers/1/' + id + '/' + h2h + '/' + gameDay + '/1/100/'
-            );
-          } catch (_) {}
+        } catch (_) {}
+      }
+      const seenBoardRows = new Set();
+      const collectRows = node => {
+        if (!node || typeof node !== 'object' || Array.isArray(node)) return;
+        for (const [name, value] of Object.entries(node)) {
+          if (Array.isArray(value) && ['userrank','memrank','leaderboard','members','entries'].includes(name.toLowerCase())) {
+            for (const row of value) {
+              if (boardRows.length >= 21) break;
+              if (!row || typeof row !== 'object') continue;
+              const owner = field(row, ['yuserguid','userguid','userid','guid','socialid']);
+              const teamNo = Number(field(row, ['teamno','teamnumber']));
+              const rowKey = owner && Number.isInteger(teamNo) && teamNo > 0
+                ? String(owner) + ':' + teamNo
+                : JSON.stringify(row);
+              if (seenBoardRows.has(rowKey)) continue;
+              seenBoardRows.add(rowKey);
+              boardRows.push(row);
+            }
+          } else if (value && typeof value === 'object') collectRows(value);
+          if (boardRows.length >= 21) return;
         }
-        await Promise.all(leagueEvents.map(async event => {
+      };
+      collectRows(board);
+      const reportedBoardCount = nestedTeamCount(board);
+      const boardTeamCount = Math.max(reportedBoardCount || 0, boardRows.length);
+      if (!board || (boardRows.length === 0 && reportedBoardCount === null && activeAccess.teamCount !== 0)) {
+        stage = 'league';
+        throw new Error('No se pudo verificar el tamaño de la liga; se conserva la captura anterior');
+      }
+      if (activeAccess.teamCount === null && boardTeamCount > 0) {
+        activeAccess.teamCount = boardTeamCount;
+      }
+      // A board can reveal that stale/partial metadata understated the size.
+      if (boardTeamCount > 20) {
+        activeAccess.teamCount = Math.max(activeAccess.teamCount || 0, boardTeamCount);
+        activeAccess.blocked = true;
+      }
+      if (!activeAccess.blocked && board) {
+        leaderboards[activeId] = board;
+        const history = {};
+        for (const event of leagueEvents) {
           try {
             history[String(event.gameDayId)] = await readJson(
-              '/feeds/leaderboard/privateleague/list_2_' + id + '_' + event.gameDayId + '_1.json'
+              '/feeds/leaderboard/privateleague/list_2_' + activeId + '_' + event.gameDayId + '_1.json'
             );
           } catch (_) {
             try {
               history[String(event.gameDayId)] = await readJson(
-                '/services/user/league/' + guid + '/getuserleaguemembers/1/' + id + '/' + h2h + '/' + event.gameDayId + '/1/100/'
+                '/services/user/league/' + guid + '/getuserleaguemembers/1/' + activeId + '/' + h2h + '/' + event.gameDayId + '/1/100/'
               );
             } catch (_) {}
           }
-        }));
-      }
-      leagueHistory[String(id)] = history;
-      if (!leaderboards[String(id)]) {
-        const days = Object.keys(history).sort((a, b) => Number(a) - Number(b));
-        if (days.length) leaderboards[String(id)] = history[days[days.length - 1]];
-      }
-    }
-    const requestedId = window.f1RequestedLeagueId && String(window.f1RequestedLeagueId);
-    if ((requestedId && !leaderboards[requestedId]) ||
-        (leagueRows.some(row => String(row.LeagueType || row.leagueType || row.league_type || '').toLowerCase() === 'private') && !Object.keys(leaderboards).length)) {
-      stage = 'league';
-      throw new Error('La liga seleccionada no devolvió su clasificación; se conserva la captura anterior');
-    }
-    // Captura solo la liga activa y como máximo 20 alineaciones. Tres
-    // peticiones simultáneas mantienen acotados memoria y trabajo de red.
-    const leagueTeamDetails = {};
-    const field = (row, keys) => {
-      if (!row || typeof row !== 'object') return null;
-      for (const key of keys) {
-        const entry = Object.entries(row).find(([name]) =>
-          name.toLowerCase().replace(/_/g, '') === key);
-        if (entry && entry[1] !== null && entry[1] !== undefined) return entry[1];
-      }
-      return null;
-    };
-    const activeLeague = leagueRows.find(row =>
-      String(field(row, ['leagueid','id'])) === String(window.f1RequestedLeagueId)) ||
-      leagueRows.find(row => String(field(row, ['leaguetype','type']) || '').toLowerCase() === 'private');
-    const activeId = activeLeague && String(field(activeLeague, ['leagueid','id']));
-    if (activeId && leaderboards[activeId]) {
-      const boardRows = [];
-      const collectRows = node => {
-        if (!node || typeof node !== 'object') return;
-        if (Array.isArray(node)) return;
-        for (const [name, value] of Object.entries(node)) {
-          if (Array.isArray(value) && ['userrank','memrank','leaderboard','members','entries'].includes(name.toLowerCase())) {
-            boardRows.push(...value.filter(row => row && typeof row === 'object'));
-          } else if (value && typeof value === 'object') collectRows(value);
         }
-      };
-      collectRows(leaderboards[activeId]);
+        leagueHistory[activeId] = history;
+      }
+    }
+    // Opponent team details are requested only for the one permitted league.
+    if (activeId && activeAccess && !activeAccess.blocked && leaderboards[activeId]) {
       const unique = new Map();
       for (const row of boardRows) {
         const owner = field(row, ['yuserguid','userguid','userid','guid','socialid']);
@@ -350,37 +414,38 @@ class _FantasyLoginWebViewScreenState
         Number(field(a[1].row, ['ovrank','curank','currank','userrank','rank','position']) || 999) -
         Number(field(b[1].row, ['ovrank','curank','currank','userrank','rank','position']) || 999)).slice(0,20);
       leagueTeamDetails[activeId] = {};
-      let next = 0;
-      await Promise.all(Array.from({length:Math.min(3,jobs.length)}, async () => {
-        while (next < jobs.length) {
-          const [key, job] = jobs[next++];
-          const own = job.owner === String(guid) && teamDetails[String(job.teamNo)];
-          if (own && Number(own.gameDay) === gameDay) {
-            leagueTeamDetails[activeId][key] = own;
-            continue;
-          }
-          try {
-            const detailUrl = job.owner === String(guid)
-              ? '/services/user/gameplay/' + encodeURIComponent(job.owner) +
-                '/getteam/1/' + job.teamNo + '/' + gameDay + '/' + schedulePhaseId
-              : '/services/user/opponentteam/opponentgamedayplayerteamget/1/' +
-                encodeURIComponent(job.owner) + '/' + job.teamNo + '/' + gameDay + '/' + schedulePhaseId;
-            const detail = await readJson(detailUrl);
-            const value = valueOf(detail) || {};
-            if (Array.isArray(value.userTeam) && value.userTeam.length) {
-              leagueTeamDetails[activeId][key] = Object.assign({}, detail, {gameDay:gameDay});
-            }
-          } catch (_) {
-            // El servicio puede ocultar alineaciones antes del cierre.
-          }
+      for (const [key, job] of jobs) {
+        const own = job.owner === String(guid) && teamDetails[String(job.teamNo)];
+        if (own && Number(own.gameDay) === gameDay) {
+          leagueTeamDetails[activeId][key] = own;
+          continue;
         }
-      }));
+        try {
+          const detailUrl = job.owner === String(guid)
+            ? '/services/user/gameplay/' + encodeURIComponent(job.owner) +
+              '/getteam/1/' + job.teamNo + '/' + gameDay + '/' + schedulePhaseId
+            : '/services/user/opponentteam/opponentgamedayplayerteamget/1/' +
+              encodeURIComponent(job.owner) + '/' + job.teamNo + '/' + gameDay + '/' + schedulePhaseId;
+          const detail = await readJson(detailUrl);
+          const value = valueOf(detail) || {};
+          if (Array.isArray(value.userTeam) && value.userTeam.length) {
+            leagueTeamDetails[activeId][key] = Object.assign({}, detail, {gameDay:gameDay});
+          }
+        } catch (_) {
+          // El servicio puede ocultar alineaciones antes del cierre.
+        }
+      }
+    }
+    if (activeLeague && isPrivateLeague(activeLeague) && activeAccess &&
+        !activeAccess.blocked && !leaderboards[activeId]) {
+      stage = 'league';
+      throw new Error('La liga seleccionada no devolvió su clasificación; se conserva la captura anterior');
     }
     F1Bridge.postMessage(JSON.stringify({
       capturedAt:new Date().toISOString(), guid:guid, gameDay:gameDay,
       session:session, teams:teams, teamDetails:teamDetails,
       teamDetailErrors:teamDetailErrors,
-      leagues:leagues, leaderboards:leaderboards,
+      leagues:leagues, leagueAccess:leagueAccess, leaderboards:leaderboards,
       leagueEvents:leagueEvents, leagueHistory:leagueHistory, leagueTeamDetails:leagueTeamDetails
     }));
   } catch (error) {

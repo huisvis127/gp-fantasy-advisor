@@ -1,6 +1,6 @@
 # GP Fantasy Advisor
 
-Aplicación Android no oficial para preparar equipos de F1 Fantasy, consultar datos de pista y analizar ligas. Versión actual: **1.4.3+31**. No está afiliada a Formula One Licensing B.V.
+Aplicación Android no oficial para preparar equipos de F1 Fantasy, consultar datos de pista y analizar ligas. Versión actual: **1.4.4+32**. No está afiliada a Formula One Licensing B.V.
 
 ## Empezar
 
@@ -12,17 +12,18 @@ Requisitos: Flutter **3.44.8** (Dart incluido), Java 17 o compatible, y Android 
 flutter pub get
 flutter analyze
 flutter test
+node --test test/data/capture_league_limit_test.cjs
 flutter build apk --release
 ```
 
-La APK se genera en `build/app/outputs/flutter-apk/app-release.apk`. La copia local entregada de la versión 1.4.3 está en `dist/GP-Fantasy-Advisor-1.4.3.apk`. Los instaladores quedan fuera de Git; el repositorio contiene el código fuente.
+La APK se genera en `build/app/outputs/flutter-apk/app-release.apk`. La copia local entregada de la versión 1.4.4 está en `dist/GP-Fantasy-Advisor-1.4.4.apk`. Los instaladores quedan fuera de Git; el repositorio contiene el código fuente.
 
 ## Funciones actuales
 
 - **Resumen y análisis:** próximo GP, sincronización, predicciones y pesos configurables.
 - **Fantasy:** equipo personal e ideal con el ×2 incluido en sus proyecciones, mercado de precios, plan de tres GP, chips y puntuación provisional en directo.
 - **Circuito:** contexto del GP y datos de sesiones.
-- **Liga:** clasificación, evolución, medallero y diferenciales. Se representan como máximo **20 equipos** por liga; si hay más, se muestran los 20 primeros y un aviso. Cada equipo puede elegir entre **40 colores (20 neón y 20 normales)**, combinados en la paleta y guardados por liga y equipo. El color se aplica a la clasificación, leyendas, gráficas, medallero y detalle desplegable. El detalle muestra pilotos, constructores, multiplicadores y puntos del fin de semana, separados del total de temporada.
+- **Liga:** clasificación, evolución, medallero y diferenciales. Se admiten ligas de hasta **20 equipos**. Las ligas mayores aparecen bloqueadas: no se pueden seleccionar ni descargar su historial o alineaciones. Si falta el tamaño, se comprueba la clasificación antes de continuar. La captura solicita solo la liga activa y su historial de forma secuencial. Cada equipo puede elegir entre **40 colores (20 neón y 20 normales)**, combinados en la paleta y guardados por liga y equipo. El color se aplica a la clasificación, leyendas, gráficas, medallero y detalle desplegable. El detalle muestra pilotos, constructores, multiplicadores y puntos del fin de semana, separados del total de temporada.
 - **Ajustes:** modo claro u oscuro, idiomas, sincronización y alertas locales de cierre. La apariencia se conserva entre sesiones.
 
 ## Dónde está cada cosa
@@ -67,7 +68,7 @@ git push -u origin feature/nombre-del-cambio
 
 ## Firma y distribución
 
-La numeración de Android (`versionCode`, después de `+` en `pubspec.yaml`) debe superar todas las APK distribuidas anteriormente. El Android de prueba tenía instalada la versión 1.4.0 con código 28; la entrega 1.4.1 usó código 29 la 1.4.2 usó código 30 y la actual 1.4.3 usa código 31. Antes de entregar una APK, verifica la firma y prueba la actualización sobre una versión anterior, además de comprobar que la copia de `dist/` coincida con la compilación.
+La numeración de Android (`versionCode`, después de `+` en `pubspec.yaml`) debe superar todas las APK distribuidas anteriormente. El Android de prueba tenía instalada la versión 1.4.0 con código 28; las entregas posteriores usan códigos crecientes; la actual 1.4.4 usa código 32. Antes de entregar una APK, verifica la firma y prueba la actualización sobre una versión anterior, además de comprobar que la copia de `dist/` coincida con la compilación.
 
 Sin `android/key.properties`, la APK de release se firma con la clave de desarrollo y sirve para instalación y pruebas locales. Para Google Play, configura una clave de subida privada con `android/key.properties.example` como referencia y genera:
 

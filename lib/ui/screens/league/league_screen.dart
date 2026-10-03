@@ -15,6 +15,7 @@ import '../../../domain/models/league_team_details.dart';
 import '../../widgets/league_team_weekend_details.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/league_analytics.dart';
+import '../../../domain/models/league_access.dart';
 import '../../../domain/models/live_fantasy.dart';
 import '../../../domain/models/my_team.dart';
 import '../../widgets/ref_widgets.dart';
@@ -153,12 +154,73 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
     widget.onSessionUpdated();
   }
 
+  LeagueAccess _accessFor(Map<String, dynamic> league, String id) {
+    final boards = _snapshot?['leaderboards'];
+    final captured = _snapshot?['leagueAccess'];
+    return LeagueAccess.inspect(
+      league: league,
+      board: boards is Map ? boards[id] : null,
+      capturedAccess: captured is Map && captured[id] is Map
+          ? captured[id] as Map
+          : null,
+    );
+  }
+
+  Widget _checkingView(
+    List<Map<String, dynamic>> leagues,
+    Map<String, LeagueAccess> accessById,
+  ) => ListView(
+    padding: const EdgeInsets.all(14),
+    children: [
+      _LeagueSelector(
+        leagues: leagues,
+        selectedId: _selectedLeagueId,
+        accessById: accessById,
+        onChanged: (id) => setState(() => _selectedLeagueId = id),
+      ),
+      const SizedBox(height: 18),
+      const StatusBanner(
+        message: 'Comprobando el tamaño de la liga antes de cargarla…',
+      ),
+      const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    ],
+  );
+
+  Widget _blockedView(
+    List<Map<String, dynamic>> leagues,
+    Map<String, LeagueAccess> accessById,
+  ) => ListView(
+    padding: const EdgeInsets.all(14),
+    children: [
+      const SectionHead(kicker: 'Competición', title: 'Límite de equipos'),
+      const SizedBox(height: 12),
+      const StatusBanner(
+        message:
+            'Solo se pueden abrir ligas de hasta 20 equipos. '
+            'Las ligas más grandes quedan bloqueadas para mantener el móvil fluido.',
+      ),
+      const SizedBox(height: 12),
+      _LeagueSelector(
+        leagues: leagues,
+        selectedId: _selectedLeagueId,
+        accessById: accessById,
+        onChanged: (id) => setState(() => _selectedLeagueId = id),
+      ),
+      for (final league in leagues)
+        if (accessById[_leagueId(league)]?.isBlocked == true)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              '${_leagueName(league)}: supera el límite de 20 equipos.',
+              style: AppText.body(12, color: AppColors.textSecondary),
+            ),
+          ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     Theme.of(context);
-    final myTeam = ref.watch(myTeamProvider).valueOrNull;
-    final liveAssets =
-        ref.watch(liveFantasyProvider).valueOrNull?.assets ?? const [];
     return FutureBuilder<Map<String, dynamic>>(
       future: _request,
       builder: (context, requestSnapshot) {
@@ -183,7 +245,7 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
         final privateLeagues = allLeagues
             .where((league) => _leagueType(league) == 'private')
             .toList();
-        final leagues = privateLeagues.isNotEmpty ? privateLeagues : allLeagues;
+        final leagues = privateLeagues;
         if (leagues.isEmpty) {
           return ListView(
             padding: const EdgeInsets.all(14),
@@ -196,14 +258,24 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
           );
         }
 
-        final ids = leagues.map(_leagueId).whereType<String>().toList();
+        final accessById = <String, LeagueAccess>{
+          for (final league in leagues)
+            if (_leagueId(league) case final id?) id: _accessFor(league, id),
+        };
+        final eligible = leagues
+            .where((league) => accessById[_leagueId(league)]?.isBlocked != true)
+            .toList();
+        if (eligible.isEmpty) {
+          return _blockedView(leagues, accessById);
+        }
+        final ids = eligible.map(_leagueId).whereType<String>().toList();
         if (_selectedLeagueId == null || !ids.contains(_selectedLeagueId)) {
           _selectedLeagueId = ids.firstOrNull;
         }
         final selectedId = _selectedLeagueId;
         final selectedLeague = leagues.firstWhere(
           (league) => _leagueId(league) == selectedId,
-          orElse: () => leagues.first,
+          orElse: () => eligible.first,
         );
 
         return Consumer(
@@ -213,6 +285,46 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
                 ? null
                 : colorRef.watch(leagueCurrentBoardProvider(selectedId));
             final liveBoard = boardAsync?.valueOrNull;
+            final access = liveBoard == null
+                ? accessById[selectedId]!
+                : LeagueAccess.inspect(
+                    league: selectedLeague,
+                    board: liveBoard,
+                  );
+            final shownAccess = {
+              ...accessById,
+              if (selectedId != null) selectedId: access,
+            };
+            if (access.isBlocked) return _blockedView(leagues, shownAccess);
+            if (boardAsync?.isLoading == true && access.teamCount == null) {
+              return _checkingView(leagues, shownAccess);
+            }
+            if (access.teamCount == null) {
+              return ListView(
+                padding: const EdgeInsets.all(14),
+                children: [
+                  _LeagueSelector(
+                    leagues: leagues,
+                    selectedId: selectedId,
+                    accessById: shownAccess,
+                    onChanged: (id) => setState(() => _selectedLeagueId = id),
+                  ),
+                  const SizedBox(height: 18),
+                  StatusBanner(
+                    message:
+                        'No se pudo comprobar el tamaño de la liga. '
+                        'Su historial no se cargará hasta verificar el límite de 20 equipos.',
+                    onRetry: () => colorRef.invalidate(
+                      leagueCurrentBoardProvider(selectedId!),
+                    ),
+                  ),
+                ],
+              );
+            }
+            final myTeam = colorRef.watch(myTeamProvider).valueOrNull;
+            final liveAssets =
+                colorRef.watch(liveFantasyProvider).valueOrNull?.assets ??
+                const [];
             final dashboardSnapshot = {...?_snapshot};
             if (liveBoard != null && extractLeagueRows(liveBoard).isNotEmpty) {
               final boards = _snapshot?['leaderboards'];
@@ -270,6 +382,7 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
                   _LeagueSelector(
                     leagues: leagues,
                     selectedId: selectedId,
+                    accessById: shownAccess,
                     onChanged: (id) => setState(() => _selectedLeagueId = id),
                   ),
                   const SizedBox(height: 10),
@@ -288,17 +401,6 @@ class _LeagueDashboardState extends ConsumerState<_LeagueDashboard> {
                         onRetry: () => colorRef.invalidate(
                           leagueCurrentBoardProvider(selectedId!),
                         ),
-                      ),
-                    ),
-                  if (fullAnalytics.members.length >
-                      LeagueAnalytics.maxDisplayedTeams)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: StatusBanner(
-                        message:
-                            'Esta liga tiene ${fullAnalytics.members.length} equipos. '
-                            'La app muestra los ${LeagueAnalytics.maxDisplayedTeams} primeros '
-                            'de la clasificación para mantener una vista fluida y legible.',
                       ),
                     ),
                   if (analytics.members.isEmpty)
@@ -384,8 +486,10 @@ class _LeagueSelector extends StatelessWidget {
     required this.leagues,
     required this.selectedId,
     required this.onChanged,
+    required this.accessById,
   });
 
+  final Map<String, LeagueAccess> accessById;
   final List<Map<String, dynamic>> leagues;
   final String? selectedId;
   final ValueChanged<String?> onChanged;
@@ -407,8 +511,11 @@ class _LeagueSelector extends StatelessWidget {
             if (_leagueId(league) case final id?)
               DropdownMenuItem(
                 value: id,
+                enabled: accessById[id]?.isBlocked != true,
                 child: Text(
-                  _leagueName(league),
+                  accessById[id]?.isBlocked == true
+                      ? '${_leagueName(league)} · bloqueada (>20)'
+                      : _leagueName(league),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
