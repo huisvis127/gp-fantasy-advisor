@@ -1,13 +1,15 @@
 name: gp_fantasy_advisor
 description: "GP Fantasy Advisor — asesor no oficial para F1 Fantasy."
 publish_to: "none"
-version: 1.0.1+2
+version: 1.4.4+32
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ">=3.10.0 <4.0.0"
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
   cupertino_icons: ^1.0.6
 
@@ -28,7 +30,7 @@ dependencies:
 
   # UI
   fl_chart: ^0.68.0
-  intl: ^0.19.0
+  intl: ^0.20.2
   google_fonts: ^6.2.1 # Syne / DM Sans / JetBrains Mono (diseño de la referencia)
 
   # Preferencias (pesos del modelo elegidos por el usuario)
@@ -36,6 +38,10 @@ dependencies:
 
   # Login Plan B (WebView de respaldo)
   webview_flutter: ^4.8.0
+
+  # Alertas locales de cierre de jornada
+  flutter_local_notifications: ^22.2.0
+  timezone: ^0.11.1
 
   # Concurrencia: se usa Isolate.run (nativo de Dart 3, sin dependencia extra)
 

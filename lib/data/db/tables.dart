@@ -129,6 +129,23 @@ class MyTeamTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Copia del equipo al guardarlo en una jornada. Permite auditar decisiones
+/// después de la carrera sin depender de que la API privada conserve datos.
+@DataClassName('TeamSnapshotRow')
+class TeamSnapshots extends Table {
+  IntColumn get season => integer()();
+  IntColumn get round => integer()();
+  TextColumn get driverIdsCsv => text()();
+  TextColumn get constructorIdsCsv => text()();
+  RealColumn get remainingBudgetMillions => real()();
+  TextColumn get boostedDriverId => text().nullable()();
+  TextColumn get chipsUsedCsv => text().withDefault(const Constant(''))();
+  DateTimeColumn get savedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {season, round};
+}
+
 /// Caché de la última predicción calculada, para poder mostrar algo
 /// instantáneamente mientras se refresca en segundo plano.
 @DataClassName('PredictionCacheRow')

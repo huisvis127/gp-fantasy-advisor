@@ -19,18 +19,29 @@ class ScoringTable {
   }
 
   /// Constructor para tests / backtesting sin cargar assets de Flutter.
-  factory ScoringTable.fromJson(Map<String, dynamic> json) => ScoringTable._(json);
+  factory ScoringTable.fromJson(Map<String, dynamic> json) =>
+      ScoringTable._(json);
 
   Map<String, int> get racePositionPoints =>
-      (_data['race']['position_points'] as Map<String, dynamic>)
-          .map((k, v) => MapEntry(k, v as int));
+      (_data['race']['position_points'] as Map<String, dynamic>).map(
+        (k, v) => MapEntry(k, v as int),
+      );
 
   Map<String, int> get qualifyingPositionPoints =>
-      (_data['qualifying']['position_points'] as Map<String, dynamic>)
+      (_data['qualifying']['position_points'] as Map<String, dynamic>).map(
+        (k, v) => MapEntry(k, v as int),
+      );
+
+  Map<String, int> get sprintPositionPoints =>
+      ((_data['sprint']?['position_points'] as Map<String, dynamic>?) ??
+              const <String, dynamic>{})
           .map((k, v) => MapEntry(k, v as int));
 
   int get fastestLapPoints => _data['race']['fastest_lap'] as int;
+  int get sprintFastestLapPoints =>
+      (_data['sprint']?['fastest_lap'] as num?)?.toInt() ?? 0;
   int get dnfPenalty => _data['race']['dnf'] as int;
+  int get sprintDnfPenalty => (_data['sprint']?['dnf'] as num?)?.toInt() ?? -10;
   int get bothCarsQ3Bonus => _data['constructor']['both_cars_q3_bonus'] as int;
 
   int pointsForRacePosition(int? position) {
@@ -41,6 +52,17 @@ class ScoringTable {
   int pointsForQualifyingPosition(int position) {
     return qualifyingPositionPoints[position.toString()] ?? 0;
   }
+
+  int pointsForSprintPosition(int position) {
+    return sprintPositionPoints[position.toString()] ?? 0;
+  }
+
+  double expectedQualifyingPoints({
+    required List<double> positionProbabilities,
+  }) => _expectedPositionPoints(
+    positionProbabilities,
+    pointsForQualifyingPosition,
+  );
 
   /// Puntos fantasy esperados a partir de una distribución de probabilidad
   /// por posición final (índice 0 = P1), más probabilidad de vuelta rápida
@@ -54,10 +76,39 @@ class ScoringTable {
     for (var i = 0; i < positionProbabilities.length; i++) {
       final position = i + 1;
       final pointsIfFinished = pointsForRacePosition(position);
-      expected += positionProbabilities[i] * (1 - dnfProbability) * pointsIfFinished;
+      expected +=
+          positionProbabilities[i] * (1 - dnfProbability) * pointsIfFinished;
     }
     expected += dnfProbability * dnfPenalty;
     expected += fastestLapProbability * fastestLapPoints;
+    return expected;
+  }
+
+  double expectedSprintPoints({
+    required List<double> positionProbabilities,
+    required double dnfProbability,
+    double fastestLapProbability = 0,
+  }) {
+    double expected = 0;
+    for (var i = 0; i < positionProbabilities.length; i++) {
+      expected +=
+          positionProbabilities[i] *
+          (1 - dnfProbability) *
+          pointsForSprintPosition(i + 1);
+    }
+    expected += dnfProbability * sprintDnfPenalty;
+    expected += fastestLapProbability * sprintFastestLapPoints;
+    return expected;
+  }
+
+  double _expectedPositionPoints(
+    List<double> probabilities,
+    int Function(int position) pointsForPosition,
+  ) {
+    var expected = 0.0;
+    for (var i = 0; i < probabilities.length; i++) {
+      expected += probabilities[i] * pointsForPosition(i + 1);
+    }
     return expected;
   }
 }
@@ -70,7 +121,10 @@ class SoftmaxDistribution {
   /// `scores` en el mismo orden que los pilotos a comparar. `temperature`
   /// controla cuánto se concentra la probabilidad en los mejores (más bajo
   /// = más determinista); se calibra en el backtesting junto a w1..w8.
-  static List<double> winProbabilities(List<double> scores, {double temperature = 12.0}) {
+  static List<double> winProbabilities(
+    List<double> scores, {
+    double temperature = 12.0,
+  }) {
     final exps = scores.map((s) => exp(s / temperature)).toList();
     final sum = exps.reduce((a, b) => a + b);
     return exps.map((e) => e / sum).toList();

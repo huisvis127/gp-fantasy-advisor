@@ -42,6 +42,11 @@ void main() {
       expect(result.driverIds.length, 5);
       expect(result.constructorIds.length, 2);
       expect(result.totalCostMillions, lessThanOrEqualTo(100));
+      expect(result.boostedDriverId, isNotNull);
+      expect(
+        result.boostedExpectedPoints,
+        result.totalExpectedPoints + result.boostGain,
+      );
 
       // Con presupuesto de sobra (30+20+15+10+8=83 + 25+15=40 -> 123 > 100),
       // no caben todos los mejores; el optimizador debe encontrar algo mejor
@@ -84,5 +89,124 @@ void main() {
       final boosted = optimizer.recommendBoost(['d1', 'd2', 'd3'], drivers);
       expect(boosted, 'd2');
     });
+  });
+
+  group('TeamOptimizer.suggestTransfers', () {
+    test('conserva top-K empatado sin violar cambios ni presupuesto', () {
+      final drivers = [
+        for (var i = 1; i <= 5; i++) _fakePrediction('d$i', 10, 10),
+        _fakePrediction('d6', 10, 10),
+        _fakePrediction('d7', 10, 11), // empatado, pero excede el presupuesto
+      ];
+      final constructors = [
+        _fakePrediction('c1', 10, 10),
+        _fakePrediction('c2', 10, 10),
+        _fakePrediction('c3', 10, 10),
+      ];
+
+      final plans = const TeamOptimizer().transferCandidates(
+        currentDriverIds: const ['d1', 'd2', 'd3', 'd4', 'd5'],
+        currentConstructorIds: const ['c1', 'c2'],
+        driverPredictions: drivers,
+        constructorPredictions: constructors,
+        remainingBudgetMillions: 0,
+        maxTransfersToConsider: 1,
+        candidatesPerTransferCount: 3,
+      );
+      final oneChange = plans
+          .where((plan) => plan.numberOfTransfers == 1)
+          .toList();
+
+      expect(oneChange, hasLength(3));
+      expect(
+        oneChange.map((plan) => plan.resultingTeam.constructorIds.join(',')),
+        containsAll(['c1,c3', 'c2,c3']),
+      );
+      expect(
+        oneChange.map((plan) => plan.resultingTeam.driverIds.join(',')),
+        contains('d1,d2,d3,d4,d6'),
+      );
+      expect(oneChange.every((plan) => plan.netExpectedGain == 0), isTrue);
+      expect(
+        oneChange.every((plan) => plan.resultingTeam.totalCostMillions <= 70),
+        isTrue,
+      );
+      expect(
+        oneChange.any((plan) => plan.resultingTeam.driverIds.contains('d7')),
+        isFalse,
+      );
+    });
+
+    test('encuentra la pareja óptima aunque el mejor activo solo no quepa', () {
+      final drivers = [
+        for (var i = 1; i <= 5; i++) _fakePrediction('d$i', 10, 10),
+        _fakePrediction('caro', 100, 20),
+        _fakePrediction('valor', 90, 10),
+        _fakePrediction('barato', 70, 1),
+      ];
+      final constructors = [
+        _fakePrediction('c1', 10, 10),
+        _fakePrediction('c2', 10, 10),
+      ];
+
+      const optimizer = TeamOptimizer();
+      final plans = optimizer.suggestTransfers(
+        currentDriverIds: const ['d1', 'd2', 'd3', 'd4', 'd5'],
+        currentConstructorIds: const ['c1', 'c2'],
+        driverPredictions: drivers,
+        constructorPredictions: constructors,
+        remainingBudgetMillions: 0,
+        maxTransfersToConsider: 2,
+      );
+
+      final twoChanges = plans.firstWhere(
+        (plan) => plan.numberOfTransfers == 2,
+      );
+      expect(twoChanges.transfersIn, containsAll(['valor', 'barato']));
+      expect(twoChanges.resultingTeam.totalCostMillions, lessThanOrEqualTo(70));
+      // El mejor piloto entrante recibe el boost; el equipo actual también
+      // cuenta con el x2 de su mejor piloto (d1, 10 puntos).
+      expect(twoChanges.resultingTeam.boostedDriverId, 'valor');
+      expect(twoChanges.resultingTeam.totalExpectedPoints, 210);
+      expect(twoChanges.resultingTeam.boostedExpectedPoints, 300);
+      expect(twoChanges.netExpectedGain, 220);
+    });
+
+    test(
+      'centro de decisión conserva 1 cambio, 2 cambios y techo absoluto',
+      () {
+        final drivers = [
+          for (var i = 1; i <= 5; i++) _fakePrediction('d$i', 10, 10),
+          _fakePrediction('d6', 30, 10),
+          _fakePrediction('d7', 25, 10),
+        ];
+        final constructors = [
+          _fakePrediction('c1', 10, 10),
+          _fakePrediction('c2', 10, 10),
+          _fakePrediction('c3', 30, 10),
+        ];
+
+        const optimizer = TeamOptimizer();
+        final center = optimizer.buildDecisionCenter(
+          currentDriverIds: const ['d1', 'd2', 'd3', 'd4', 'd5'],
+          currentConstructorIds: const ['c1', 'c2'],
+          driverPredictions: drivers,
+          constructorPredictions: constructors,
+          remainingBudgetMillions: 0,
+        );
+
+        expect(center.oneTransfer?.numberOfTransfers, 1);
+        expect(center.twoTransfers?.numberOfTransfers, 2);
+        expect(center.perfectTeam.driverIds, hasLength(5));
+        expect(center.perfectTeam.constructorIds, hasLength(2));
+        expect(center.currentTeam.totalExpectedPoints, 70);
+        expect(center.currentTeam.boostedExpectedPoints, 80);
+        expect(center.currentTeam.boostedDriverId, 'd1');
+        expect(
+          center.perfectTeam.totalExpectedPoints,
+          greaterThanOrEqualTo(center.currentTeam.totalExpectedPoints),
+        );
+      },
+    );
   });
 }

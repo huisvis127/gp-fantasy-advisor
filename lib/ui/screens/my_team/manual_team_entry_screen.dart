@@ -14,7 +14,8 @@ class ManualTeamEntryScreen extends ConsumerStatefulWidget {
   const ManualTeamEntryScreen({super.key});
 
   @override
-  ConsumerState<ManualTeamEntryScreen> createState() => _ManualTeamEntryScreenState();
+  ConsumerState<ManualTeamEntryScreen> createState() =>
+      _ManualTeamEntryScreenState();
 }
 
 class _ManualTeamEntryScreenState extends ConsumerState<ManualTeamEntryScreen> {
@@ -23,20 +24,26 @@ class _ManualTeamEntryScreenState extends ConsumerState<ManualTeamEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final driversAsync = ref.watch(driverPredictionsProvider);
     final constructorsAsync = ref.watch(constructorPredictionsProvider);
-    final names = ref.watch(fantasyAssetNameProvider).valueOrNull ?? const <String, FantasyAssetInfo>{};
+    final names = ref.watch(fantasyAssetNameProvider).valueOrNull ??
+        const <String, FantasyAssetInfo>{};
 
     return Scaffold(
       appBar: AppBar(title: const Text('Introducir mi equipo')),
       body: driversAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => EmptyState.apiDown(onRetry: () => ref.invalidate(driverPredictionsProvider)),
+        error: (e, st) => EmptyState.apiDown(
+            onRetry: () => ref.invalidate(driverPredictionsProvider)),
         data: (drivers) => constructorsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, st) => EmptyState.apiDown(onRetry: () => ref.invalidate(constructorPredictionsProvider)),
+          error: (e, st) => EmptyState.apiDown(
+              onRetry: () => ref.invalidate(constructorPredictionsProvider)),
           data: (constructors) {
-            if (drivers.isEmpty || constructors.isEmpty) return const EmptyState.noData();
+            if (drivers.isEmpty || constructors.isEmpty) {
+              return const EmptyState.noData();
+            }
             final spent = _sumPrices(drivers, _selectedDrivers) +
                 _sumPrices(constructors, _selectedConstructors);
             final remaining = GameRules.initialBudgetMillions - spent;
@@ -64,16 +71,19 @@ class _ManualTeamEntryScreenState extends ConsumerState<ManualTeamEntryScreen> {
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                     children: [
-                      Text('Pilotos', style: Theme.of(context).textTheme.titleMedium),
+                      Text('Pilotos',
+                          style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: AppSpacing.sm),
                       ..._sorted(drivers).map((p) => _PickTile(
                             prediction: p,
                             info: names[p.assetId],
                             selected: _selectedDrivers.contains(p.assetId),
                             enabled: _selectedDrivers.contains(p.assetId) ||
-                                _selectedDrivers.length < GameRules.driversPerTeam,
+                                _selectedDrivers.length <
+                                    GameRules.driversPerTeam,
                             onChanged: () => _toggle(
                               p.assetId,
                               _selectedDrivers,
@@ -81,14 +91,17 @@ class _ManualTeamEntryScreenState extends ConsumerState<ManualTeamEntryScreen> {
                             ),
                           )),
                       const SizedBox(height: AppSpacing.md),
-                      Text('Constructores', style: Theme.of(context).textTheme.titleMedium),
+                      Text('Constructores',
+                          style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: AppSpacing.sm),
                       ..._sorted(constructors).map((p) => _PickTile(
                             prediction: p,
                             info: names[p.assetId],
                             selected: _selectedConstructors.contains(p.assetId),
-                            enabled: _selectedConstructors.contains(p.assetId) ||
-                                _selectedConstructors.length < GameRules.constructorsPerTeam,
+                            enabled:
+                                _selectedConstructors.contains(p.assetId) ||
+                                    _selectedConstructors.length <
+                                        GameRules.constructorsPerTeam,
                             onChanged: () => _toggle(
                               p.assetId,
                               _selectedConstructors,
@@ -103,7 +116,8 @@ class _ManualTeamEntryScreenState extends ConsumerState<ManualTeamEntryScreen> {
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _canSave(remaining) ? () => _save(remaining) : null,
+                      onPressed:
+                          _canSave(remaining) ? () => _save(remaining) : null,
                       child: const Text('Guardar mi equipo'),
                     ),
                   ),
@@ -169,6 +183,7 @@ class _PickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return CheckboxListTile(
       value: selected,
       onChanged: enabled ? (_) => onChanged() : null,

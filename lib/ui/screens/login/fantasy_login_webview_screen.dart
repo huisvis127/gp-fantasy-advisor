@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -19,7 +20,9 @@ import '../../../core/theme.dart';
 /// manual y una barra de estado que dice exactamente qué está pasando
 /// (nada de fallos silenciosos).
 class FantasyLoginWebViewScreen extends ConsumerStatefulWidget {
-  const FantasyLoginWebViewScreen({super.key});
+  const FantasyLoginWebViewScreen({super.key, this.leagueId});
+
+  final String? leagueId;
 
   @override
   ConsumerState<FantasyLoginWebViewScreen> createState() =>
@@ -41,18 +44,38 @@ class _FantasyLoginWebViewScreenState
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(
-        'F1Bridge',
-        onMessageReceived: _onBridgeMessage,
+      ..addJavaScriptChannel('F1Bridge', onMessageReceived: _onBridgeMessage)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (url) async {
+            await _fitPageToPhone();
+            if (!_tokenCaptured && url.contains('formula1.com')) {
+              await _tryCapture(silent: true);
+            }
+          },
+        ),
       )
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (url) async {
-          if (!_tokenCaptured && url.contains('formula1.com')) {
-            await _tryCapture(silent: true);
-          }
-        },
-      ))
       ..loadRequest(Uri.parse(_loginUrl));
+  }
+
+  /// Keeps a mobile viewport without applying CSS scaling: scaling the root
+  /// element makes Android WebView hit targets drift away from their visuals.
+  Future<void> _fitPageToPhone() async {
+    try {
+      await _controller.runJavaScript(r'''
+(function () {
+  var viewport = document.querySelector('meta[name="viewport"]');
+  if (!viewport) {
+    viewport = document.createElement('meta');
+    viewport.name = 'viewport';
+    document.head.appendChild(viewport);
+  }
+  viewport.content = 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes';
+})()
+''');
+    } catch (_) {
+      // Some intermediate identity pages block injected scripts.
+    }
   }
 
   /// Inspecciona cookies y localStorage de la página actual buscando el
@@ -60,6 +83,20 @@ class _FantasyLoginWebViewScreenState
   Future<void> _tryCapture({required bool silent}) async {
     try {
       if (!silent) _showBridgeErrors = true;
+      final currentUrl = await _controller.currentUrl();
+      final currentHost = Uri.tryParse(currentUrl ?? '')?.host;
+      if (currentHost != Uri.parse(_loginUrl).host) {
+        if (!silent) {
+          await _controller.loadRequest(Uri.parse(_loginUrl));
+          if (mounted) {
+            setState(
+              () => _status =
+                  'Volviendo a F1 Fantasy. Espera a ver tu cuenta y pulsa Capturar.',
+            );
+          }
+        }
+        return;
+      }
       final raw = await _controller.runJavaScriptReturningResult(r'''
 (function () {
   var out = { cookie: document.cookie || '', ls: {} };
@@ -82,14 +119,22 @@ class _FantasyLoginWebViewScreenState
         await auth.saveExternalToken(token);
         if (mounted) {
           setState(
-              () => _status = 'Sesión detectada. Descargando equipo y ligas…');
+            () => _status =
+                'Cuenta detectada. Pulsa Capturar para copiar equipo y ligas.',
+          );
         }
       }
+      // La web recarga varias veces durante y después del login. No debemos
+      // capturar ni cerrar el navegador desde onPageFinished: en ese momento
+      // la sesión privada puede existir pero equipo y ligas aún no estar listos.
+      if (silent) return;
       await _captureOfficialSnapshot();
       if (!silent && mounted) {
-        setState(() => _status =
-            'Comprobando la sesión con la web oficial. Si acabas de entrar, '
-                'espera unos segundos y vuelve a pulsar "Capturar sesión".');
+        setState(
+          () => _status =
+              'Comprobando la sesión con la web oficial. Si acabas de entrar, '
+              'espera unos segundos y vuelve a pulsar "Capturar sesión".',
+        );
       }
     } catch (e) {
       if (!silent && mounted) {
@@ -99,13 +144,17 @@ class _FantasyLoginWebViewScreenState
   }
 
   Future<void> _captureOfficialSnapshot() async {
+    await _controller.runJavaScript(
+      'window.f1RequestedLeagueId = ${jsonEncode(widget.leagueId)};',
+    );
     await _controller.runJavaScript(r'''
 (async function () {
+  let stage = 'session';
   try {
     const headers = {'Content-Type':'application/json', 'entity':'Wh@t$|_||>'};
     const readJson = async (url, options) => {
       const response = await fetch(url, Object.assign({credentials:'include', headers:headers}, options || {}));
-      if (!response.ok) throw new Error(url + ' -> ' + response.status);
+      if (!response.ok) throw new Error('HTTP ' + response.status);
       return await response.json();
     };
     const valueOf = value => value && value.Data && value.Data.Value !== undefined
@@ -118,16 +167,28 @@ class _FantasyLoginWebViewScreenState
     const guid = sessionValue.GUID || sessionValue.Guid || sessionValue.guid || sessionValue.UserGuid;
     if (!guid) throw new Error('Sesión abierta, pero no llegó el identificador de usuario');
 
+    stage = 'schedule';
     const schedule = await readJson('/feeds/v2/schedule/raceday_en.json');
     const fixtures = (schedule.Data && schedule.Data.fixtures) || [];
     const current = fixtures.find(x => Number(x.GDIsCurrent) === 1) || fixtures[0] || {};
     const gameDay = Number(current.GamedayId || current.Gameday || 1);
+    const schedulePhaseId = Number(current.PhaseId || current.PhaseID || current.phaseId || 1);
+    stage = 'teams';
     const teams = await readJson('/services/user/gameplay/' + guid + '/getusergamedaysv1/1');
-    const leagues = await readJson('/services/user/league/' + guid + '/getuserleague/1');
+    stage = 'leagues';
+    let leagues;
+    try {
+      // Endpoint used by the current (2026) F1 Fantasy web application.
+      leagues = await readJson('/services/user/league/' + guid + '/leaguelandingv1');
+    } catch (_) {
+      // Keep compatibility with snapshots from the previous API.
+      leagues = await readJson('/services/user/league/' + guid + '/getuserleague/1');
+    }
 
     const findArray = node => {
       if (!node || typeof node !== 'object') return [];
-      for (const key of ['Details','leagues','Leagues','Value','results']) {
+      if (Array.isArray(node)) return node;
+      for (const key of ['Details','leagues','Leagues','leaguesdata','Value','results']) {
         if (Array.isArray(node[key])) return node[key];
       }
       for (const value of Object.values(node)) {
@@ -136,24 +197,262 @@ class _FantasyLoginWebViewScreenState
       }
       return [];
     };
+    const teamRows = findArray(valueOf(teams));
+    const teamDetails = {};
+    const teamDetailErrors = [];
+    for (const team of teamRows.slice(0, 3)) {
+      const teamNo = Number(team.teamno || team.teamNo || team.teanNo || 1);
+      const md = team.mddetails || {};
+      const primaryDay = Number(team.cugdid) || gameDay;
+      const primaryInfo = md[String(primaryDay)] || md[primaryDay] || {};
+      const candidates = [
+        {day:primaryDay, phase:Number(primaryInfo.phId || primaryInfo.phaseId || schedulePhaseId || 1)},
+        ...Object.entries(md).reverse().map(([key, info]) => ({
+          day:Number(key),
+          phase:Number((info || {}).phId || (info || {}).phaseId || schedulePhaseId || 1)
+        })),
+        ...fixtures.slice().reverse().map(fixture => ({
+          day:Number(fixture.GamedayId || fixture.Gameday),
+          phase:Number(fixture.PhaseId || fixture.PhaseID || 1)
+        }))
+      ];
+      const seen = new Set();
+      for (const candidate of candidates) {
+        const candidateKey = candidate.day + ':' + candidate.phase;
+        if (!candidate.day || !candidate.phase || seen.has(candidateKey)) continue;
+        seen.add(candidateKey);
+        try {
+          const detail = await readJson(
+            '/services/user/gameplay/' + guid + '/getteam/1/' + teamNo + '/' + candidate.day + '/' + candidate.phase
+          );
+          const detailValue = valueOf(detail) || {};
+          if (Array.isArray(detailValue.userTeam) &&
+              detailValue.userTeam.length > 0) {
+            teamDetails[String(teamNo)] = Object.assign({}, detail, {gameDay:candidate.day});
+            break;
+          }
+        } catch (error) {
+          teamDetailErrors.push(String(error && error.message || error));
+        }
+      }
+      if (!teamDetails[String(teamNo)]) {
+        teamDetailErrors.push('NO_TEAM_DATA');
+      }
+    }
     const leagueRows = findArray(valueOf(leagues));
-    const leaderboards = {};
-    for (const league of leagueRows.slice(0, 20)) {
-      const id = league.LeagueId || league.LeagueID || league.league_id || league.id;
+    const field = (row, keys) => {
+      if (!row || typeof row !== 'object') return null;
+      for (const key of keys) {
+        const entry = Object.entries(row).find(([name]) =>
+          name.toLowerCase().replace(/[_-]/g, '') === key);
+        if (entry && entry[1] !== null && entry[1] !== undefined) return entry[1];
+      }
+      return null;
+    };
+    // These are current-count fields. Capacity fields such as MaxMembers,
+    // MaximumTeams, or TeamLimit must never be mistaken for the league size.
+    const teamCountFields = [
+      'teamcount', 'totalteams', 'numberofteams', 'noofteams',
+      'membercount', 'memcount', 'totalmembers', 'numberofmembers',
+      'noofmembers', 'participantcount', 'totalparticipants',
+      'entrycount', 'totalentries', 'totalrecord', 'totalrecords'
+    ];
+    const parseTeamCount = raw => {
+      if (raw === null || raw === '') return null;
+      const count = Number(raw);
+      return Number.isInteger(count) && count >= 0 ? count : null;
+    };
+    const nestedTeamCount = node => {
+      let count = null;
+      const visit = value => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+        for (const [name, child] of Object.entries(value)) {
+          const key = name.toLowerCase().replace(/[_-]/g, '');
+          if (teamCountFields.includes(key)) {
+            const candidate = parseTeamCount(child);
+            if (candidate !== null) count = Math.max(count === null ? 0 : count, candidate);
+          }
+          if (child && typeof child === 'object' && !Array.isArray(child)) visit(child);
+        }
+      };
+      visit(node);
+      return count;
+    };
+    const actualTeamCount = row => nestedTeamCount(row);
+    const leagueIdOf = row => field(row, ['leagueid', 'id']);
+    const isPrivateLeague = row => String(
+      field(row, ['leaguetype', 'type']) || ''
+    ).toLowerCase() === 'private';
+    const leagueAccess = {};
+    for (const league of leagueRows) {
+      const id = leagueIdOf(league);
       if (!id) continue;
-      const h2h = Number(league.IsHTHLeague || league.isHTHLeague || 0);
+      const teamCount = actualTeamCount(league);
+      leagueAccess[String(id)] = {
+        teamCount: teamCount,
+        blocked: teamCount !== null && teamCount > 20
+      };
+    }
+    const eventsByDay = new Map();
+    for (const fixture of fixtures) {
+      const day = Number(fixture.GamedayId || fixture.Gameday);
+      if (!day || day > gameDay) continue;
+      const label = fixture.GamedayName || fixture.RaceDayName ||
+        fixture.MeetingName || fixture.CircuitName || fixture.CountryName ||
+        fixture.EventName || fixture.Name || ('R' + day);
+      const isComplete = Number(fixture.GDIsLocked) === 1 &&
+        String(fixture.SessionType || '').toLowerCase() === 'race';
+      if (!eventsByDay.has(day)) {
+        eventsByDay.set(day, {gameDayId:day, label:String(label), isComplete:isComplete});
+      } else if (isComplete) {
+        eventsByDay.get(day).isComplete = true;
+      }
+    }
+    if (!eventsByDay.has(gameDay)) {
+      eventsByDay.set(gameDay, {gameDayId:gameDay, label:'R' + gameDay, isComplete:false});
+    }
+    const leagueEvents = Array.from(eventsByDay.values())
+      .sort((a, b) => a.gameDayId - b.gameDayId)
+      .slice(-24);
+    const leaderboards = {};
+    const leagueHistory = {};
+    // A login snapshot captures one league only. If a league was explicitly
+    // selected, never silently switch to another one (especially when it is
+    // blocked by the team-count policy).
+    const requestedId = window.f1RequestedLeagueId && String(window.f1RequestedLeagueId);
+    const activeLeague = requestedId
+      ? leagueRows.find(row => String(leagueIdOf(row)) === requestedId)
+      : leagueRows.find(row => {
+          const access = leagueAccess[String(leagueIdOf(row))];
+          return isPrivateLeague(row) && access && !access.blocked;
+        });
+    const activeId = activeLeague && String(leagueIdOf(activeLeague));
+    const activeAccess = activeId ? leagueAccess[activeId] : null;
+    const leagueTeamDetails = {};
+    const boardRows = [];
+    if (activeLeague && isPrivateLeague(activeLeague) && activeAccess && !activeAccess.blocked) {
+      const h2h = Number(field(activeLeague, ['isthleague']) || 0);
+      let board = null;
+      // If metadata omits the current size, fetch one board to inspect its
+      // actual entries before deciding whether any history/details are safe.
       try {
-        leaderboards[String(id)] = await readJson(
-          '/services/user/league/' + guid + '/getuserleaguemembers/1/' + id + '/' + h2h + '/' + gameDay + '/1/100/'
+        board = await readJson(
+          '/feeds/leaderboard/privateleague/list_1_' + activeId + '_0_1.json'
         );
-      } catch (_) {}
+      } catch (_) {
+        try {
+          board = await readJson(
+            '/services/user/league/' + guid + '/getuserleaguemembers/1/' + activeId + '/' + h2h + '/' + gameDay + '/1/100/'
+          );
+        } catch (_) {}
+      }
+      const seenBoardRows = new Set();
+      const collectRows = node => {
+        if (!node || typeof node !== 'object' || Array.isArray(node)) return;
+        for (const [name, value] of Object.entries(node)) {
+          if (Array.isArray(value) && ['userrank','memrank','leaderboard','members','entries'].includes(name.toLowerCase())) {
+            for (const row of value) {
+              if (boardRows.length >= 21) break;
+              if (!row || typeof row !== 'object') continue;
+              const owner = field(row, ['yuserguid','userguid','userid','guid','socialid']);
+              const teamNo = Number(field(row, ['teamno','teamnumber']));
+              const rowKey = owner && Number.isInteger(teamNo) && teamNo > 0
+                ? String(owner) + ':' + teamNo
+                : JSON.stringify(row);
+              if (seenBoardRows.has(rowKey)) continue;
+              seenBoardRows.add(rowKey);
+              boardRows.push(row);
+            }
+          } else if (value && typeof value === 'object') collectRows(value);
+          if (boardRows.length >= 21) return;
+        }
+      };
+      collectRows(board);
+      const reportedBoardCount = nestedTeamCount(board);
+      const boardTeamCount = Math.max(reportedBoardCount || 0, boardRows.length);
+      if (!board || (boardRows.length === 0 && reportedBoardCount === null && activeAccess.teamCount !== 0)) {
+        stage = 'league';
+        throw new Error('No se pudo verificar el tamaño de la liga; se conserva la captura anterior');
+      }
+      if (activeAccess.teamCount === null && boardTeamCount > 0) {
+        activeAccess.teamCount = boardTeamCount;
+      }
+      // A board can reveal that stale/partial metadata understated the size.
+      if (boardTeamCount > 20) {
+        activeAccess.teamCount = Math.max(activeAccess.teamCount || 0, boardTeamCount);
+        activeAccess.blocked = true;
+      }
+      if (!activeAccess.blocked && board) {
+        leaderboards[activeId] = board;
+        const history = {};
+        for (const event of leagueEvents) {
+          try {
+            history[String(event.gameDayId)] = await readJson(
+              '/feeds/leaderboard/privateleague/list_2_' + activeId + '_' + event.gameDayId + '_1.json'
+            );
+          } catch (_) {
+            try {
+              history[String(event.gameDayId)] = await readJson(
+                '/services/user/league/' + guid + '/getuserleaguemembers/1/' + activeId + '/' + h2h + '/' + event.gameDayId + '/1/100/'
+              );
+            } catch (_) {}
+          }
+        }
+        leagueHistory[activeId] = history;
+      }
+    }
+    // Opponent team details are requested only for the one permitted league.
+    if (activeId && activeAccess && !activeAccess.blocked && leaderboards[activeId]) {
+      const unique = new Map();
+      for (const row of boardRows) {
+        const owner = field(row, ['yuserguid','userguid','userid','guid','socialid']);
+        const teamNo = Number(field(row, ['teamno','teamnumber']));
+        if (!owner || !Number.isInteger(teamNo) || teamNo < 1 || teamNo > 3) continue;
+        unique.set(String(owner) + ':' + teamNo, {owner:String(owner), teamNo:teamNo, row:row});
+      }
+      const jobs = Array.from(unique.entries()).sort((a,b) =>
+        Number(field(a[1].row, ['ovrank','curank','currank','userrank','rank','position']) || 999) -
+        Number(field(b[1].row, ['ovrank','curank','currank','userrank','rank','position']) || 999)).slice(0,20);
+      leagueTeamDetails[activeId] = {};
+      for (const [key, job] of jobs) {
+        const own = job.owner === String(guid) && teamDetails[String(job.teamNo)];
+        if (own && Number(own.gameDay) === gameDay) {
+          leagueTeamDetails[activeId][key] = own;
+          continue;
+        }
+        try {
+          const detailUrl = job.owner === String(guid)
+            ? '/services/user/gameplay/' + encodeURIComponent(job.owner) +
+              '/getteam/1/' + job.teamNo + '/' + gameDay + '/' + schedulePhaseId
+            : '/services/user/opponentteam/opponentgamedayplayerteamget/1/' +
+              encodeURIComponent(job.owner) + '/' + job.teamNo + '/' + gameDay + '/' + schedulePhaseId;
+          const detail = await readJson(detailUrl);
+          const value = valueOf(detail) || {};
+          if (Array.isArray(value.userTeam) && value.userTeam.length) {
+            leagueTeamDetails[activeId][key] = Object.assign({}, detail, {gameDay:gameDay});
+          }
+        } catch (_) {
+          // El servicio puede ocultar alineaciones antes del cierre.
+        }
+      }
+    }
+    if (activeLeague && isPrivateLeague(activeLeague) && activeAccess &&
+        !activeAccess.blocked && !leaderboards[activeId]) {
+      stage = 'league';
+      throw new Error('La liga seleccionada no devolvió su clasificación; se conserva la captura anterior');
     }
     F1Bridge.postMessage(JSON.stringify({
       capturedAt:new Date().toISOString(), guid:guid, gameDay:gameDay,
-      session:session, teams:teams, leagues:leagues, leaderboards:leaderboards
+      session:session, teams:teams, teamDetails:teamDetails,
+      teamDetailErrors:teamDetailErrors,
+      leagues:leagues, leagueAccess:leagueAccess, leaderboards:leaderboards,
+      leagueEvents:leagueEvents, leagueHistory:leagueHistory, leagueTeamDetails:leagueTeamDetails
     }));
   } catch (error) {
-    F1Bridge.postMessage(JSON.stringify({error:String(error && error.message || error)}));
+    F1Bridge.postMessage(JSON.stringify({
+      errorStage:stage,
+      error:String(error && error.message || error)
+    }));
   }
 })()
 ''');
@@ -162,11 +461,37 @@ class _FantasyLoginWebViewScreenState
   Future<void> _onBridgeMessage(JavaScriptMessage message) async {
     try {
       final decoded = jsonDecode(message.message);
+      if (kDebugMode) {
+        debugPrint(
+          '[F1_CAPTURE_STRUCTURE] ${jsonEncode(_structureOf(decoded))}',
+        );
+        final board = _firstLeagueBoard(
+          decoded is Map ? decoded['leagueHistory'] : null,
+        );
+        if (board != null) _logLeagueBoardShape(board);
+      }
       if (decoded is Map && decoded['error'] != null) {
+        if (kDebugMode) {
+          debugPrint('[F1_CAPTURE_ERROR_STAGE] ${decoded['errorStage']}');
+        }
         if (_showBridgeErrors && mounted) {
-          setState(() => _status =
-              'Todavía no se detecta una cuenta conectada. Inicia sesión en '
-              'la web y vuelve a pulsar "Capturar sesión".');
+          setState(
+            () => _status = decoded['errorStage'] == 'league'
+                ? 'No llegó la clasificación de la liga. La captura anterior se conserva; vuelve a intentarlo.'
+                : 'Todavía no se detecta una cuenta conectada. Inicia sesión en '
+                      'la web y vuelve a pulsar "Capturar sesión".',
+          );
+        }
+        return;
+      }
+      final details = decoded is Map ? decoded['teamDetails'] : null;
+      if (details is! Map || details.isEmpty) {
+        if (mounted) {
+          setState(
+            () => _status =
+                'La cuenta esta abierta, pero aun no llego el equipo. '
+                'Abre "Mi equipo", espera unos segundos y pulsa Capturar.',
+          );
         }
         return;
       }
@@ -181,7 +506,56 @@ class _FantasyLoginWebViewScreenState
     } catch (error) {
       if (mounted) {
         setState(
-            () => _status = 'La web respondió con datos no válidos: $error');
+          () => _status = 'La web respondió con datos no válidos: $error',
+        );
+      }
+    }
+  }
+
+  dynamic _structureOf(dynamic value, [int depth = 0]) {
+    if (depth >= 4) return value.runtimeType.toString();
+    if (value is Map) {
+      return <String, dynamic>{
+        for (final entry in value.entries.take(30))
+          entry.key.toString(): _structureOf(entry.value, depth + 1),
+      };
+    }
+    if (value is List) {
+      return <String, dynamic>{
+        'length': value.length,
+        if (value.isNotEmpty) 'first': _structureOf(value.first, depth + 1),
+      };
+    }
+    return value.runtimeType.toString();
+  }
+
+  dynamic _firstLeagueBoard(dynamic history) {
+    if (history is! Map || history.isEmpty) return null;
+    final league = history.values.first;
+    if (league is! Map || league.isEmpty) return null;
+    return league.values.first;
+  }
+
+  void _logLeagueBoardShape(
+    dynamic value, [
+    String path = r'$',
+    int depth = 0,
+  ]) {
+    if (depth > 5) return;
+    if (value is Map) {
+      debugPrint('[F1_LEAGUE_SHAPE] $path keys=${value.keys.join('|')}');
+      for (final entry in value.entries) {
+        if (entry.value is Map || entry.value is List) {
+          _logLeagueBoardShape(entry.value, '$path.${entry.key}', depth + 1);
+        }
+      }
+    } else if (value is List) {
+      debugPrint('[F1_LEAGUE_SHAPE] $path length=${value.length}');
+      if (value.isNotEmpty && value.first is Map) {
+        final first = value.first as Map;
+        debugPrint(
+          '[F1_LEAGUE_SHAPE] $path[0] fields=${first.entries.map((entry) => '${entry.key}:${entry.value.runtimeType}').join('|')}',
+        );
       }
     }
   }
@@ -214,30 +588,48 @@ class _FantasyLoginWebViewScreenState
     text = text.replaceAll(r'\"', '"');
     final match =
         RegExp('"subscriptionToken"\\s*:\\s*"([^"]+)"').firstMatch(text) ??
-            RegExp('subscriptionToken=([A-Za-z0-9._-]+)').firstMatch(text);
+        RegExp('subscriptionToken=([A-Za-z0-9._-]+)').firstMatch(text);
     return match?.group(1);
   }
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Iniciar sesión (navegador)')),
+      appBar: AppBar(
+        title: const Text('Conectar F1 Fantasy'),
+        actions: [
+          IconButton(
+            tooltip: 'Volver a F1 Fantasy',
+            onPressed: () => _controller.loadRequest(Uri.parse(_loginUrl)),
+            icon: const Icon(Icons.home_rounded),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             color: AppColors.surface2,
             child: Row(
               children: [
                 Expanded(
-                  child: Text(_status,
-                      style: AppText.body(12, color: AppColors.textSecondary)),
+                  child: Text(
+                    _status,
+                    style: AppText.body(12, color: AppColors.textSecondary),
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 ElevatedButton(
                   onPressed: () => _tryCapture(silent: false),
-                  child: const Text('CAPTURAR SESIÓN'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                  child: const Text('CAPTURAR'),
                 ),
               ],
             ),

@@ -1,4 +1,4 @@
-/// Reglas del juego F1 Fantasy 2026 (PLAN_DESARROLLO.md, sección 2).
+/// Reglas del juego F1 Fantasy 2026 (docs/archive/PLAN_DESARROLLO.md, sección 2).
 /// Verificar contra fantasy.formula1.com al inicio del proyecto: pueden cambiar.
 class GameRules {
   GameRules._();
@@ -31,9 +31,12 @@ class AssetPaths {
 
   static const String scoringTable = 'assets/scoring_2026.json';
   static const String modelWeights = 'assets/model_weights.json';
-  static const String remoteConfigFallback = 'assets/remote_config_fallback.json';
-  static const String driverStandingsFallback = 'assets/driver_standings_2026.json';
-  static const String constructorStandingsFallback = 'assets/constructor_standings_2026.json';
+  static const String remoteConfigFallback =
+      'assets/remote_config_fallback.json';
+  static const String driverStandingsFallback =
+      'assets/driver_standings_2026.json';
+  static const String constructorStandingsFallback =
+      'assets/constructor_standings_2026.json';
 }
 
 class AppMeta {

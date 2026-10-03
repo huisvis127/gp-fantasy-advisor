@@ -38,7 +38,8 @@ class FantasyAssetInfo {
     return AssetPrediction(
       assetId: id,
       expectedPoints: expectedPoints,
-      winProbability: wins > 0 ? (0.05 + wins * 0.03).clamp(0, 0.55).toDouble() : 0.01,
+      winProbability:
+          wins > 0 ? (0.05 + wins * 0.03).clamp(0, 0.55).toDouble() : 0.01,
       podiumProbability: (rankScore / 120).clamp(0, 0.85).toDouble(),
       top10Probability: kind == FantasyAssetKind.driver
           ? (position <= 10 ? 0.78 : 0.35).toDouble()
@@ -55,15 +56,20 @@ class FantasyAssetInfo {
 
 enum FantasyAssetKind { driver, constructor }
 
-final fantasyDriverAssetInfoProvider = FutureProvider<List<FantasyAssetInfo>>((ref) async {
+final fantasyDriverAssetInfoProvider =
+    FutureProvider<List<FantasyAssetInfo>>((ref) async {
   final json = await _loadJsonWithFallback(
     ref,
     'https://api.jolpi.ca/ergast/f1/2026/driverStandings.json',
     AssetPaths.driverStandingsFallback,
   );
-  final standings = json['MRData']?['StandingsTable']?['StandingsLists'] as List<dynamic>? ?? [];
-  final round = int.tryParse(standings.firstOrNull?['round']?.toString() ?? '') ?? 9;
-  final rows = standings.firstOrNull?['DriverStandings'] as List<dynamic>? ?? [];
+  final standings =
+      json['MRData']?['StandingsTable']?['StandingsLists'] as List<dynamic>? ??
+          [];
+  final round =
+      int.tryParse(standings.firstOrNull?['round']?.toString() ?? '') ?? 9;
+  final rows =
+      standings.firstOrNull?['DriverStandings'] as List<dynamic>? ?? [];
   final maxPoints = rows
       .map((r) => double.tryParse(r['points']?.toString() ?? '') ?? 0)
       .fold<double>(0, math.max);
@@ -72,12 +78,15 @@ final fantasyDriverAssetInfoProvider = FutureProvider<List<FantasyAssetInfo>>((r
     final row = raw as Map<String, dynamic>;
     final driver = row['Driver'] as Map<String, dynamic>;
     final constructors = row['Constructors'] as List<dynamic>? ?? const [];
-    final constructor = constructors.isEmpty ? const <String, dynamic>{} : constructors.first as Map<String, dynamic>;
+    final constructor = constructors.isEmpty
+        ? const <String, dynamic>{}
+        : constructors.first as Map<String, dynamic>;
     final points = double.tryParse(row['points']?.toString() ?? '') ?? 0;
     final position = int.tryParse(row['position']?.toString() ?? '') ?? 99;
     final wins = int.tryParse(row['wins']?.toString() ?? '') ?? 0;
     final id = driver['driverId'].toString();
-    final name = '${driver['givenName'] ?? ''} ${driver['familyName'] ?? ''}'.trim();
+    final name =
+        '${driver['givenName'] ?? ''} ${driver['familyName'] ?? ''}'.trim();
     final baseExpected = round <= 0 ? points : points / round;
     return FantasyAssetInfo(
       id: id,
@@ -93,15 +102,20 @@ final fantasyDriverAssetInfoProvider = FutureProvider<List<FantasyAssetInfo>>((r
   }).toList();
 });
 
-final fantasyConstructorAssetInfoProvider = FutureProvider<List<FantasyAssetInfo>>((ref) async {
+final fantasyConstructorAssetInfoProvider =
+    FutureProvider<List<FantasyAssetInfo>>((ref) async {
   final json = await _loadJsonWithFallback(
     ref,
     'https://api.jolpi.ca/ergast/f1/2026/constructorStandings.json',
     AssetPaths.constructorStandingsFallback,
   );
-  final standings = json['MRData']?['StandingsTable']?['StandingsLists'] as List<dynamic>? ?? [];
-  final round = int.tryParse(standings.firstOrNull?['round']?.toString() ?? '') ?? 9;
-  final rows = standings.firstOrNull?['ConstructorStandings'] as List<dynamic>? ?? [];
+  final standings =
+      json['MRData']?['StandingsTable']?['StandingsLists'] as List<dynamic>? ??
+          [];
+  final round =
+      int.tryParse(standings.firstOrNull?['round']?.toString() ?? '') ?? 9;
+  final rows =
+      standings.firstOrNull?['ConstructorStandings'] as List<dynamic>? ?? [];
   final maxPoints = rows
       .map((r) => double.tryParse(r['points']?.toString() ?? '') ?? 0)
       .fold<double>(0, math.max);
@@ -129,20 +143,26 @@ final fantasyConstructorAssetInfoProvider = FutureProvider<List<FantasyAssetInfo
   }).toList();
 });
 
-final fallbackDriverPredictionsProvider = FutureProvider<List<AssetPrediction>>((ref) async {
+final fallbackDriverPredictionsProvider =
+    FutureProvider<List<AssetPrediction>>((ref) async {
   final rows = await ref.watch(fantasyDriverAssetInfoProvider.future);
   return rows.map((r) => r.toPrediction()).toList();
 });
 
-final constructorPredictionsProvider = FutureProvider<List<AssetPrediction>>((ref) async {
+final constructorPredictionsProvider =
+    FutureProvider<List<AssetPrediction>>((ref) async {
   final rows = await ref.watch(fantasyConstructorAssetInfoProvider.future);
   return rows.map((r) => r.toPrediction()).toList();
 });
 
-final fantasyAssetNameProvider = FutureProvider<Map<String, FantasyAssetInfo>>((ref) async {
+final fantasyAssetNameProvider =
+    FutureProvider<Map<String, FantasyAssetInfo>>((ref) async {
   final drivers = await ref.watch(fantasyDriverAssetInfoProvider.future);
-  final constructors = await ref.watch(fantasyConstructorAssetInfoProvider.future);
-  return {for (final row in [...drivers, ...constructors]) row.id: row};
+  final constructors =
+      await ref.watch(fantasyConstructorAssetInfoProvider.future);
+  return {
+    for (final row in [...drivers, ...constructors]) row.id: row
+  };
 });
 
 Future<Map<String, dynamic>> _loadJsonWithFallback(

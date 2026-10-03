@@ -1,0 +1,365 @@
+{
+  "method": "OpenF1 practices; train 2023-2024; validation 2025",
+  "step": 0.01,
+  "sample_count": 38,
+  "samples_by_year": {
+    "2023": 12,
+    "2024": 14,
+    "2025": 12
+  },
+  "fp1_fp2": {
+    "weights": {
+      "fp1": 0.61,
+      "fp2": 0.39
+    },
+    "train": {
+      "spearman": 0.6083646257857134,
+      "top5_capture": 0.7694911393053357,
+      "fantasy_regret": 28.884615384615383,
+      "races": 26
+    },
+    "validation": {
+      "spearman": 0.580168720495652,
+      "top5_capture": 0.7184270181284109,
+      "fantasy_regret": 34.916666666666664,
+      "races": 12
+    }
+  },
+  "fp1_fp2_fp3": {
+    "weights": {
+      "fp1": 0.43,
+      "fp2": 0.01,
+      "fp3": 0.56
+    },
+    "train": {
+      "spearman": 0.64751742873212,
+      "top5_capture": 0.808754311810665,
+      "fantasy_regret": 23.807692307692307,
+      "races": 26
+    },
+    "validation": {
+      "spearman": 0.6483129762353614,
+      "top5_capture": 0.789707399164511,
+      "fantasy_regret": 26.166666666666668,
+      "races": 12
+    }
+  },
+  "baselines": {
+    "provisional_fp1_fp2": {
+      "weights": {
+        "fp1": 0.5,
+        "fp2": 0.5
+      },
+      "train": {
+        "spearman": 0.5972456129799568,
+        "top5_capture": 0.7559209317351283,
+        "fantasy_regret": 30.576923076923077,
+        "races": 26
+      },
+      "validation": {
+        "spearman": 0.5849936073481095,
+        "top5_capture": 0.7763375041600966,
+        "fantasy_regret": 27.666666666666668,
+        "races": 12
+      }
+    },
+    "provisional_fp1_fp2_fp3": {
+      "weights": {
+        "fp1": 0.2,
+        "fp2": 0.4,
+        "fp3": 0.4
+      },
+      "train": {
+        "spearman": 0.6028284644541696,
+        "top5_capture": 0.7372305665010968,
+        "fantasy_regret": 32.65384615384615,
+        "races": 26
+      },
+      "validation": {
+        "spearman": 0.6274336216570492,
+        "top5_capture": 0.795304119597255,
+        "fantasy_regret": 25.333333333333332,
+        "races": 12
+      }
+    },
+    "equal_fp1_fp2_fp3": {
+      "weights": {
+        "fp1": 0.3333333333333333,
+        "fp2": 0.3333333333333333,
+        "fp3": 0.3333333333333333
+      },
+      "train": {
+        "spearman": 0.6301338649900277,
+        "top5_capture": 0.7658566029351582,
+        "fantasy_regret": 29.307692307692307,
+        "races": 26
+      },
+      "validation": {
+        "spearman": 0.6339575079365811,
+        "top5_capture": 0.7970979208267632,
+        "fantasy_regret": 25.083333333333332,
+        "races": 12
+      }
+    }
+  },
+  "details": {
+    "fp1_fp2": {
+      "top_train_candidates": [
+        {
+          "weights": {
+            "fp1": 0.61,
+            "fp2": 0.39
+          },
+          "metrics": {
+            "spearman": 0.6083646257857134,
+            "top5_capture": 0.7694911393053357,
+            "fantasy_regret": 28.884615384615383,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.68,
+            "fp2": 0.32
+          },
+          "metrics": {
+            "spearman": 0.6058803936409201,
+            "top5_capture": 0.773798831613028,
+            "fantasy_regret": 28.346153846153847,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.62,
+            "fp2": 0.38
+          },
+          "metrics": {
+            "spearman": 0.6073012039171484,
+            "top5_capture": 0.7694911393053357,
+            "fantasy_regret": 28.884615384615383,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.64,
+            "fp2": 0.36
+          },
+          "metrics": {
+            "spearman": 0.6072632285619588,
+            "top5_capture": 0.7694911393053357,
+            "fantasy_regret": 28.884615384615383,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.67,
+            "fp2": 0.33
+          },
+          "metrics": {
+            "spearman": 0.6054598638422128,
+            "top5_capture": 0.773798831613028,
+            "fantasy_regret": 28.346153846153847,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.66,
+            "fp2": 0.34
+          },
+          "metrics": {
+            "spearman": 0.6054577355083253,
+            "top5_capture": 0.773798831613028,
+            "fantasy_regret": 28.346153846153847,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.63,
+            "fp2": 0.37
+          },
+          "metrics": {
+            "spearman": 0.6068618233255569,
+            "top5_capture": 0.7694911393053357,
+            "fantasy_regret": 28.884615384615383,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.6,
+            "fp2": 0.4
+          },
+          "metrics": {
+            "spearman": 0.6064972912908345,
+            "top5_capture": 0.7627219085361051,
+            "fantasy_regret": 29.73076923076923,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.65,
+            "fp2": 0.35
+          },
+          "metrics": {
+            "spearman": 0.6036470576688923,
+            "top5_capture": 0.7694911393053357,
+            "fantasy_regret": 28.884615384615383,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.59,
+            "fp2": 0.41
+          },
+          "metrics": {
+            "spearman": 0.6048283392763552,
+            "top5_capture": 0.7627219085361051,
+            "fantasy_regret": 29.73076923076923,
+            "races": 26
+          }
+        }
+      ]
+    },
+    "fp1_fp2_fp3": {
+      "top_train_candidates": [
+        {
+          "weights": {
+            "fp1": 0.43,
+            "fp2": 0.01,
+            "fp3": 0.56
+          },
+          "metrics": {
+            "spearman": 0.64751742873212,
+            "top5_capture": 0.808754311810665,
+            "fantasy_regret": 23.807692307692307,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.44,
+            "fp2": 0.0,
+            "fp3": 0.56
+          },
+          "metrics": {
+            "spearman": 0.6465462698014741,
+            "top5_capture": 0.808754311810665,
+            "fantasy_regret": 23.807692307692307,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.43,
+            "fp2": 0.0,
+            "fp3": 0.57
+          },
+          "metrics": {
+            "spearman": 0.6460241271657672,
+            "top5_capture": 0.808754311810665,
+            "fantasy_regret": 23.807692307692307,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.44,
+            "fp2": 0.01,
+            "fp3": 0.55
+          },
+          "metrics": {
+            "spearman": 0.6457825084814542,
+            "top5_capture": 0.808754311810665,
+            "fantasy_regret": 23.807692307692307,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.42,
+            "fp2": 0.01,
+            "fp3": 0.57
+          },
+          "metrics": {
+            "spearman": 0.6453539689536338,
+            "top5_capture": 0.808754311810665,
+            "fantasy_regret": 23.807692307692307,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.45,
+            "fp2": 0.01,
+            "fp3": 0.54
+          },
+          "metrics": {
+            "spearman": 0.6448331091961937,
+            "top5_capture": 0.808754311810665,
+            "fantasy_regret": 23.807692307692307,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.45,
+            "fp2": 0.0,
+            "fp3": 0.55
+          },
+          "metrics": {
+            "spearman": 0.6441181589164692,
+            "top5_capture": 0.808754311810665,
+            "fantasy_regret": 23.807692307692307,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.44,
+            "fp2": 0.12,
+            "fp3": 0.44
+          },
+          "metrics": {
+            "spearman": 0.6440871325219345,
+            "top5_capture": 0.8020757822609466,
+            "fantasy_regret": 24.807692307692307,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.37,
+            "fp2": 0.02,
+            "fp3": 0.61
+          },
+          "metrics": {
+            "spearman": 0.641329072949583,
+            "top5_capture": 0.8081389271952804,
+            "fantasy_regret": 23.884615384615383,
+            "races": 26
+          }
+        },
+        {
+          "weights": {
+            "fp1": 0.37,
+            "fp2": 0.07,
+            "fp3": 0.56
+          },
+          "metrics": {
+            "spearman": 0.6472020288495712,
+            "top5_capture": 0.7903834745686389,
+            "fantasy_regret": 26.26923076923077,
+            "races": 26
+          }
+        }
+      ]
+    }
+  }
+}

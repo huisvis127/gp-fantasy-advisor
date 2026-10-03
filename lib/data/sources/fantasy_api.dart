@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 
 import '../../domain/models/fantasy_price.dart';
+import '../../domain/models/fantasy_points.dart';
+import '../../domain/models/fantasy_round_snapshot.dart';
+import '../../domain/models/live_fantasy.dart';
 
 /// Cliente de la API no oficial de F1 Fantasy (sección 3.1 del plan).
 /// - Endpoints públicos (`players`, `teams`): precios de mercado, sin auth.
@@ -14,14 +17,77 @@ import '../../domain/models/fantasy_price.dart';
 /// se leen de `RemoteConfig` para poder corregirlas sin publicar versión.
 class FantasyApi {
   FantasyApi(this._dio, {required String publicBaseUrl})
-      : _publicBaseUrl = publicBaseUrl;
+    : _publicBaseUrl = publicBaseUrl;
 
   final Dio _dio;
   final String _publicBaseUrl;
 
+  /// Feed que utiliza la web oficial para la clasificación general de una
+  /// liga privada. Permite refrescar la tabla sin repetir el login.
+  Future<Map<String, dynamic>> getPrivateLeagueStandings(
+    String leagueId,
+  ) async {
+    final id = Uri.encodeComponent(leagueId);
+    final response = await _dio.get<Map<String, dynamic>>(
+      '$_publicBaseUrl/feeds/leaderboard/privateleague/list_1_${id}_0_1.json',
+    );
+    return response.data ?? {};
+  }
+
   /// Precios actuales de pilotos y constructores. Público, sin token.
   Future<List<FantasyPrice>> getCurrentPrices(int season) async {
     final assets = await _getOfficialAssets();
+    return _pricesFromAssets(assets, season: season);
+  }
+
+  /// Descarga las últimas jornadas públicas. Las jornadas anteriores traen
+  /// puntos fantasy ya consolidados; la actual se conserva para precio y
+  /// directo, pero sus puntos no se persisten como resultado final.
+  Future<List<FantasyRoundSnapshot>> getRecentRoundSnapshots(
+    int season, {
+    int count = 3,
+  }) async {
+    final currentRound = await _getCurrentGameDayId();
+    final firstRound = (currentRound - count + 1).clamp(1, currentRound);
+    final snapshots = <FantasyRoundSnapshot>[];
+    for (var round = firstRound; round <= currentRound; round++) {
+      final assets = await _getOfficialAssetsForGameDay(round);
+      final prices = _pricesFromAssets(assets, season: season, round: round);
+      final points = assets.map((json) {
+        final isConstructor = json['is_constructor'] == true;
+        final rawPoints = json['GamedayPoints'] ?? json['gameday_points'] ?? 0;
+        return FantasyPoints(
+          assetId: json['canonical_id'].toString(),
+          assetType: isConstructor
+              ? FantasyAssetType.constructor
+              : FantasyAssetType.driver,
+          season: season,
+          round: round,
+          points:
+              (rawPoints is num
+                      ? rawPoints
+                      : double.tryParse(rawPoints.toString()) ?? 0)
+                  .round(),
+        );
+      }).toList();
+      snapshots.add(
+        FantasyRoundSnapshot(
+          season: season,
+          round: round,
+          prices: prices,
+          points: points,
+          isCurrent: round == currentRound,
+        ),
+      );
+    }
+    return snapshots;
+  }
+
+  List<FantasyPrice> _pricesFromAssets(
+    List<Map<String, dynamic>> assets, {
+    required int season,
+    int? round,
+  }) {
     return assets.map((json) {
       final isConstructor = json['is_constructor'] == true;
       final rawPrice = (json['price'] as num?)?.toDouble() ?? 0;
@@ -31,7 +97,7 @@ class FantasyApi {
             ? FantasyAssetType.constructor
             : FantasyAssetType.driver,
         season: season,
-        round: (json['round'] as num?)?.toInt() ?? 0,
+        round: round ?? (json['round'] as num?)?.toInt() ?? 0,
         priceMillions: rawPrice > 40 ? rawPrice / 10.0 : rawPrice,
       );
     }).toList();
@@ -45,11 +111,13 @@ class FantasyApi {
     final cookieJson = jsonEncode({
       'data': {'subscriptionToken': token},
     });
-    return Options(headers: {
-      'Authorization': 'Bearer $token',
-      'Cookie': 'login-session=${Uri.encodeComponent(cookieJson)}',
-      'X-F1-COOKIE-DATA': base64Encode(utf8.encode(cookieJson)),
-    });
+    return Options(
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Cookie': 'login-session=${Uri.encodeComponent(cookieJson)}',
+        'X-F1-COOKIE-DATA': base64Encode(utf8.encode(cookieJson)),
+      },
+    );
   }
 
   /// Lista cruda de jugadores/constructores del juego (público, sin token):
@@ -59,10 +127,73 @@ class FantasyApi {
     return _getOfficialAssets();
   }
 
+  Future<List<Map<String, dynamic>>> getGameDayAssets(int gameDay) {
+    if (gameDay < 1) throw ArgumentError.value(gameDay, 'gameDay');
+    return _getOfficialAssetsForGameDay(gameDay);
+  }
+
   /// La web 2026 publica precios y catálogo como feeds JSON. Primero se
   /// resuelve la jornada actual desde el calendario y después se descarga
   /// `drivers/{gameday}_en.json`, que incluye pilotos y constructores.
   Future<List<Map<String, dynamic>>> _getOfficialAssets() async {
+    final gameDayId = await _getCurrentGameDayId();
+    return _getOfficialAssetsForGameDay(gameDayId);
+  }
+
+  /// Puntuación pública oficial de la jornada. Durante las sesiones puede
+  /// cambiar y se etiqueta siempre como provisional en la interfaz.
+  Future<LiveFantasySnapshot> getLiveSnapshot(int season) async {
+    final fixture = await _getCurrentFixture();
+    final round = int.tryParse(fixture['GamedayId'].toString()) ?? 1;
+    final assets = await _getOfficialAssetsForGameDay(round);
+    double number(dynamic value) => value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '') ?? 0;
+    final scores = assets.map((asset) {
+      final rawSessions = asset['SessionWisePoints'];
+      final sessions = rawSessions is List
+          ? rawSessions.whereType<Map>().map((session) {
+              final raw = session['points'];
+              return LiveSessionScore(
+                sessionName: session['sessiontype']?.toString() ?? 'Sesión',
+                points: raw == null ? null : number(raw),
+              );
+            }).toList()
+          : const <LiveSessionScore>[];
+      return LiveAssetScore(
+        assetId: asset['canonical_id'].toString(),
+        assetType: asset['is_constructor'] == true
+            ? FantasyAssetType.constructor
+            : FantasyAssetType.driver,
+        displayName: asset['display_name']?.toString() ?? '',
+        points: number(asset['GamedayPoints']),
+        projectedPoints: number(asset['ProjectedGamedayPoints']),
+        selectedPercentage: number(asset['SelectedPercentage']),
+        captainSelectedPercentage: number(asset['CaptainSelectedPercentage']),
+        sessions: sessions,
+      );
+    }).toList()..sort((a, b) => b.points.compareTo(a.points));
+    return LiveFantasySnapshot(
+      season: season,
+      round: round,
+      meetingName: fixture['MeetingName']?.toString() ?? 'Gran Premio',
+      sessionName: fixture['SessionName']?.toString() ?? 'Jornada',
+      isLive: fixture['IsLive'] == 1 || fixture['IsLive'] == '1',
+      isLocked: fixture['GDIsLocked'] == 1 || fixture['GDIsLocked'] == '1',
+      deadline: DateTime.tryParse(
+        fixture['SessionStartDateISO8601']?.toString() ?? '',
+      )?.toLocal(),
+      updatedAt: DateTime.now(),
+      assets: scores,
+    );
+  }
+
+  Future<int> _getCurrentGameDayId() async {
+    final current = await _getCurrentFixture();
+    return int.tryParse(current['GamedayId'].toString()) ?? 1;
+  }
+
+  Future<Map<String, dynamic>> _getCurrentFixture() async {
     final scheduleResponse = await _dio.get<Map<String, dynamic>>(
       '$_publicBaseUrl/feeds/v2/schedule/raceday_en.json',
     );
@@ -71,14 +202,18 @@ class FantasyApi {
         ? (scheduleData['fixtures'] as List<dynamic>? ?? const [])
         : const <dynamic>[];
     final current = fixtures.cast<Map>().firstWhere(
-          (row) => row['GDIsCurrent'] == 1 || row['GDIsCurrent'] == '1',
-          orElse: () => fixtures.cast<Map>().lastWhere(
-                (row) => row['GDIsLocked'] == 1 || row['GDIsLocked'] == '1',
-                orElse: () => const {'GamedayId': 1},
-              ),
-        );
-    final gameDayId = int.tryParse(current['GamedayId'].toString()) ?? 1;
+      (row) => row['GDIsCurrent'] == 1 || row['GDIsCurrent'] == '1',
+      orElse: () => fixtures.cast<Map>().lastWhere(
+        (row) => row['GDIsLocked'] == 1 || row['GDIsLocked'] == '1',
+        orElse: () => const {'GamedayId': 1},
+      ),
+    );
+    return Map<String, dynamic>.from(current);
+  }
 
+  Future<List<Map<String, dynamic>>> _getOfficialAssetsForGameDay(
+    int gameDayId,
+  ) async {
     final assetsResponse = await _dio.get<Map<String, dynamic>>(
       '$_publicBaseUrl/feeds/drivers/${gameDayId}_en.json',
     );
@@ -90,14 +225,16 @@ class FantasyApi {
     return rawAssets.whereType<Map>().map((raw) {
       final item = Map<String, dynamic>.from(raw);
       final skill = int.tryParse(item['Skill'].toString()) ?? 1;
-      final isConstructor = skill == 2 ||
+      final isConstructor =
+          skill == 2 ||
           item['PositionName']?.toString().toUpperCase() == 'CONSTRUCTOR';
-      final name = (item['FUllName'] ??
-              item['FullName'] ??
-              item['TeamName'] ??
-              item['DisplayName'] ??
-              '')
-          .toString();
+      final name =
+          (item['FUllName'] ??
+                  item['FullName'] ??
+                  item['TeamName'] ??
+                  item['DisplayName'] ??
+                  '')
+              .toString();
       return <String, dynamic>{
         ...item,
         'id': (item['PlayerId'] ?? item['id']).toString(),
@@ -134,8 +271,10 @@ class FantasyApi {
     }
     if (normalized.contains('max verstappen')) return 'max_verstappen';
     if (normalized.contains('arvid lindblad')) return 'arvid_lindblad';
-    final parts =
-        normalized.split(' ').where((part) => part.isNotEmpty).toList();
+    final parts = normalized
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .toList();
     return parts.isEmpty ? normalized.replaceAll(' ', '_') : parts.last;
   }
 

@@ -8,9 +8,29 @@ build/
 android/local.properties
 android/key.properties
 android/app/*.jks
+android/app/src/google-services.json
 ios/Flutter/Flutter.podspec
 ios/Pods/
 .DS_Store
 tools/__pycache__/
 tools/.venv/
 *.pyc
+.cache/
+tools/.cache/
+
+# Material local, prototipos y archivos anteriores.
+.local/
+.codex-remote-attachments/
+.playwright-cli/
+dist/
+releases/
+
+# Instaladores y credenciales: nunca forman parte del código fuente.
+*.apk
+*.aab
+*.jks
+*.keystore
+.env
+.env.*
+!.env.example
+android/app/google-services.json

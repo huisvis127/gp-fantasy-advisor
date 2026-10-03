@@ -1,6 +1,6 @@
 # Plan — Predicción por etapas del fin de semana
 
-**Fecha:** 05/07/2026 · **Objetivo:** que la predicción mejore a medida que avanza el fin de semana, como pidió Luis: una predicción *pre-finde*, otra *con FP1*, y otra *con FP1+FP2* (y así hasta la quali). Equivale al comportamiento de la app de referencia de MotoGP (FP1/PR/FP2 con tabla de pesos por sesión).
+**Fecha:** 05/07/2026 · **Objetivo:** que la predicción mejore a medida que avanza el fin de semana, como pidió Luis: una predicción *pre-finde*, otra *con FP1+FP2* y otra *con FP1+FP2+FP3*, siempre antes de clasificación. Equivale al comportamiento de la app de referencia de MotoGP (dos modelos distintos según haya dos o tres prácticas).
 
 ---
 
@@ -26,10 +26,8 @@ En resumen: no es una elección rara, es lo que hacen todas las apps de este tip
 | **Con FP1** | Histórico + vueltas/stints de FP1 | Viernes |
 | **Con FP1+FP2** | + FP2 | Viernes/Sábado |
 | **Con FP1-FP3** | + FP3 | Sábado |
-| **Con Quali** | + clasificación | Sábado/Domingo |
-| *Sprint:* **Con FP1+SQ** | FP1 + Sprint Quali (tabla sprint) | — |
 
-La etapa activa se detecta sola (sesiones ya terminadas del GP seleccionado) y se muestra en la UI. Pesos por sesión: tabla `session_weights_by_objective` de `model_weights.json` (race: fp1 15 / fp2 35 / fp3 20 / quali 30 · sprint: fp1 50 / sq 50), con reparto proporcional si falta una sesión (`ModelWeights.sessionWeightsFor`, ya implementado).
+La etapa activa se detecta sola y se muestra en la UI. La clasificación y la sprint quali se excluyen. Hay dos tablas calibradas con F1 real en `model_weights.json`: FP1+FP2 (50/50) y FP1+FP2+FP3 (42/13/45). Metodología y validación: `docs/reports/session_weights_backtest.md`.
 
 ## 2. Datos (OpenF1, sin coste)
 
@@ -73,4 +71,4 @@ Con agregados del finde presentes en `DriverContext.sessionAggregates` (claves `
 
 ## 7. Validación futura (fase 2)
 
-Backtest por etapas con `tools/`: medir Spearman pre-finde vs con-FP1 vs con-quali sobre GPs pasados de 2026 para calibrar la tabla de pesos por sesión de F1 (la actual viene de MotoGP). Requiere descargar laps históricos (~300 KB/GP), viable desde el PC de Luis.
+Repetir anualmente `tools/session_weights_backtest.py` incorporando la temporada terminada. Mantener siempre una temporada completa fuera de la búsqueda para evitar sobreajuste.

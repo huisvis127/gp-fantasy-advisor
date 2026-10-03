@@ -11,50 +11,86 @@ class $DriversTable extends Drivers with TableInfo<$DriversTable, DriverRow> {
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
-      'id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _codeMeta = const VerificationMeta('code');
   @override
   late final GeneratedColumn<String> code = GeneratedColumn<String>(
-      'code', aliasedName, false,
-      additionalChecks:
-          GeneratedColumn.checkTextLength(minTextLength: 2, maxTextLength: 3),
-      type: DriftSqlType.string,
-      requiredDuringInsert: true);
-  static const VerificationMeta _givenNameMeta =
-      const VerificationMeta('givenName');
+    'code',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 2,
+      maxTextLength: 3,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _givenNameMeta = const VerificationMeta(
+    'givenName',
+  );
   @override
   late final GeneratedColumn<String> givenName = GeneratedColumn<String>(
-      'given_name', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _familyNameMeta =
-      const VerificationMeta('familyName');
+    'given_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _familyNameMeta = const VerificationMeta(
+    'familyName',
+  );
   @override
   late final GeneratedColumn<String> familyName = GeneratedColumn<String>(
-      'family_name', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _constructorIdMeta =
-      const VerificationMeta('constructorId');
+    'family_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _constructorIdMeta = const VerificationMeta(
+    'constructorId',
+  );
   @override
   late final GeneratedColumn<String> constructorId = GeneratedColumn<String>(
-      'constructor_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'constructor_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _numberMeta = const VerificationMeta('number');
   @override
   late final GeneratedColumn<int> number = GeneratedColumn<int>(
-      'number', aliasedName, true,
-      type: DriftSqlType.int, requiredDuringInsert: false);
+    'number',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, code, givenName, familyName, constructorId, number];
+  List<GeneratedColumn> get $columns => [
+    id,
+    code,
+    givenName,
+    familyName,
+    constructorId,
+    number,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'drivers';
   @override
-  VerificationContext validateIntegrity(Insertable<DriverRow> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<DriverRow> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -64,35 +100,44 @@ class $DriversTable extends Drivers with TableInfo<$DriversTable, DriverRow> {
     }
     if (data.containsKey('code')) {
       context.handle(
-          _codeMeta, code.isAcceptableOrUnknown(data['code']!, _codeMeta));
+        _codeMeta,
+        code.isAcceptableOrUnknown(data['code']!, _codeMeta),
+      );
     } else if (isInserting) {
       context.missing(_codeMeta);
     }
     if (data.containsKey('given_name')) {
-      context.handle(_givenNameMeta,
-          givenName.isAcceptableOrUnknown(data['given_name']!, _givenNameMeta));
+      context.handle(
+        _givenNameMeta,
+        givenName.isAcceptableOrUnknown(data['given_name']!, _givenNameMeta),
+      );
     } else if (isInserting) {
       context.missing(_givenNameMeta);
     }
     if (data.containsKey('family_name')) {
       context.handle(
-          _familyNameMeta,
-          familyName.isAcceptableOrUnknown(
-              data['family_name']!, _familyNameMeta));
+        _familyNameMeta,
+        familyName.isAcceptableOrUnknown(data['family_name']!, _familyNameMeta),
+      );
     } else if (isInserting) {
       context.missing(_familyNameMeta);
     }
     if (data.containsKey('constructor_id')) {
       context.handle(
+        _constructorIdMeta,
+        constructorId.isAcceptableOrUnknown(
+          data['constructor_id']!,
           _constructorIdMeta,
-          constructorId.isAcceptableOrUnknown(
-              data['constructor_id']!, _constructorIdMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_constructorIdMeta);
     }
     if (data.containsKey('number')) {
-      context.handle(_numberMeta,
-          number.isAcceptableOrUnknown(data['number']!, _numberMeta));
+      context.handle(
+        _numberMeta,
+        number.isAcceptableOrUnknown(data['number']!, _numberMeta),
+      );
     }
     return context;
   }
@@ -103,18 +148,30 @@ class $DriversTable extends Drivers with TableInfo<$DriversTable, DriverRow> {
   DriverRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return DriverRow(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      code: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}code'])!,
-      givenName: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}given_name'])!,
-      familyName: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}family_name'])!,
-      constructorId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}constructor_id'])!,
-      number: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}number']),
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      code: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}code'],
+      )!,
+      givenName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}given_name'],
+      )!,
+      familyName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}family_name'],
+      )!,
+      constructorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}constructor_id'],
+      )!,
+      number: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}number'],
+      ),
     );
   }
 
@@ -131,13 +188,14 @@ class DriverRow extends DataClass implements Insertable<DriverRow> {
   final String familyName;
   final String constructorId;
   final int? number;
-  const DriverRow(
-      {required this.id,
-      required this.code,
-      required this.givenName,
-      required this.familyName,
-      required this.constructorId,
-      this.number});
+  const DriverRow({
+    required this.id,
+    required this.code,
+    required this.givenName,
+    required this.familyName,
+    required this.constructorId,
+    this.number,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -159,13 +217,16 @@ class DriverRow extends DataClass implements Insertable<DriverRow> {
       givenName: Value(givenName),
       familyName: Value(familyName),
       constructorId: Value(constructorId),
-      number:
-          number == null && nullToAbsent ? const Value.absent() : Value(number),
+      number: number == null && nullToAbsent
+          ? const Value.absent()
+          : Value(number),
     );
   }
 
-  factory DriverRow.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory DriverRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return DriverRow(
       id: serializer.fromJson<String>(json['id']),
@@ -189,28 +250,29 @@ class DriverRow extends DataClass implements Insertable<DriverRow> {
     };
   }
 
-  DriverRow copyWith(
-          {String? id,
-          String? code,
-          String? givenName,
-          String? familyName,
-          String? constructorId,
-          Value<int?> number = const Value.absent()}) =>
-      DriverRow(
-        id: id ?? this.id,
-        code: code ?? this.code,
-        givenName: givenName ?? this.givenName,
-        familyName: familyName ?? this.familyName,
-        constructorId: constructorId ?? this.constructorId,
-        number: number.present ? number.value : this.number,
-      );
+  DriverRow copyWith({
+    String? id,
+    String? code,
+    String? givenName,
+    String? familyName,
+    String? constructorId,
+    Value<int?> number = const Value.absent(),
+  }) => DriverRow(
+    id: id ?? this.id,
+    code: code ?? this.code,
+    givenName: givenName ?? this.givenName,
+    familyName: familyName ?? this.familyName,
+    constructorId: constructorId ?? this.constructorId,
+    number: number.present ? number.value : this.number,
+  );
   DriverRow copyWithCompanion(DriversCompanion data) {
     return DriverRow(
       id: data.id.present ? data.id.value : this.id,
       code: data.code.present ? data.code.value : this.code,
       givenName: data.givenName.present ? data.givenName.value : this.givenName,
-      familyName:
-          data.familyName.present ? data.familyName.value : this.familyName,
+      familyName: data.familyName.present
+          ? data.familyName.value
+          : this.familyName,
       constructorId: data.constructorId.present
           ? data.constructorId.value
           : this.constructorId,
@@ -271,11 +333,11 @@ class DriversCompanion extends UpdateCompanion<DriverRow> {
     required String constructorId,
     this.number = const Value.absent(),
     this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        code = Value(code),
-        givenName = Value(givenName),
-        familyName = Value(familyName),
-        constructorId = Value(constructorId);
+  }) : id = Value(id),
+       code = Value(code),
+       givenName = Value(givenName),
+       familyName = Value(familyName),
+       constructorId = Value(constructorId);
   static Insertable<DriverRow> custom({
     Expression<String>? id,
     Expression<String>? code,
@@ -296,14 +358,15 @@ class DriversCompanion extends UpdateCompanion<DriverRow> {
     });
   }
 
-  DriversCompanion copyWith(
-      {Value<String>? id,
-      Value<String>? code,
-      Value<String>? givenName,
-      Value<String>? familyName,
-      Value<String>? constructorId,
-      Value<int?>? number,
-      Value<int>? rowid}) {
+  DriversCompanion copyWith({
+    Value<String>? id,
+    Value<String>? code,
+    Value<String>? givenName,
+    Value<String>? familyName,
+    Value<String>? constructorId,
+    Value<int?>? number,
+    Value<int>? rowid,
+  }) {
     return DriversCompanion(
       id: id ?? this.id,
       code: code ?? this.code,
@@ -366,19 +429,32 @@ class $ConstructorsTable extends Constructors
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
-      'id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
-      'name', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _nationalityMeta =
-      const VerificationMeta('nationality');
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nationalityMeta = const VerificationMeta(
+    'nationality',
+  );
   @override
   late final GeneratedColumn<String> nationality = GeneratedColumn<String>(
-      'nationality', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'nationality',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   @override
   List<GeneratedColumn> get $columns => [id, name, nationality];
   @override
@@ -387,8 +463,10 @@ class $ConstructorsTable extends Constructors
   String get actualTableName => $name;
   static const String $name = 'constructors';
   @override
-  VerificationContext validateIntegrity(Insertable<ConstructorRow> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<ConstructorRow> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -398,15 +476,20 @@ class $ConstructorsTable extends Constructors
     }
     if (data.containsKey('name')) {
       context.handle(
-          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
     if (data.containsKey('nationality')) {
       context.handle(
+        _nationalityMeta,
+        nationality.isAcceptableOrUnknown(
+          data['nationality']!,
           _nationalityMeta,
-          nationality.isAcceptableOrUnknown(
-              data['nationality']!, _nationalityMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_nationalityMeta);
     }
@@ -419,12 +502,18 @@ class $ConstructorsTable extends Constructors
   ConstructorRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ConstructorRow(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      name: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
-      nationality: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}nationality'])!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      nationality: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nationality'],
+      )!,
     );
   }
 
@@ -438,8 +527,11 @@ class ConstructorRow extends DataClass implements Insertable<ConstructorRow> {
   final String id;
   final String name;
   final String nationality;
-  const ConstructorRow(
-      {required this.id, required this.name, required this.nationality});
+  const ConstructorRow({
+    required this.id,
+    required this.name,
+    required this.nationality,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -457,8 +549,10 @@ class ConstructorRow extends DataClass implements Insertable<ConstructorRow> {
     );
   }
 
-  factory ConstructorRow.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory ConstructorRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ConstructorRow(
       id: serializer.fromJson<String>(json['id']),
@@ -486,8 +580,9 @@ class ConstructorRow extends DataClass implements Insertable<ConstructorRow> {
     return ConstructorRow(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
-      nationality:
-          data.nationality.present ? data.nationality.value : this.nationality,
+      nationality: data.nationality.present
+          ? data.nationality.value
+          : this.nationality,
     );
   }
 
@@ -528,9 +623,9 @@ class ConstructorsCompanion extends UpdateCompanion<ConstructorRow> {
     required String name,
     required String nationality,
     this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        name = Value(name),
-        nationality = Value(nationality);
+  }) : id = Value(id),
+       name = Value(name),
+       nationality = Value(nationality);
   static Insertable<ConstructorRow> custom({
     Expression<String>? id,
     Expression<String>? name,
@@ -545,11 +640,12 @@ class ConstructorsCompanion extends UpdateCompanion<ConstructorRow> {
     });
   }
 
-  ConstructorsCompanion copyWith(
-      {Value<String>? id,
-      Value<String>? name,
-      Value<String>? nationality,
-      Value<int>? rowid}) {
+  ConstructorsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? nationality,
+    Value<int>? rowid,
+  }) {
     return ConstructorsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
@@ -596,120 +692,176 @@ class $RacesTable extends Races with TableInfo<$RacesTable, RaceRow> {
   static const VerificationMeta _seasonMeta = const VerificationMeta('season');
   @override
   late final GeneratedColumn<int> season = GeneratedColumn<int>(
-      'season', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'season',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _roundMeta = const VerificationMeta('round');
   @override
   late final GeneratedColumn<int> round = GeneratedColumn<int>(
-      'round', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _raceNameMeta =
-      const VerificationMeta('raceName');
+    'round',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _raceNameMeta = const VerificationMeta(
+    'raceName',
+  );
   @override
   late final GeneratedColumn<String> raceName = GeneratedColumn<String>(
-      'race_name', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _circuitIdMeta =
-      const VerificationMeta('circuitId');
+    'race_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _circuitIdMeta = const VerificationMeta(
+    'circuitId',
+  );
   @override
   late final GeneratedColumn<String> circuitId = GeneratedColumn<String>(
-      'circuit_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _circuitNameMeta =
-      const VerificationMeta('circuitName');
+    'circuit_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _circuitNameMeta = const VerificationMeta(
+    'circuitName',
+  );
   @override
   late final GeneratedColumn<String> circuitName = GeneratedColumn<String>(
-      'circuit_name', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _countryMeta =
-      const VerificationMeta('country');
+    'circuit_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _countryMeta = const VerificationMeta(
+    'country',
+  );
   @override
   late final GeneratedColumn<String> country = GeneratedColumn<String>(
-      'country', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'country',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
   late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
-      'date', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _hasSprintMeta =
-      const VerificationMeta('hasSprint');
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _hasSprintMeta = const VerificationMeta(
+    'hasSprint',
+  );
   @override
   late final GeneratedColumn<bool> hasSprint = GeneratedColumn<bool>(
-      'has_sprint', aliasedName, false,
-      type: DriftSqlType.bool,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("has_sprint" IN (0, 1))'),
-      defaultValue: const Constant(false));
+    'has_sprint',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("has_sprint" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
-        season,
-        round,
-        raceName,
-        circuitId,
-        circuitName,
-        country,
-        date,
-        hasSprint
-      ];
+    season,
+    round,
+    raceName,
+    circuitId,
+    circuitName,
+    country,
+    date,
+    hasSprint,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'races';
   @override
-  VerificationContext validateIntegrity(Insertable<RaceRow> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<RaceRow> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('season')) {
-      context.handle(_seasonMeta,
-          season.isAcceptableOrUnknown(data['season']!, _seasonMeta));
+      context.handle(
+        _seasonMeta,
+        season.isAcceptableOrUnknown(data['season']!, _seasonMeta),
+      );
     } else if (isInserting) {
       context.missing(_seasonMeta);
     }
     if (data.containsKey('round')) {
       context.handle(
-          _roundMeta, round.isAcceptableOrUnknown(data['round']!, _roundMeta));
+        _roundMeta,
+        round.isAcceptableOrUnknown(data['round']!, _roundMeta),
+      );
     } else if (isInserting) {
       context.missing(_roundMeta);
     }
     if (data.containsKey('race_name')) {
-      context.handle(_raceNameMeta,
-          raceName.isAcceptableOrUnknown(data['race_name']!, _raceNameMeta));
+      context.handle(
+        _raceNameMeta,
+        raceName.isAcceptableOrUnknown(data['race_name']!, _raceNameMeta),
+      );
     } else if (isInserting) {
       context.missing(_raceNameMeta);
     }
     if (data.containsKey('circuit_id')) {
-      context.handle(_circuitIdMeta,
-          circuitId.isAcceptableOrUnknown(data['circuit_id']!, _circuitIdMeta));
+      context.handle(
+        _circuitIdMeta,
+        circuitId.isAcceptableOrUnknown(data['circuit_id']!, _circuitIdMeta),
+      );
     } else if (isInserting) {
       context.missing(_circuitIdMeta);
     }
     if (data.containsKey('circuit_name')) {
       context.handle(
+        _circuitNameMeta,
+        circuitName.isAcceptableOrUnknown(
+          data['circuit_name']!,
           _circuitNameMeta,
-          circuitName.isAcceptableOrUnknown(
-              data['circuit_name']!, _circuitNameMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_circuitNameMeta);
     }
     if (data.containsKey('country')) {
-      context.handle(_countryMeta,
-          country.isAcceptableOrUnknown(data['country']!, _countryMeta));
+      context.handle(
+        _countryMeta,
+        country.isAcceptableOrUnknown(data['country']!, _countryMeta),
+      );
     } else if (isInserting) {
       context.missing(_countryMeta);
     }
     if (data.containsKey('date')) {
       context.handle(
-          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
     } else if (isInserting) {
       context.missing(_dateMeta);
     }
     if (data.containsKey('has_sprint')) {
-      context.handle(_hasSprintMeta,
-          hasSprint.isAcceptableOrUnknown(data['has_sprint']!, _hasSprintMeta));
+      context.handle(
+        _hasSprintMeta,
+        hasSprint.isAcceptableOrUnknown(data['has_sprint']!, _hasSprintMeta),
+      );
     }
     return context;
   }
@@ -720,22 +872,38 @@ class $RacesTable extends Races with TableInfo<$RacesTable, RaceRow> {
   RaceRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return RaceRow(
-      season: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}season'])!,
-      round: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}round'])!,
-      raceName: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}race_name'])!,
-      circuitId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}circuit_id'])!,
-      circuitName: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}circuit_name'])!,
-      country: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}country'])!,
-      date: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
-      hasSprint: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}has_sprint'])!,
+      season: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season'],
+      )!,
+      round: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}round'],
+      )!,
+      raceName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}race_name'],
+      )!,
+      circuitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}circuit_id'],
+      )!,
+      circuitName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}circuit_name'],
+      )!,
+      country: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}country'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      hasSprint: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}has_sprint'],
+      )!,
     );
   }
 
@@ -754,15 +922,16 @@ class RaceRow extends DataClass implements Insertable<RaceRow> {
   final String country;
   final DateTime date;
   final bool hasSprint;
-  const RaceRow(
-      {required this.season,
-      required this.round,
-      required this.raceName,
-      required this.circuitId,
-      required this.circuitName,
-      required this.country,
-      required this.date,
-      required this.hasSprint});
+  const RaceRow({
+    required this.season,
+    required this.round,
+    required this.raceName,
+    required this.circuitId,
+    required this.circuitName,
+    required this.country,
+    required this.date,
+    required this.hasSprint,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -790,8 +959,10 @@ class RaceRow extends DataClass implements Insertable<RaceRow> {
     );
   }
 
-  factory RaceRow.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory RaceRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return RaceRow(
       season: serializer.fromJson<int>(json['season']),
@@ -819,33 +990,34 @@ class RaceRow extends DataClass implements Insertable<RaceRow> {
     };
   }
 
-  RaceRow copyWith(
-          {int? season,
-          int? round,
-          String? raceName,
-          String? circuitId,
-          String? circuitName,
-          String? country,
-          DateTime? date,
-          bool? hasSprint}) =>
-      RaceRow(
-        season: season ?? this.season,
-        round: round ?? this.round,
-        raceName: raceName ?? this.raceName,
-        circuitId: circuitId ?? this.circuitId,
-        circuitName: circuitName ?? this.circuitName,
-        country: country ?? this.country,
-        date: date ?? this.date,
-        hasSprint: hasSprint ?? this.hasSprint,
-      );
+  RaceRow copyWith({
+    int? season,
+    int? round,
+    String? raceName,
+    String? circuitId,
+    String? circuitName,
+    String? country,
+    DateTime? date,
+    bool? hasSprint,
+  }) => RaceRow(
+    season: season ?? this.season,
+    round: round ?? this.round,
+    raceName: raceName ?? this.raceName,
+    circuitId: circuitId ?? this.circuitId,
+    circuitName: circuitName ?? this.circuitName,
+    country: country ?? this.country,
+    date: date ?? this.date,
+    hasSprint: hasSprint ?? this.hasSprint,
+  );
   RaceRow copyWithCompanion(RacesCompanion data) {
     return RaceRow(
       season: data.season.present ? data.season.value : this.season,
       round: data.round.present ? data.round.value : this.round,
       raceName: data.raceName.present ? data.raceName.value : this.raceName,
       circuitId: data.circuitId.present ? data.circuitId.value : this.circuitId,
-      circuitName:
-          data.circuitName.present ? data.circuitName.value : this.circuitName,
+      circuitName: data.circuitName.present
+          ? data.circuitName.value
+          : this.circuitName,
       country: data.country.present ? data.country.value : this.country,
       date: data.date.present ? data.date.value : this.date,
       hasSprint: data.hasSprint.present ? data.hasSprint.value : this.hasSprint,
@@ -868,8 +1040,16 @@ class RaceRow extends DataClass implements Insertable<RaceRow> {
   }
 
   @override
-  int get hashCode => Object.hash(season, round, raceName, circuitId,
-      circuitName, country, date, hasSprint);
+  int get hashCode => Object.hash(
+    season,
+    round,
+    raceName,
+    circuitId,
+    circuitName,
+    country,
+    date,
+    hasSprint,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -915,13 +1095,13 @@ class RacesCompanion extends UpdateCompanion<RaceRow> {
     required DateTime date,
     this.hasSprint = const Value.absent(),
     this.rowid = const Value.absent(),
-  })  : season = Value(season),
-        round = Value(round),
-        raceName = Value(raceName),
-        circuitId = Value(circuitId),
-        circuitName = Value(circuitName),
-        country = Value(country),
-        date = Value(date);
+  }) : season = Value(season),
+       round = Value(round),
+       raceName = Value(raceName),
+       circuitId = Value(circuitId),
+       circuitName = Value(circuitName),
+       country = Value(country),
+       date = Value(date);
   static Insertable<RaceRow> custom({
     Expression<int>? season,
     Expression<int>? round,
@@ -946,16 +1126,17 @@ class RacesCompanion extends UpdateCompanion<RaceRow> {
     });
   }
 
-  RacesCompanion copyWith(
-      {Value<int>? season,
-      Value<int>? round,
-      Value<String>? raceName,
-      Value<String>? circuitId,
-      Value<String>? circuitName,
-      Value<String>? country,
-      Value<DateTime>? date,
-      Value<bool>? hasSprint,
-      Value<int>? rowid}) {
+  RacesCompanion copyWith({
+    Value<int>? season,
+    Value<int>? round,
+    Value<String>? raceName,
+    Value<String>? circuitId,
+    Value<String>? circuitName,
+    Value<String>? country,
+    Value<DateTime>? date,
+    Value<bool>? hasSprint,
+    Value<int>? rowid,
+  }) {
     return RacesCompanion(
       season: season ?? this.season,
       round: round ?? this.round,
@@ -1027,124 +1208,180 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, ResultRow> {
   static const VerificationMeta _seasonMeta = const VerificationMeta('season');
   @override
   late final GeneratedColumn<int> season = GeneratedColumn<int>(
-      'season', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'season',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _roundMeta = const VerificationMeta('round');
   @override
   late final GeneratedColumn<int> round = GeneratedColumn<int>(
-      'round', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _driverIdMeta =
-      const VerificationMeta('driverId');
+    'round',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driverIdMeta = const VerificationMeta(
+    'driverId',
+  );
   @override
   late final GeneratedColumn<String> driverId = GeneratedColumn<String>(
-      'driver_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _constructorIdMeta =
-      const VerificationMeta('constructorId');
+    'driver_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _constructorIdMeta = const VerificationMeta(
+    'constructorId',
+  );
   @override
   late final GeneratedColumn<String> constructorId = GeneratedColumn<String>(
-      'constructor_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _gridPositionMeta =
-      const VerificationMeta('gridPosition');
+    'constructor_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _gridPositionMeta = const VerificationMeta(
+    'gridPosition',
+  );
   @override
   late final GeneratedColumn<int> gridPosition = GeneratedColumn<int>(
-      'grid_position', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _finishPositionMeta =
-      const VerificationMeta('finishPosition');
+    'grid_position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _finishPositionMeta = const VerificationMeta(
+    'finishPosition',
+  );
   @override
   late final GeneratedColumn<int> finishPosition = GeneratedColumn<int>(
-      'finish_position', aliasedName, true,
-      type: DriftSqlType.int, requiredDuringInsert: false);
+    'finish_position',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
-      'status', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _fastestLapMeta =
-      const VerificationMeta('fastestLap');
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fastestLapMeta = const VerificationMeta(
+    'fastestLap',
+  );
   @override
   late final GeneratedColumn<bool> fastestLap = GeneratedColumn<bool>(
-      'fastest_lap', aliasedName, false,
-      type: DriftSqlType.bool,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("fastest_lap" IN (0, 1))'),
-      defaultValue: const Constant(false));
+    'fastest_lap',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("fastest_lap" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
-        season,
-        round,
-        driverId,
-        constructorId,
-        gridPosition,
-        finishPosition,
-        status,
-        fastestLap
-      ];
+    season,
+    round,
+    driverId,
+    constructorId,
+    gridPosition,
+    finishPosition,
+    status,
+    fastestLap,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'results';
   @override
-  VerificationContext validateIntegrity(Insertable<ResultRow> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<ResultRow> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('season')) {
-      context.handle(_seasonMeta,
-          season.isAcceptableOrUnknown(data['season']!, _seasonMeta));
+      context.handle(
+        _seasonMeta,
+        season.isAcceptableOrUnknown(data['season']!, _seasonMeta),
+      );
     } else if (isInserting) {
       context.missing(_seasonMeta);
     }
     if (data.containsKey('round')) {
       context.handle(
-          _roundMeta, round.isAcceptableOrUnknown(data['round']!, _roundMeta));
+        _roundMeta,
+        round.isAcceptableOrUnknown(data['round']!, _roundMeta),
+      );
     } else if (isInserting) {
       context.missing(_roundMeta);
     }
     if (data.containsKey('driver_id')) {
-      context.handle(_driverIdMeta,
-          driverId.isAcceptableOrUnknown(data['driver_id']!, _driverIdMeta));
+      context.handle(
+        _driverIdMeta,
+        driverId.isAcceptableOrUnknown(data['driver_id']!, _driverIdMeta),
+      );
     } else if (isInserting) {
       context.missing(_driverIdMeta);
     }
     if (data.containsKey('constructor_id')) {
       context.handle(
+        _constructorIdMeta,
+        constructorId.isAcceptableOrUnknown(
+          data['constructor_id']!,
           _constructorIdMeta,
-          constructorId.isAcceptableOrUnknown(
-              data['constructor_id']!, _constructorIdMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_constructorIdMeta);
     }
     if (data.containsKey('grid_position')) {
       context.handle(
+        _gridPositionMeta,
+        gridPosition.isAcceptableOrUnknown(
+          data['grid_position']!,
           _gridPositionMeta,
-          gridPosition.isAcceptableOrUnknown(
-              data['grid_position']!, _gridPositionMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_gridPositionMeta);
     }
     if (data.containsKey('finish_position')) {
       context.handle(
+        _finishPositionMeta,
+        finishPosition.isAcceptableOrUnknown(
+          data['finish_position']!,
           _finishPositionMeta,
-          finishPosition.isAcceptableOrUnknown(
-              data['finish_position']!, _finishPositionMeta));
+        ),
+      );
     }
     if (data.containsKey('status')) {
-      context.handle(_statusMeta,
-          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
     } else if (isInserting) {
       context.missing(_statusMeta);
     }
     if (data.containsKey('fastest_lap')) {
       context.handle(
-          _fastestLapMeta,
-          fastestLap.isAcceptableOrUnknown(
-              data['fastest_lap']!, _fastestLapMeta));
+        _fastestLapMeta,
+        fastestLap.isAcceptableOrUnknown(data['fastest_lap']!, _fastestLapMeta),
+      );
     }
     return context;
   }
@@ -1155,22 +1392,38 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, ResultRow> {
   ResultRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ResultRow(
-      season: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}season'])!,
-      round: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}round'])!,
-      driverId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}driver_id'])!,
-      constructorId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}constructor_id'])!,
-      gridPosition: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}grid_position'])!,
-      finishPosition: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}finish_position']),
-      status: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
-      fastestLap: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}fastest_lap'])!,
+      season: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season'],
+      )!,
+      round: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}round'],
+      )!,
+      driverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}driver_id'],
+      )!,
+      constructorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}constructor_id'],
+      )!,
+      gridPosition: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}grid_position'],
+      )!,
+      finishPosition: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}finish_position'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      fastestLap: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}fastest_lap'],
+      )!,
     );
   }
 
@@ -1189,15 +1442,16 @@ class ResultRow extends DataClass implements Insertable<ResultRow> {
   final int? finishPosition;
   final String status;
   final bool fastestLap;
-  const ResultRow(
-      {required this.season,
-      required this.round,
-      required this.driverId,
-      required this.constructorId,
-      required this.gridPosition,
-      this.finishPosition,
-      required this.status,
-      required this.fastestLap});
+  const ResultRow({
+    required this.season,
+    required this.round,
+    required this.driverId,
+    required this.constructorId,
+    required this.gridPosition,
+    this.finishPosition,
+    required this.status,
+    required this.fastestLap,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1229,8 +1483,10 @@ class ResultRow extends DataClass implements Insertable<ResultRow> {
     );
   }
 
-  factory ResultRow.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory ResultRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ResultRow(
       season: serializer.fromJson<int>(json['season']),
@@ -1258,26 +1514,27 @@ class ResultRow extends DataClass implements Insertable<ResultRow> {
     };
   }
 
-  ResultRow copyWith(
-          {int? season,
-          int? round,
-          String? driverId,
-          String? constructorId,
-          int? gridPosition,
-          Value<int?> finishPosition = const Value.absent(),
-          String? status,
-          bool? fastestLap}) =>
-      ResultRow(
-        season: season ?? this.season,
-        round: round ?? this.round,
-        driverId: driverId ?? this.driverId,
-        constructorId: constructorId ?? this.constructorId,
-        gridPosition: gridPosition ?? this.gridPosition,
-        finishPosition:
-            finishPosition.present ? finishPosition.value : this.finishPosition,
-        status: status ?? this.status,
-        fastestLap: fastestLap ?? this.fastestLap,
-      );
+  ResultRow copyWith({
+    int? season,
+    int? round,
+    String? driverId,
+    String? constructorId,
+    int? gridPosition,
+    Value<int?> finishPosition = const Value.absent(),
+    String? status,
+    bool? fastestLap,
+  }) => ResultRow(
+    season: season ?? this.season,
+    round: round ?? this.round,
+    driverId: driverId ?? this.driverId,
+    constructorId: constructorId ?? this.constructorId,
+    gridPosition: gridPosition ?? this.gridPosition,
+    finishPosition: finishPosition.present
+        ? finishPosition.value
+        : this.finishPosition,
+    status: status ?? this.status,
+    fastestLap: fastestLap ?? this.fastestLap,
+  );
   ResultRow copyWithCompanion(ResultsCompanion data) {
     return ResultRow(
       season: data.season.present ? data.season.value : this.season,
@@ -1293,8 +1550,9 @@ class ResultRow extends DataClass implements Insertable<ResultRow> {
           ? data.finishPosition.value
           : this.finishPosition,
       status: data.status.present ? data.status.value : this.status,
-      fastestLap:
-          data.fastestLap.present ? data.fastestLap.value : this.fastestLap,
+      fastestLap: data.fastestLap.present
+          ? data.fastestLap.value
+          : this.fastestLap,
     );
   }
 
@@ -1314,8 +1572,16 @@ class ResultRow extends DataClass implements Insertable<ResultRow> {
   }
 
   @override
-  int get hashCode => Object.hash(season, round, driverId, constructorId,
-      gridPosition, finishPosition, status, fastestLap);
+  int get hashCode => Object.hash(
+    season,
+    round,
+    driverId,
+    constructorId,
+    gridPosition,
+    finishPosition,
+    status,
+    fastestLap,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1361,12 +1627,12 @@ class ResultsCompanion extends UpdateCompanion<ResultRow> {
     required String status,
     this.fastestLap = const Value.absent(),
     this.rowid = const Value.absent(),
-  })  : season = Value(season),
-        round = Value(round),
-        driverId = Value(driverId),
-        constructorId = Value(constructorId),
-        gridPosition = Value(gridPosition),
-        status = Value(status);
+  }) : season = Value(season),
+       round = Value(round),
+       driverId = Value(driverId),
+       constructorId = Value(constructorId),
+       gridPosition = Value(gridPosition),
+       status = Value(status);
   static Insertable<ResultRow> custom({
     Expression<int>? season,
     Expression<int>? round,
@@ -1391,16 +1657,17 @@ class ResultsCompanion extends UpdateCompanion<ResultRow> {
     });
   }
 
-  ResultsCompanion copyWith(
-      {Value<int>? season,
-      Value<int>? round,
-      Value<String>? driverId,
-      Value<String>? constructorId,
-      Value<int>? gridPosition,
-      Value<int?>? finishPosition,
-      Value<String>? status,
-      Value<bool>? fastestLap,
-      Value<int>? rowid}) {
+  ResultsCompanion copyWith({
+    Value<int>? season,
+    Value<int>? round,
+    Value<String>? driverId,
+    Value<String>? constructorId,
+    Value<int>? gridPosition,
+    Value<int?>? finishPosition,
+    Value<String>? status,
+    Value<bool>? fastestLap,
+    Value<int>? rowid,
+  }) {
     return ResultsCompanion(
       season: season ?? this.season,
       round: round ?? this.round,
@@ -1473,46 +1740,86 @@ class $QualifyingResultsTable extends QualifyingResults
   static const VerificationMeta _seasonMeta = const VerificationMeta('season');
   @override
   late final GeneratedColumn<int> season = GeneratedColumn<int>(
-      'season', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'season',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _roundMeta = const VerificationMeta('round');
   @override
   late final GeneratedColumn<int> round = GeneratedColumn<int>(
-      'round', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _driverIdMeta =
-      const VerificationMeta('driverId');
+    'round',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driverIdMeta = const VerificationMeta(
+    'driverId',
+  );
   @override
   late final GeneratedColumn<String> driverId = GeneratedColumn<String>(
-      'driver_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _positionMeta =
-      const VerificationMeta('position');
+    'driver_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
   @override
   late final GeneratedColumn<int> position = GeneratedColumn<int>(
-      'position', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _q1MillisMeta =
-      const VerificationMeta('q1Millis');
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _q1MillisMeta = const VerificationMeta(
+    'q1Millis',
+  );
   @override
   late final GeneratedColumn<int> q1Millis = GeneratedColumn<int>(
-      'q1_millis', aliasedName, true,
-      type: DriftSqlType.int, requiredDuringInsert: false);
-  static const VerificationMeta _q2MillisMeta =
-      const VerificationMeta('q2Millis');
+    'q1_millis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _q2MillisMeta = const VerificationMeta(
+    'q2Millis',
+  );
   @override
   late final GeneratedColumn<int> q2Millis = GeneratedColumn<int>(
-      'q2_millis', aliasedName, true,
-      type: DriftSqlType.int, requiredDuringInsert: false);
-  static const VerificationMeta _q3MillisMeta =
-      const VerificationMeta('q3Millis');
+    'q2_millis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _q3MillisMeta = const VerificationMeta(
+    'q3Millis',
+  );
   @override
   late final GeneratedColumn<int> q3Millis = GeneratedColumn<int>(
-      'q3_millis', aliasedName, true,
-      type: DriftSqlType.int, requiredDuringInsert: false);
+    'q3_millis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
-  List<GeneratedColumn> get $columns =>
-      [season, round, driverId, position, q1Millis, q2Millis, q3Millis];
+  List<GeneratedColumn> get $columns => [
+    season,
+    round,
+    driverId,
+    position,
+    q1Millis,
+    q2Millis,
+    q3Millis,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1520,45 +1827,60 @@ class $QualifyingResultsTable extends QualifyingResults
   static const String $name = 'qualifying_results';
   @override
   VerificationContext validateIntegrity(
-      Insertable<QualifyingResultRow> instance,
-      {bool isInserting = false}) {
+    Insertable<QualifyingResultRow> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('season')) {
-      context.handle(_seasonMeta,
-          season.isAcceptableOrUnknown(data['season']!, _seasonMeta));
+      context.handle(
+        _seasonMeta,
+        season.isAcceptableOrUnknown(data['season']!, _seasonMeta),
+      );
     } else if (isInserting) {
       context.missing(_seasonMeta);
     }
     if (data.containsKey('round')) {
       context.handle(
-          _roundMeta, round.isAcceptableOrUnknown(data['round']!, _roundMeta));
+        _roundMeta,
+        round.isAcceptableOrUnknown(data['round']!, _roundMeta),
+      );
     } else if (isInserting) {
       context.missing(_roundMeta);
     }
     if (data.containsKey('driver_id')) {
-      context.handle(_driverIdMeta,
-          driverId.isAcceptableOrUnknown(data['driver_id']!, _driverIdMeta));
+      context.handle(
+        _driverIdMeta,
+        driverId.isAcceptableOrUnknown(data['driver_id']!, _driverIdMeta),
+      );
     } else if (isInserting) {
       context.missing(_driverIdMeta);
     }
     if (data.containsKey('position')) {
-      context.handle(_positionMeta,
-          position.isAcceptableOrUnknown(data['position']!, _positionMeta));
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
     } else if (isInserting) {
       context.missing(_positionMeta);
     }
     if (data.containsKey('q1_millis')) {
-      context.handle(_q1MillisMeta,
-          q1Millis.isAcceptableOrUnknown(data['q1_millis']!, _q1MillisMeta));
+      context.handle(
+        _q1MillisMeta,
+        q1Millis.isAcceptableOrUnknown(data['q1_millis']!, _q1MillisMeta),
+      );
     }
     if (data.containsKey('q2_millis')) {
-      context.handle(_q2MillisMeta,
-          q2Millis.isAcceptableOrUnknown(data['q2_millis']!, _q2MillisMeta));
+      context.handle(
+        _q2MillisMeta,
+        q2Millis.isAcceptableOrUnknown(data['q2_millis']!, _q2MillisMeta),
+      );
     }
     if (data.containsKey('q3_millis')) {
-      context.handle(_q3MillisMeta,
-          q3Millis.isAcceptableOrUnknown(data['q3_millis']!, _q3MillisMeta));
+      context.handle(
+        _q3MillisMeta,
+        q3Millis.isAcceptableOrUnknown(data['q3_millis']!, _q3MillisMeta),
+      );
     }
     return context;
   }
@@ -1569,20 +1891,34 @@ class $QualifyingResultsTable extends QualifyingResults
   QualifyingResultRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return QualifyingResultRow(
-      season: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}season'])!,
-      round: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}round'])!,
-      driverId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}driver_id'])!,
-      position: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}position'])!,
-      q1Millis: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}q1_millis']),
-      q2Millis: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}q2_millis']),
-      q3Millis: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}q3_millis']),
+      season: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season'],
+      )!,
+      round: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}round'],
+      )!,
+      driverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}driver_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      q1Millis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}q1_millis'],
+      ),
+      q2Millis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}q2_millis'],
+      ),
+      q3Millis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}q3_millis'],
+      ),
     );
   }
 
@@ -1601,14 +1937,15 @@ class QualifyingResultRow extends DataClass
   final int? q1Millis;
   final int? q2Millis;
   final int? q3Millis;
-  const QualifyingResultRow(
-      {required this.season,
-      required this.round,
-      required this.driverId,
-      required this.position,
-      this.q1Millis,
-      this.q2Millis,
-      this.q3Millis});
+  const QualifyingResultRow({
+    required this.season,
+    required this.round,
+    required this.driverId,
+    required this.position,
+    this.q1Millis,
+    this.q2Millis,
+    this.q3Millis,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1646,8 +1983,10 @@ class QualifyingResultRow extends DataClass
     );
   }
 
-  factory QualifyingResultRow.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory QualifyingResultRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return QualifyingResultRow(
       season: serializer.fromJson<int>(json['season']),
@@ -1673,23 +2012,23 @@ class QualifyingResultRow extends DataClass
     };
   }
 
-  QualifyingResultRow copyWith(
-          {int? season,
-          int? round,
-          String? driverId,
-          int? position,
-          Value<int?> q1Millis = const Value.absent(),
-          Value<int?> q2Millis = const Value.absent(),
-          Value<int?> q3Millis = const Value.absent()}) =>
-      QualifyingResultRow(
-        season: season ?? this.season,
-        round: round ?? this.round,
-        driverId: driverId ?? this.driverId,
-        position: position ?? this.position,
-        q1Millis: q1Millis.present ? q1Millis.value : this.q1Millis,
-        q2Millis: q2Millis.present ? q2Millis.value : this.q2Millis,
-        q3Millis: q3Millis.present ? q3Millis.value : this.q3Millis,
-      );
+  QualifyingResultRow copyWith({
+    int? season,
+    int? round,
+    String? driverId,
+    int? position,
+    Value<int?> q1Millis = const Value.absent(),
+    Value<int?> q2Millis = const Value.absent(),
+    Value<int?> q3Millis = const Value.absent(),
+  }) => QualifyingResultRow(
+    season: season ?? this.season,
+    round: round ?? this.round,
+    driverId: driverId ?? this.driverId,
+    position: position ?? this.position,
+    q1Millis: q1Millis.present ? q1Millis.value : this.q1Millis,
+    q2Millis: q2Millis.present ? q2Millis.value : this.q2Millis,
+    q3Millis: q3Millis.present ? q3Millis.value : this.q3Millis,
+  );
   QualifyingResultRow copyWithCompanion(QualifyingResultsCompanion data) {
     return QualifyingResultRow(
       season: data.season.present ? data.season.value : this.season,
@@ -1718,7 +2057,14 @@ class QualifyingResultRow extends DataClass
 
   @override
   int get hashCode => Object.hash(
-      season, round, driverId, position, q1Millis, q2Millis, q3Millis);
+    season,
+    round,
+    driverId,
+    position,
+    q1Millis,
+    q2Millis,
+    q3Millis,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1760,10 +2106,10 @@ class QualifyingResultsCompanion extends UpdateCompanion<QualifyingResultRow> {
     this.q2Millis = const Value.absent(),
     this.q3Millis = const Value.absent(),
     this.rowid = const Value.absent(),
-  })  : season = Value(season),
-        round = Value(round),
-        driverId = Value(driverId),
-        position = Value(position);
+  }) : season = Value(season),
+       round = Value(round),
+       driverId = Value(driverId),
+       position = Value(position);
   static Insertable<QualifyingResultRow> custom({
     Expression<int>? season,
     Expression<int>? round,
@@ -1786,15 +2132,16 @@ class QualifyingResultsCompanion extends UpdateCompanion<QualifyingResultRow> {
     });
   }
 
-  QualifyingResultsCompanion copyWith(
-      {Value<int>? season,
-      Value<int>? round,
-      Value<String>? driverId,
-      Value<int>? position,
-      Value<int?>? q1Millis,
-      Value<int?>? q2Millis,
-      Value<int?>? q3Millis,
-      Value<int>? rowid}) {
+  QualifyingResultsCompanion copyWith({
+    Value<int>? season,
+    Value<int>? round,
+    Value<String>? driverId,
+    Value<int>? position,
+    Value<int?>? q1Millis,
+    Value<int?>? q2Millis,
+    Value<int?>? q3Millis,
+    Value<int>? rowid,
+  }) {
     return QualifyingResultsCompanion(
       season: season ?? this.season,
       round: round ?? this.round,
@@ -1862,123 +2209,177 @@ class $SessionLapsTable extends SessionLaps
   static const VerificationMeta _seasonMeta = const VerificationMeta('season');
   @override
   late final GeneratedColumn<int> season = GeneratedColumn<int>(
-      'season', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'season',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _roundMeta = const VerificationMeta('round');
   @override
   late final GeneratedColumn<int> round = GeneratedColumn<int>(
-      'round', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _sessionKeyMeta =
-      const VerificationMeta('sessionKey');
+    'round',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sessionKeyMeta = const VerificationMeta(
+    'sessionKey',
+  );
   @override
   late final GeneratedColumn<String> sessionKey = GeneratedColumn<String>(
-      'session_key', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _driverIdMeta =
-      const VerificationMeta('driverId');
+    'session_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driverIdMeta = const VerificationMeta(
+    'driverId',
+  );
   @override
   late final GeneratedColumn<String> driverId = GeneratedColumn<String>(
-      'driver_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _bestStintAvgMsMeta =
-      const VerificationMeta('bestStintAvgMs');
+    'driver_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bestStintAvgMsMeta = const VerificationMeta(
+    'bestStintAvgMs',
+  );
   @override
   late final GeneratedColumn<double> bestStintAvgMs = GeneratedColumn<double>(
-      'best_stint_avg_ms', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _top2StintsAvgMsMeta =
-      const VerificationMeta('top2StintsAvgMs');
+    'best_stint_avg_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _top2StintsAvgMsMeta = const VerificationMeta(
+    'top2StintsAvgMs',
+  );
   @override
   late final GeneratedColumn<double> top2StintsAvgMs = GeneratedColumn<double>(
-      'top2_stints_avg_ms', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _bestLapMsMeta =
-      const VerificationMeta('bestLapMs');
+    'top2_stints_avg_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bestLapMsMeta = const VerificationMeta(
+    'bestLapMs',
+  );
   @override
   late final GeneratedColumn<double> bestLapMs = GeneratedColumn<double>(
-      'best_lap_ms', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _lapCountMeta =
-      const VerificationMeta('lapCount');
+    'best_lap_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lapCountMeta = const VerificationMeta(
+    'lapCount',
+  );
   @override
   late final GeneratedColumn<int> lapCount = GeneratedColumn<int>(
-      'lap_count', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'lap_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   @override
   List<GeneratedColumn> get $columns => [
-        season,
-        round,
-        sessionKey,
-        driverId,
-        bestStintAvgMs,
-        top2StintsAvgMs,
-        bestLapMs,
-        lapCount
-      ];
+    season,
+    round,
+    sessionKey,
+    driverId,
+    bestStintAvgMs,
+    top2StintsAvgMs,
+    bestLapMs,
+    lapCount,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'session_laps';
   @override
-  VerificationContext validateIntegrity(Insertable<SessionLapRow> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<SessionLapRow> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('season')) {
-      context.handle(_seasonMeta,
-          season.isAcceptableOrUnknown(data['season']!, _seasonMeta));
+      context.handle(
+        _seasonMeta,
+        season.isAcceptableOrUnknown(data['season']!, _seasonMeta),
+      );
     } else if (isInserting) {
       context.missing(_seasonMeta);
     }
     if (data.containsKey('round')) {
       context.handle(
-          _roundMeta, round.isAcceptableOrUnknown(data['round']!, _roundMeta));
+        _roundMeta,
+        round.isAcceptableOrUnknown(data['round']!, _roundMeta),
+      );
     } else if (isInserting) {
       context.missing(_roundMeta);
     }
     if (data.containsKey('session_key')) {
       context.handle(
-          _sessionKeyMeta,
-          sessionKey.isAcceptableOrUnknown(
-              data['session_key']!, _sessionKeyMeta));
+        _sessionKeyMeta,
+        sessionKey.isAcceptableOrUnknown(data['session_key']!, _sessionKeyMeta),
+      );
     } else if (isInserting) {
       context.missing(_sessionKeyMeta);
     }
     if (data.containsKey('driver_id')) {
-      context.handle(_driverIdMeta,
-          driverId.isAcceptableOrUnknown(data['driver_id']!, _driverIdMeta));
+      context.handle(
+        _driverIdMeta,
+        driverId.isAcceptableOrUnknown(data['driver_id']!, _driverIdMeta),
+      );
     } else if (isInserting) {
       context.missing(_driverIdMeta);
     }
     if (data.containsKey('best_stint_avg_ms')) {
       context.handle(
+        _bestStintAvgMsMeta,
+        bestStintAvgMs.isAcceptableOrUnknown(
+          data['best_stint_avg_ms']!,
           _bestStintAvgMsMeta,
-          bestStintAvgMs.isAcceptableOrUnknown(
-              data['best_stint_avg_ms']!, _bestStintAvgMsMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_bestStintAvgMsMeta);
     }
     if (data.containsKey('top2_stints_avg_ms')) {
       context.handle(
+        _top2StintsAvgMsMeta,
+        top2StintsAvgMs.isAcceptableOrUnknown(
+          data['top2_stints_avg_ms']!,
           _top2StintsAvgMsMeta,
-          top2StintsAvgMs.isAcceptableOrUnknown(
-              data['top2_stints_avg_ms']!, _top2StintsAvgMsMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_top2StintsAvgMsMeta);
     }
     if (data.containsKey('best_lap_ms')) {
       context.handle(
-          _bestLapMsMeta,
-          bestLapMs.isAcceptableOrUnknown(
-              data['best_lap_ms']!, _bestLapMsMeta));
+        _bestLapMsMeta,
+        bestLapMs.isAcceptableOrUnknown(data['best_lap_ms']!, _bestLapMsMeta),
+      );
     } else if (isInserting) {
       context.missing(_bestLapMsMeta);
     }
     if (data.containsKey('lap_count')) {
-      context.handle(_lapCountMeta,
-          lapCount.isAcceptableOrUnknown(data['lap_count']!, _lapCountMeta));
+      context.handle(
+        _lapCountMeta,
+        lapCount.isAcceptableOrUnknown(data['lap_count']!, _lapCountMeta),
+      );
     } else if (isInserting) {
       context.missing(_lapCountMeta);
     }
@@ -1991,22 +2392,38 @@ class $SessionLapsTable extends SessionLaps
   SessionLapRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return SessionLapRow(
-      season: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}season'])!,
-      round: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}round'])!,
-      sessionKey: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}session_key'])!,
-      driverId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}driver_id'])!,
+      season: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season'],
+      )!,
+      round: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}round'],
+      )!,
+      sessionKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_key'],
+      )!,
+      driverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}driver_id'],
+      )!,
       bestStintAvgMs: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}best_stint_avg_ms'])!,
+        DriftSqlType.double,
+        data['${effectivePrefix}best_stint_avg_ms'],
+      )!,
       top2StintsAvgMs: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}top2_stints_avg_ms'])!,
-      bestLapMs: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}best_lap_ms'])!,
-      lapCount: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}lap_count'])!,
+        DriftSqlType.double,
+        data['${effectivePrefix}top2_stints_avg_ms'],
+      )!,
+      bestLapMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}best_lap_ms'],
+      )!,
+      lapCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}lap_count'],
+      )!,
     );
   }
 
@@ -2025,15 +2442,16 @@ class SessionLapRow extends DataClass implements Insertable<SessionLapRow> {
   final double top2StintsAvgMs;
   final double bestLapMs;
   final int lapCount;
-  const SessionLapRow(
-      {required this.season,
-      required this.round,
-      required this.sessionKey,
-      required this.driverId,
-      required this.bestStintAvgMs,
-      required this.top2StintsAvgMs,
-      required this.bestLapMs,
-      required this.lapCount});
+  const SessionLapRow({
+    required this.season,
+    required this.round,
+    required this.sessionKey,
+    required this.driverId,
+    required this.bestStintAvgMs,
+    required this.top2StintsAvgMs,
+    required this.bestLapMs,
+    required this.lapCount,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2061,8 +2479,10 @@ class SessionLapRow extends DataClass implements Insertable<SessionLapRow> {
     );
   }
 
-  factory SessionLapRow.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory SessionLapRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return SessionLapRow(
       season: serializer.fromJson<int>(json['season']),
@@ -2090,31 +2510,32 @@ class SessionLapRow extends DataClass implements Insertable<SessionLapRow> {
     };
   }
 
-  SessionLapRow copyWith(
-          {int? season,
-          int? round,
-          String? sessionKey,
-          String? driverId,
-          double? bestStintAvgMs,
-          double? top2StintsAvgMs,
-          double? bestLapMs,
-          int? lapCount}) =>
-      SessionLapRow(
-        season: season ?? this.season,
-        round: round ?? this.round,
-        sessionKey: sessionKey ?? this.sessionKey,
-        driverId: driverId ?? this.driverId,
-        bestStintAvgMs: bestStintAvgMs ?? this.bestStintAvgMs,
-        top2StintsAvgMs: top2StintsAvgMs ?? this.top2StintsAvgMs,
-        bestLapMs: bestLapMs ?? this.bestLapMs,
-        lapCount: lapCount ?? this.lapCount,
-      );
+  SessionLapRow copyWith({
+    int? season,
+    int? round,
+    String? sessionKey,
+    String? driverId,
+    double? bestStintAvgMs,
+    double? top2StintsAvgMs,
+    double? bestLapMs,
+    int? lapCount,
+  }) => SessionLapRow(
+    season: season ?? this.season,
+    round: round ?? this.round,
+    sessionKey: sessionKey ?? this.sessionKey,
+    driverId: driverId ?? this.driverId,
+    bestStintAvgMs: bestStintAvgMs ?? this.bestStintAvgMs,
+    top2StintsAvgMs: top2StintsAvgMs ?? this.top2StintsAvgMs,
+    bestLapMs: bestLapMs ?? this.bestLapMs,
+    lapCount: lapCount ?? this.lapCount,
+  );
   SessionLapRow copyWithCompanion(SessionLapsCompanion data) {
     return SessionLapRow(
       season: data.season.present ? data.season.value : this.season,
       round: data.round.present ? data.round.value : this.round,
-      sessionKey:
-          data.sessionKey.present ? data.sessionKey.value : this.sessionKey,
+      sessionKey: data.sessionKey.present
+          ? data.sessionKey.value
+          : this.sessionKey,
       driverId: data.driverId.present ? data.driverId.value : this.driverId,
       bestStintAvgMs: data.bestStintAvgMs.present
           ? data.bestStintAvgMs.value
@@ -2143,8 +2564,16 @@ class SessionLapRow extends DataClass implements Insertable<SessionLapRow> {
   }
 
   @override
-  int get hashCode => Object.hash(season, round, sessionKey, driverId,
-      bestStintAvgMs, top2StintsAvgMs, bestLapMs, lapCount);
+  int get hashCode => Object.hash(
+    season,
+    round,
+    sessionKey,
+    driverId,
+    bestStintAvgMs,
+    top2StintsAvgMs,
+    bestLapMs,
+    lapCount,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2190,14 +2619,14 @@ class SessionLapsCompanion extends UpdateCompanion<SessionLapRow> {
     required double bestLapMs,
     required int lapCount,
     this.rowid = const Value.absent(),
-  })  : season = Value(season),
-        round = Value(round),
-        sessionKey = Value(sessionKey),
-        driverId = Value(driverId),
-        bestStintAvgMs = Value(bestStintAvgMs),
-        top2StintsAvgMs = Value(top2StintsAvgMs),
-        bestLapMs = Value(bestLapMs),
-        lapCount = Value(lapCount);
+  }) : season = Value(season),
+       round = Value(round),
+       sessionKey = Value(sessionKey),
+       driverId = Value(driverId),
+       bestStintAvgMs = Value(bestStintAvgMs),
+       top2StintsAvgMs = Value(top2StintsAvgMs),
+       bestLapMs = Value(bestLapMs),
+       lapCount = Value(lapCount);
   static Insertable<SessionLapRow> custom({
     Expression<int>? season,
     Expression<int>? round,
@@ -2222,16 +2651,17 @@ class SessionLapsCompanion extends UpdateCompanion<SessionLapRow> {
     });
   }
 
-  SessionLapsCompanion copyWith(
-      {Value<int>? season,
-      Value<int>? round,
-      Value<String>? sessionKey,
-      Value<String>? driverId,
-      Value<double>? bestStintAvgMs,
-      Value<double>? top2StintsAvgMs,
-      Value<double>? bestLapMs,
-      Value<int>? lapCount,
-      Value<int>? rowid}) {
+  SessionLapsCompanion copyWith({
+    Value<int>? season,
+    Value<int>? round,
+    Value<String>? sessionKey,
+    Value<String>? driverId,
+    Value<double>? bestStintAvgMs,
+    Value<double>? top2StintsAvgMs,
+    Value<double>? bestLapMs,
+    Value<int>? lapCount,
+    Value<int>? rowid,
+  }) {
     return SessionLapsCompanion(
       season: season ?? this.season,
       round: round ?? this.round,
@@ -2301,76 +2731,117 @@ class $FantasyPricesTable extends FantasyPrices
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $FantasyPricesTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _assetIdMeta =
-      const VerificationMeta('assetId');
+  static const VerificationMeta _assetIdMeta = const VerificationMeta(
+    'assetId',
+  );
   @override
   late final GeneratedColumn<String> assetId = GeneratedColumn<String>(
-      'asset_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _assetTypeMeta =
-      const VerificationMeta('assetType');
+    'asset_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _assetTypeMeta = const VerificationMeta(
+    'assetType',
+  );
   @override
   late final GeneratedColumn<String> assetType = GeneratedColumn<String>(
-      'asset_type', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'asset_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _seasonMeta = const VerificationMeta('season');
   @override
   late final GeneratedColumn<int> season = GeneratedColumn<int>(
-      'season', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'season',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _roundMeta = const VerificationMeta('round');
   @override
   late final GeneratedColumn<int> round = GeneratedColumn<int>(
-      'round', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _priceMillionsMeta =
-      const VerificationMeta('priceMillions');
+    'round',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _priceMillionsMeta = const VerificationMeta(
+    'priceMillions',
+  );
   @override
   late final GeneratedColumn<double> priceMillions = GeneratedColumn<double>(
-      'price_millions', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+    'price_millions',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
   @override
-  List<GeneratedColumn> get $columns =>
-      [assetId, assetType, season, round, priceMillions];
+  List<GeneratedColumn> get $columns => [
+    assetId,
+    assetType,
+    season,
+    round,
+    priceMillions,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'fantasy_prices';
   @override
-  VerificationContext validateIntegrity(Insertable<FantasyPriceRow> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<FantasyPriceRow> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('asset_id')) {
-      context.handle(_assetIdMeta,
-          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
+      context.handle(
+        _assetIdMeta,
+        assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta),
+      );
     } else if (isInserting) {
       context.missing(_assetIdMeta);
     }
     if (data.containsKey('asset_type')) {
-      context.handle(_assetTypeMeta,
-          assetType.isAcceptableOrUnknown(data['asset_type']!, _assetTypeMeta));
+      context.handle(
+        _assetTypeMeta,
+        assetType.isAcceptableOrUnknown(data['asset_type']!, _assetTypeMeta),
+      );
     } else if (isInserting) {
       context.missing(_assetTypeMeta);
     }
     if (data.containsKey('season')) {
-      context.handle(_seasonMeta,
-          season.isAcceptableOrUnknown(data['season']!, _seasonMeta));
+      context.handle(
+        _seasonMeta,
+        season.isAcceptableOrUnknown(data['season']!, _seasonMeta),
+      );
     } else if (isInserting) {
       context.missing(_seasonMeta);
     }
     if (data.containsKey('round')) {
       context.handle(
-          _roundMeta, round.isAcceptableOrUnknown(data['round']!, _roundMeta));
+        _roundMeta,
+        round.isAcceptableOrUnknown(data['round']!, _roundMeta),
+      );
     } else if (isInserting) {
       context.missing(_roundMeta);
     }
     if (data.containsKey('price_millions')) {
       context.handle(
+        _priceMillionsMeta,
+        priceMillions.isAcceptableOrUnknown(
+          data['price_millions']!,
           _priceMillionsMeta,
-          priceMillions.isAcceptableOrUnknown(
-              data['price_millions']!, _priceMillionsMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_priceMillionsMeta);
     }
@@ -2383,16 +2854,26 @@ class $FantasyPricesTable extends FantasyPrices
   FantasyPriceRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return FantasyPriceRow(
-      assetId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}asset_id'])!,
-      assetType: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}asset_type'])!,
-      season: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}season'])!,
-      round: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}round'])!,
-      priceMillions: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}price_millions'])!,
+      assetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_id'],
+      )!,
+      assetType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_type'],
+      )!,
+      season: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season'],
+      )!,
+      round: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}round'],
+      )!,
+      priceMillions: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}price_millions'],
+      )!,
     );
   }
 
@@ -2408,12 +2889,13 @@ class FantasyPriceRow extends DataClass implements Insertable<FantasyPriceRow> {
   final int season;
   final int round;
   final double priceMillions;
-  const FantasyPriceRow(
-      {required this.assetId,
-      required this.assetType,
-      required this.season,
-      required this.round,
-      required this.priceMillions});
+  const FantasyPriceRow({
+    required this.assetId,
+    required this.assetType,
+    required this.season,
+    required this.round,
+    required this.priceMillions,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2435,8 +2917,10 @@ class FantasyPriceRow extends DataClass implements Insertable<FantasyPriceRow> {
     );
   }
 
-  factory FantasyPriceRow.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory FantasyPriceRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return FantasyPriceRow(
       assetId: serializer.fromJson<String>(json['assetId']),
@@ -2458,19 +2942,19 @@ class FantasyPriceRow extends DataClass implements Insertable<FantasyPriceRow> {
     };
   }
 
-  FantasyPriceRow copyWith(
-          {String? assetId,
-          String? assetType,
-          int? season,
-          int? round,
-          double? priceMillions}) =>
-      FantasyPriceRow(
-        assetId: assetId ?? this.assetId,
-        assetType: assetType ?? this.assetType,
-        season: season ?? this.season,
-        round: round ?? this.round,
-        priceMillions: priceMillions ?? this.priceMillions,
-      );
+  FantasyPriceRow copyWith({
+    String? assetId,
+    String? assetType,
+    int? season,
+    int? round,
+    double? priceMillions,
+  }) => FantasyPriceRow(
+    assetId: assetId ?? this.assetId,
+    assetType: assetType ?? this.assetType,
+    season: season ?? this.season,
+    round: round ?? this.round,
+    priceMillions: priceMillions ?? this.priceMillions,
+  );
   FantasyPriceRow copyWithCompanion(FantasyPricesCompanion data) {
     return FantasyPriceRow(
       assetId: data.assetId.present ? data.assetId.value : this.assetId,
@@ -2531,11 +3015,11 @@ class FantasyPricesCompanion extends UpdateCompanion<FantasyPriceRow> {
     required int round,
     required double priceMillions,
     this.rowid = const Value.absent(),
-  })  : assetId = Value(assetId),
-        assetType = Value(assetType),
-        season = Value(season),
-        round = Value(round),
-        priceMillions = Value(priceMillions);
+  }) : assetId = Value(assetId),
+       assetType = Value(assetType),
+       season = Value(season),
+       round = Value(round),
+       priceMillions = Value(priceMillions);
   static Insertable<FantasyPriceRow> custom({
     Expression<String>? assetId,
     Expression<String>? assetType,
@@ -2554,13 +3038,14 @@ class FantasyPricesCompanion extends UpdateCompanion<FantasyPriceRow> {
     });
   }
 
-  FantasyPricesCompanion copyWith(
-      {Value<String>? assetId,
-      Value<String>? assetType,
-      Value<int>? season,
-      Value<int>? round,
-      Value<double>? priceMillions,
-      Value<int>? rowid}) {
+  FantasyPricesCompanion copyWith({
+    Value<String>? assetId,
+    Value<String>? assetType,
+    Value<int>? season,
+    Value<int>? round,
+    Value<double>? priceMillions,
+    Value<int>? rowid,
+  }) {
     return FantasyPricesCompanion(
       assetId: assetId ?? this.assetId,
       assetType: assetType ?? this.assetType,
@@ -2615,73 +3100,112 @@ class $FantasyPointsTableTable extends FantasyPointsTable
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $FantasyPointsTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _assetIdMeta =
-      const VerificationMeta('assetId');
+  static const VerificationMeta _assetIdMeta = const VerificationMeta(
+    'assetId',
+  );
   @override
   late final GeneratedColumn<String> assetId = GeneratedColumn<String>(
-      'asset_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _assetTypeMeta =
-      const VerificationMeta('assetType');
+    'asset_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _assetTypeMeta = const VerificationMeta(
+    'assetType',
+  );
   @override
   late final GeneratedColumn<String> assetType = GeneratedColumn<String>(
-      'asset_type', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'asset_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _seasonMeta = const VerificationMeta('season');
   @override
   late final GeneratedColumn<int> season = GeneratedColumn<int>(
-      'season', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'season',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _roundMeta = const VerificationMeta('round');
   @override
   late final GeneratedColumn<int> round = GeneratedColumn<int>(
-      'round', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'round',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _pointsMeta = const VerificationMeta('points');
   @override
   late final GeneratedColumn<int> points = GeneratedColumn<int>(
-      'points', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'points',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   @override
-  List<GeneratedColumn> get $columns =>
-      [assetId, assetType, season, round, points];
+  List<GeneratedColumn> get $columns => [
+    assetId,
+    assetType,
+    season,
+    round,
+    points,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'fantasy_points_table';
   @override
-  VerificationContext validateIntegrity(Insertable<FantasyPointsRow> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<FantasyPointsRow> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('asset_id')) {
-      context.handle(_assetIdMeta,
-          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
+      context.handle(
+        _assetIdMeta,
+        assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta),
+      );
     } else if (isInserting) {
       context.missing(_assetIdMeta);
     }
     if (data.containsKey('asset_type')) {
-      context.handle(_assetTypeMeta,
-          assetType.isAcceptableOrUnknown(data['asset_type']!, _assetTypeMeta));
+      context.handle(
+        _assetTypeMeta,
+        assetType.isAcceptableOrUnknown(data['asset_type']!, _assetTypeMeta),
+      );
     } else if (isInserting) {
       context.missing(_assetTypeMeta);
     }
     if (data.containsKey('season')) {
-      context.handle(_seasonMeta,
-          season.isAcceptableOrUnknown(data['season']!, _seasonMeta));
+      context.handle(
+        _seasonMeta,
+        season.isAcceptableOrUnknown(data['season']!, _seasonMeta),
+      );
     } else if (isInserting) {
       context.missing(_seasonMeta);
     }
     if (data.containsKey('round')) {
       context.handle(
-          _roundMeta, round.isAcceptableOrUnknown(data['round']!, _roundMeta));
+        _roundMeta,
+        round.isAcceptableOrUnknown(data['round']!, _roundMeta),
+      );
     } else if (isInserting) {
       context.missing(_roundMeta);
     }
     if (data.containsKey('points')) {
-      context.handle(_pointsMeta,
-          points.isAcceptableOrUnknown(data['points']!, _pointsMeta));
+      context.handle(
+        _pointsMeta,
+        points.isAcceptableOrUnknown(data['points']!, _pointsMeta),
+      );
     } else if (isInserting) {
       context.missing(_pointsMeta);
     }
@@ -2694,16 +3218,26 @@ class $FantasyPointsTableTable extends FantasyPointsTable
   FantasyPointsRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return FantasyPointsRow(
-      assetId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}asset_id'])!,
-      assetType: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}asset_type'])!,
-      season: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}season'])!,
-      round: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}round'])!,
-      points: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}points'])!,
+      assetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_id'],
+      )!,
+      assetType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_type'],
+      )!,
+      season: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season'],
+      )!,
+      round: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}round'],
+      )!,
+      points: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}points'],
+      )!,
     );
   }
 
@@ -2720,12 +3254,13 @@ class FantasyPointsRow extends DataClass
   final int season;
   final int round;
   final int points;
-  const FantasyPointsRow(
-      {required this.assetId,
-      required this.assetType,
-      required this.season,
-      required this.round,
-      required this.points});
+  const FantasyPointsRow({
+    required this.assetId,
+    required this.assetType,
+    required this.season,
+    required this.round,
+    required this.points,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2747,8 +3282,10 @@ class FantasyPointsRow extends DataClass
     );
   }
 
-  factory FantasyPointsRow.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory FantasyPointsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return FantasyPointsRow(
       assetId: serializer.fromJson<String>(json['assetId']),
@@ -2770,19 +3307,19 @@ class FantasyPointsRow extends DataClass
     };
   }
 
-  FantasyPointsRow copyWith(
-          {String? assetId,
-          String? assetType,
-          int? season,
-          int? round,
-          int? points}) =>
-      FantasyPointsRow(
-        assetId: assetId ?? this.assetId,
-        assetType: assetType ?? this.assetType,
-        season: season ?? this.season,
-        round: round ?? this.round,
-        points: points ?? this.points,
-      );
+  FantasyPointsRow copyWith({
+    String? assetId,
+    String? assetType,
+    int? season,
+    int? round,
+    int? points,
+  }) => FantasyPointsRow(
+    assetId: assetId ?? this.assetId,
+    assetType: assetType ?? this.assetType,
+    season: season ?? this.season,
+    round: round ?? this.round,
+    points: points ?? this.points,
+  );
   FantasyPointsRow copyWithCompanion(FantasyPointsTableCompanion data) {
     return FantasyPointsRow(
       assetId: data.assetId.present ? data.assetId.value : this.assetId,
@@ -2840,11 +3377,11 @@ class FantasyPointsTableCompanion extends UpdateCompanion<FantasyPointsRow> {
     required int round,
     required int points,
     this.rowid = const Value.absent(),
-  })  : assetId = Value(assetId),
-        assetType = Value(assetType),
-        season = Value(season),
-        round = Value(round),
-        points = Value(points);
+  }) : assetId = Value(assetId),
+       assetType = Value(assetType),
+       season = Value(season),
+       round = Value(round),
+       points = Value(points);
   static Insertable<FantasyPointsRow> custom({
     Expression<String>? assetId,
     Expression<String>? assetType,
@@ -2863,13 +3400,14 @@ class FantasyPointsTableCompanion extends UpdateCompanion<FantasyPointsRow> {
     });
   }
 
-  FantasyPointsTableCompanion copyWith(
-      {Value<String>? assetId,
-      Value<String>? assetType,
-      Value<int>? season,
-      Value<int>? round,
-      Value<int>? points,
-      Value<int>? rowid}) {
+  FantasyPointsTableCompanion copyWith({
+    Value<String>? assetId,
+    Value<String>? assetType,
+    Value<int>? season,
+    Value<int>? round,
+    Value<int>? points,
+    Value<int>? rowid,
+  }) {
     return FantasyPointsTableCompanion(
       assetId: assetId ?? this.assetId,
       assetType: assetType ?? this.assetType,
@@ -2927,65 +3465,99 @@ class $MyTeamTableTable extends MyTeamTable
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  static const VerificationMeta _driverIdsCsvMeta =
-      const VerificationMeta('driverIdsCsv');
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _driverIdsCsvMeta = const VerificationMeta(
+    'driverIdsCsv',
+  );
   @override
   late final GeneratedColumn<String> driverIdsCsv = GeneratedColumn<String>(
-      'driver_ids_csv', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _constructorIdsCsvMeta =
-      const VerificationMeta('constructorIdsCsv');
+    'driver_ids_csv',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _constructorIdsCsvMeta = const VerificationMeta(
+    'constructorIdsCsv',
+  );
   @override
   late final GeneratedColumn<String> constructorIdsCsv =
-      GeneratedColumn<String>('constructor_ids_csv', aliasedName, false,
-          type: DriftSqlType.string, requiredDuringInsert: true);
+      GeneratedColumn<String>(
+        'constructor_ids_csv',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
   static const VerificationMeta _remainingBudgetMillionsMeta =
       const VerificationMeta('remainingBudgetMillions');
   @override
   late final GeneratedColumn<double> remainingBudgetMillions =
-      GeneratedColumn<double>('remaining_budget_millions', aliasedName, false,
-          type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _boostedDriverIdMeta =
-      const VerificationMeta('boostedDriverId');
+      GeneratedColumn<double>(
+        'remaining_budget_millions',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _boostedDriverIdMeta = const VerificationMeta(
+    'boostedDriverId',
+  );
   @override
   late final GeneratedColumn<String> boostedDriverId = GeneratedColumn<String>(
-      'boosted_driver_id', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
+    'boosted_driver_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _sourceMeta = const VerificationMeta('source');
   @override
   late final GeneratedColumn<String> source = GeneratedColumn<String>(
-      'source', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _chipsUsedCsvMeta =
-      const VerificationMeta('chipsUsedCsv');
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _chipsUsedCsvMeta = const VerificationMeta(
+    'chipsUsedCsv',
+  );
   @override
   late final GeneratedColumn<String> chipsUsedCsv = GeneratedColumn<String>(
-      'chips_used_csv', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(''));
+    'chips_used_csv',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
-        id,
-        driverIdsCsv,
-        constructorIdsCsv,
-        remainingBudgetMillions,
-        boostedDriverId,
-        source,
-        chipsUsedCsv
-      ];
+    id,
+    driverIdsCsv,
+    constructorIdsCsv,
+    remainingBudgetMillions,
+    boostedDriverId,
+    source,
+    chipsUsedCsv,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'my_team_table';
   @override
-  VerificationContext validateIntegrity(Insertable<MyTeamRow> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<MyTeamRow> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -2993,46 +3565,62 @@ class $MyTeamTableTable extends MyTeamTable
     }
     if (data.containsKey('driver_ids_csv')) {
       context.handle(
+        _driverIdsCsvMeta,
+        driverIdsCsv.isAcceptableOrUnknown(
+          data['driver_ids_csv']!,
           _driverIdsCsvMeta,
-          driverIdsCsv.isAcceptableOrUnknown(
-              data['driver_ids_csv']!, _driverIdsCsvMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_driverIdsCsvMeta);
     }
     if (data.containsKey('constructor_ids_csv')) {
       context.handle(
+        _constructorIdsCsvMeta,
+        constructorIdsCsv.isAcceptableOrUnknown(
+          data['constructor_ids_csv']!,
           _constructorIdsCsvMeta,
-          constructorIdsCsv.isAcceptableOrUnknown(
-              data['constructor_ids_csv']!, _constructorIdsCsvMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_constructorIdsCsvMeta);
     }
     if (data.containsKey('remaining_budget_millions')) {
       context.handle(
+        _remainingBudgetMillionsMeta,
+        remainingBudgetMillions.isAcceptableOrUnknown(
+          data['remaining_budget_millions']!,
           _remainingBudgetMillionsMeta,
-          remainingBudgetMillions.isAcceptableOrUnknown(
-              data['remaining_budget_millions']!,
-              _remainingBudgetMillionsMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_remainingBudgetMillionsMeta);
     }
     if (data.containsKey('boosted_driver_id')) {
       context.handle(
+        _boostedDriverIdMeta,
+        boostedDriverId.isAcceptableOrUnknown(
+          data['boosted_driver_id']!,
           _boostedDriverIdMeta,
-          boostedDriverId.isAcceptableOrUnknown(
-              data['boosted_driver_id']!, _boostedDriverIdMeta));
+        ),
+      );
     }
     if (data.containsKey('source')) {
-      context.handle(_sourceMeta,
-          source.isAcceptableOrUnknown(data['source']!, _sourceMeta));
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
     } else if (isInserting) {
       context.missing(_sourceMeta);
     }
     if (data.containsKey('chips_used_csv')) {
       context.handle(
+        _chipsUsedCsvMeta,
+        chipsUsedCsv.isAcceptableOrUnknown(
+          data['chips_used_csv']!,
           _chipsUsedCsvMeta,
-          chipsUsedCsv.isAcceptableOrUnknown(
-              data['chips_used_csv']!, _chipsUsedCsvMeta));
+        ),
+      );
     }
     return context;
   }
@@ -3043,21 +3631,34 @@ class $MyTeamTableTable extends MyTeamTable
   MyTeamRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return MyTeamRow(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      driverIdsCsv: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}driver_ids_csv'])!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      driverIdsCsv: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}driver_ids_csv'],
+      )!,
       constructorIdsCsv: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}constructor_ids_csv'])!,
+        DriftSqlType.string,
+        data['${effectivePrefix}constructor_ids_csv'],
+      )!,
       remainingBudgetMillions: attachedDatabase.typeMapping.read(
-          DriftSqlType.double,
-          data['${effectivePrefix}remaining_budget_millions'])!,
+        DriftSqlType.double,
+        data['${effectivePrefix}remaining_budget_millions'],
+      )!,
       boostedDriverId: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}boosted_driver_id']),
-      source: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}source'])!,
-      chipsUsedCsv: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}chips_used_csv'])!,
+        DriftSqlType.string,
+        data['${effectivePrefix}boosted_driver_id'],
+      ),
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      chipsUsedCsv: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}chips_used_csv'],
+      )!,
     );
   }
 
@@ -3075,22 +3676,24 @@ class MyTeamRow extends DataClass implements Insertable<MyTeamRow> {
   final String? boostedDriverId;
   final String source;
   final String chipsUsedCsv;
-  const MyTeamRow(
-      {required this.id,
-      required this.driverIdsCsv,
-      required this.constructorIdsCsv,
-      required this.remainingBudgetMillions,
-      this.boostedDriverId,
-      required this.source,
-      required this.chipsUsedCsv});
+  const MyTeamRow({
+    required this.id,
+    required this.driverIdsCsv,
+    required this.constructorIdsCsv,
+    required this.remainingBudgetMillions,
+    this.boostedDriverId,
+    required this.source,
+    required this.chipsUsedCsv,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['driver_ids_csv'] = Variable<String>(driverIdsCsv);
     map['constructor_ids_csv'] = Variable<String>(constructorIdsCsv);
-    map['remaining_budget_millions'] =
-        Variable<double>(remainingBudgetMillions);
+    map['remaining_budget_millions'] = Variable<double>(
+      remainingBudgetMillions,
+    );
     if (!nullToAbsent || boostedDriverId != null) {
       map['boosted_driver_id'] = Variable<String>(boostedDriverId);
     }
@@ -3113,15 +3716,18 @@ class MyTeamRow extends DataClass implements Insertable<MyTeamRow> {
     );
   }
 
-  factory MyTeamRow.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory MyTeamRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MyTeamRow(
       id: serializer.fromJson<int>(json['id']),
       driverIdsCsv: serializer.fromJson<String>(json['driverIdsCsv']),
       constructorIdsCsv: serializer.fromJson<String>(json['constructorIdsCsv']),
-      remainingBudgetMillions:
-          serializer.fromJson<double>(json['remainingBudgetMillions']),
+      remainingBudgetMillions: serializer.fromJson<double>(
+        json['remainingBudgetMillions'],
+      ),
       boostedDriverId: serializer.fromJson<String?>(json['boostedDriverId']),
       source: serializer.fromJson<String>(json['source']),
       chipsUsedCsv: serializer.fromJson<String>(json['chipsUsedCsv']),
@@ -3134,34 +3740,35 @@ class MyTeamRow extends DataClass implements Insertable<MyTeamRow> {
       'id': serializer.toJson<int>(id),
       'driverIdsCsv': serializer.toJson<String>(driverIdsCsv),
       'constructorIdsCsv': serializer.toJson<String>(constructorIdsCsv),
-      'remainingBudgetMillions':
-          serializer.toJson<double>(remainingBudgetMillions),
+      'remainingBudgetMillions': serializer.toJson<double>(
+        remainingBudgetMillions,
+      ),
       'boostedDriverId': serializer.toJson<String?>(boostedDriverId),
       'source': serializer.toJson<String>(source),
       'chipsUsedCsv': serializer.toJson<String>(chipsUsedCsv),
     };
   }
 
-  MyTeamRow copyWith(
-          {int? id,
-          String? driverIdsCsv,
-          String? constructorIdsCsv,
-          double? remainingBudgetMillions,
-          Value<String?> boostedDriverId = const Value.absent(),
-          String? source,
-          String? chipsUsedCsv}) =>
-      MyTeamRow(
-        id: id ?? this.id,
-        driverIdsCsv: driverIdsCsv ?? this.driverIdsCsv,
-        constructorIdsCsv: constructorIdsCsv ?? this.constructorIdsCsv,
-        remainingBudgetMillions:
-            remainingBudgetMillions ?? this.remainingBudgetMillions,
-        boostedDriverId: boostedDriverId.present
-            ? boostedDriverId.value
-            : this.boostedDriverId,
-        source: source ?? this.source,
-        chipsUsedCsv: chipsUsedCsv ?? this.chipsUsedCsv,
-      );
+  MyTeamRow copyWith({
+    int? id,
+    String? driverIdsCsv,
+    String? constructorIdsCsv,
+    double? remainingBudgetMillions,
+    Value<String?> boostedDriverId = const Value.absent(),
+    String? source,
+    String? chipsUsedCsv,
+  }) => MyTeamRow(
+    id: id ?? this.id,
+    driverIdsCsv: driverIdsCsv ?? this.driverIdsCsv,
+    constructorIdsCsv: constructorIdsCsv ?? this.constructorIdsCsv,
+    remainingBudgetMillions:
+        remainingBudgetMillions ?? this.remainingBudgetMillions,
+    boostedDriverId: boostedDriverId.present
+        ? boostedDriverId.value
+        : this.boostedDriverId,
+    source: source ?? this.source,
+    chipsUsedCsv: chipsUsedCsv ?? this.chipsUsedCsv,
+  );
   MyTeamRow copyWithCompanion(MyTeamTableCompanion data) {
     return MyTeamRow(
       id: data.id.present ? data.id.value : this.id,
@@ -3199,8 +3806,15 @@ class MyTeamRow extends DataClass implements Insertable<MyTeamRow> {
   }
 
   @override
-  int get hashCode => Object.hash(id, driverIdsCsv, constructorIdsCsv,
-      remainingBudgetMillions, boostedDriverId, source, chipsUsedCsv);
+  int get hashCode => Object.hash(
+    id,
+    driverIdsCsv,
+    constructorIdsCsv,
+    remainingBudgetMillions,
+    boostedDriverId,
+    source,
+    chipsUsedCsv,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3239,10 +3853,10 @@ class MyTeamTableCompanion extends UpdateCompanion<MyTeamRow> {
     this.boostedDriverId = const Value.absent(),
     required String source,
     this.chipsUsedCsv = const Value.absent(),
-  })  : driverIdsCsv = Value(driverIdsCsv),
-        constructorIdsCsv = Value(constructorIdsCsv),
-        remainingBudgetMillions = Value(remainingBudgetMillions),
-        source = Value(source);
+  }) : driverIdsCsv = Value(driverIdsCsv),
+       constructorIdsCsv = Value(constructorIdsCsv),
+       remainingBudgetMillions = Value(remainingBudgetMillions),
+       source = Value(source);
   static Insertable<MyTeamRow> custom({
     Expression<int>? id,
     Expression<String>? driverIdsCsv,
@@ -3264,14 +3878,15 @@ class MyTeamTableCompanion extends UpdateCompanion<MyTeamRow> {
     });
   }
 
-  MyTeamTableCompanion copyWith(
-      {Value<int>? id,
-      Value<String>? driverIdsCsv,
-      Value<String>? constructorIdsCsv,
-      Value<double>? remainingBudgetMillions,
-      Value<String?>? boostedDriverId,
-      Value<String>? source,
-      Value<String>? chipsUsedCsv}) {
+  MyTeamTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? driverIdsCsv,
+    Value<String>? constructorIdsCsv,
+    Value<double>? remainingBudgetMillions,
+    Value<String?>? boostedDriverId,
+    Value<String>? source,
+    Value<String>? chipsUsedCsv,
+  }) {
     return MyTeamTableCompanion(
       id: id ?? this.id,
       driverIdsCsv: driverIdsCsv ?? this.driverIdsCsv,
@@ -3297,8 +3912,9 @@ class MyTeamTableCompanion extends UpdateCompanion<MyTeamRow> {
       map['constructor_ids_csv'] = Variable<String>(constructorIdsCsv.value);
     }
     if (remainingBudgetMillions.present) {
-      map['remaining_budget_millions'] =
-          Variable<double>(remainingBudgetMillions.value);
+      map['remaining_budget_millions'] = Variable<double>(
+        remainingBudgetMillions.value,
+      );
     }
     if (boostedDriverId.present) {
       map['boosted_driver_id'] = Variable<String>(boostedDriverId.value);
@@ -3327,177 +3943,810 @@ class MyTeamTableCompanion extends UpdateCompanion<MyTeamRow> {
   }
 }
 
+class $TeamSnapshotsTable extends TeamSnapshots
+    with TableInfo<$TeamSnapshotsTable, TeamSnapshotRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TeamSnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _seasonMeta = const VerificationMeta('season');
+  @override
+  late final GeneratedColumn<int> season = GeneratedColumn<int>(
+    'season',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roundMeta = const VerificationMeta('round');
+  @override
+  late final GeneratedColumn<int> round = GeneratedColumn<int>(
+    'round',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driverIdsCsvMeta = const VerificationMeta(
+    'driverIdsCsv',
+  );
+  @override
+  late final GeneratedColumn<String> driverIdsCsv = GeneratedColumn<String>(
+    'driver_ids_csv',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _constructorIdsCsvMeta = const VerificationMeta(
+    'constructorIdsCsv',
+  );
+  @override
+  late final GeneratedColumn<String> constructorIdsCsv =
+      GeneratedColumn<String>(
+        'constructor_ids_csv',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _remainingBudgetMillionsMeta =
+      const VerificationMeta('remainingBudgetMillions');
+  @override
+  late final GeneratedColumn<double> remainingBudgetMillions =
+      GeneratedColumn<double>(
+        'remaining_budget_millions',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _boostedDriverIdMeta = const VerificationMeta(
+    'boostedDriverId',
+  );
+  @override
+  late final GeneratedColumn<String> boostedDriverId = GeneratedColumn<String>(
+    'boosted_driver_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _chipsUsedCsvMeta = const VerificationMeta(
+    'chipsUsedCsv',
+  );
+  @override
+  late final GeneratedColumn<String> chipsUsedCsv = GeneratedColumn<String>(
+    'chips_used_csv',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _savedAtMeta = const VerificationMeta(
+    'savedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> savedAt = GeneratedColumn<DateTime>(
+    'saved_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    season,
+    round,
+    driverIdsCsv,
+    constructorIdsCsv,
+    remainingBudgetMillions,
+    boostedDriverId,
+    chipsUsedCsv,
+    savedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'team_snapshots';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TeamSnapshotRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('season')) {
+      context.handle(
+        _seasonMeta,
+        season.isAcceptableOrUnknown(data['season']!, _seasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seasonMeta);
+    }
+    if (data.containsKey('round')) {
+      context.handle(
+        _roundMeta,
+        round.isAcceptableOrUnknown(data['round']!, _roundMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roundMeta);
+    }
+    if (data.containsKey('driver_ids_csv')) {
+      context.handle(
+        _driverIdsCsvMeta,
+        driverIdsCsv.isAcceptableOrUnknown(
+          data['driver_ids_csv']!,
+          _driverIdsCsvMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_driverIdsCsvMeta);
+    }
+    if (data.containsKey('constructor_ids_csv')) {
+      context.handle(
+        _constructorIdsCsvMeta,
+        constructorIdsCsv.isAcceptableOrUnknown(
+          data['constructor_ids_csv']!,
+          _constructorIdsCsvMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_constructorIdsCsvMeta);
+    }
+    if (data.containsKey('remaining_budget_millions')) {
+      context.handle(
+        _remainingBudgetMillionsMeta,
+        remainingBudgetMillions.isAcceptableOrUnknown(
+          data['remaining_budget_millions']!,
+          _remainingBudgetMillionsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_remainingBudgetMillionsMeta);
+    }
+    if (data.containsKey('boosted_driver_id')) {
+      context.handle(
+        _boostedDriverIdMeta,
+        boostedDriverId.isAcceptableOrUnknown(
+          data['boosted_driver_id']!,
+          _boostedDriverIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('chips_used_csv')) {
+      context.handle(
+        _chipsUsedCsvMeta,
+        chipsUsedCsv.isAcceptableOrUnknown(
+          data['chips_used_csv']!,
+          _chipsUsedCsvMeta,
+        ),
+      );
+    }
+    if (data.containsKey('saved_at')) {
+      context.handle(
+        _savedAtMeta,
+        savedAt.isAcceptableOrUnknown(data['saved_at']!, _savedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_savedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {season, round};
+  @override
+  TeamSnapshotRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TeamSnapshotRow(
+      season: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season'],
+      )!,
+      round: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}round'],
+      )!,
+      driverIdsCsv: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}driver_ids_csv'],
+      )!,
+      constructorIdsCsv: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}constructor_ids_csv'],
+      )!,
+      remainingBudgetMillions: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}remaining_budget_millions'],
+      )!,
+      boostedDriverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}boosted_driver_id'],
+      ),
+      chipsUsedCsv: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}chips_used_csv'],
+      )!,
+      savedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}saved_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TeamSnapshotsTable createAlias(String alias) {
+    return $TeamSnapshotsTable(attachedDatabase, alias);
+  }
+}
+
+class TeamSnapshotRow extends DataClass implements Insertable<TeamSnapshotRow> {
+  final int season;
+  final int round;
+  final String driverIdsCsv;
+  final String constructorIdsCsv;
+  final double remainingBudgetMillions;
+  final String? boostedDriverId;
+  final String chipsUsedCsv;
+  final DateTime savedAt;
+  const TeamSnapshotRow({
+    required this.season,
+    required this.round,
+    required this.driverIdsCsv,
+    required this.constructorIdsCsv,
+    required this.remainingBudgetMillions,
+    this.boostedDriverId,
+    required this.chipsUsedCsv,
+    required this.savedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['season'] = Variable<int>(season);
+    map['round'] = Variable<int>(round);
+    map['driver_ids_csv'] = Variable<String>(driverIdsCsv);
+    map['constructor_ids_csv'] = Variable<String>(constructorIdsCsv);
+    map['remaining_budget_millions'] = Variable<double>(
+      remainingBudgetMillions,
+    );
+    if (!nullToAbsent || boostedDriverId != null) {
+      map['boosted_driver_id'] = Variable<String>(boostedDriverId);
+    }
+    map['chips_used_csv'] = Variable<String>(chipsUsedCsv);
+    map['saved_at'] = Variable<DateTime>(savedAt);
+    return map;
+  }
+
+  TeamSnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return TeamSnapshotsCompanion(
+      season: Value(season),
+      round: Value(round),
+      driverIdsCsv: Value(driverIdsCsv),
+      constructorIdsCsv: Value(constructorIdsCsv),
+      remainingBudgetMillions: Value(remainingBudgetMillions),
+      boostedDriverId: boostedDriverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(boostedDriverId),
+      chipsUsedCsv: Value(chipsUsedCsv),
+      savedAt: Value(savedAt),
+    );
+  }
+
+  factory TeamSnapshotRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TeamSnapshotRow(
+      season: serializer.fromJson<int>(json['season']),
+      round: serializer.fromJson<int>(json['round']),
+      driverIdsCsv: serializer.fromJson<String>(json['driverIdsCsv']),
+      constructorIdsCsv: serializer.fromJson<String>(json['constructorIdsCsv']),
+      remainingBudgetMillions: serializer.fromJson<double>(
+        json['remainingBudgetMillions'],
+      ),
+      boostedDriverId: serializer.fromJson<String?>(json['boostedDriverId']),
+      chipsUsedCsv: serializer.fromJson<String>(json['chipsUsedCsv']),
+      savedAt: serializer.fromJson<DateTime>(json['savedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'season': serializer.toJson<int>(season),
+      'round': serializer.toJson<int>(round),
+      'driverIdsCsv': serializer.toJson<String>(driverIdsCsv),
+      'constructorIdsCsv': serializer.toJson<String>(constructorIdsCsv),
+      'remainingBudgetMillions': serializer.toJson<double>(
+        remainingBudgetMillions,
+      ),
+      'boostedDriverId': serializer.toJson<String?>(boostedDriverId),
+      'chipsUsedCsv': serializer.toJson<String>(chipsUsedCsv),
+      'savedAt': serializer.toJson<DateTime>(savedAt),
+    };
+  }
+
+  TeamSnapshotRow copyWith({
+    int? season,
+    int? round,
+    String? driverIdsCsv,
+    String? constructorIdsCsv,
+    double? remainingBudgetMillions,
+    Value<String?> boostedDriverId = const Value.absent(),
+    String? chipsUsedCsv,
+    DateTime? savedAt,
+  }) => TeamSnapshotRow(
+    season: season ?? this.season,
+    round: round ?? this.round,
+    driverIdsCsv: driverIdsCsv ?? this.driverIdsCsv,
+    constructorIdsCsv: constructorIdsCsv ?? this.constructorIdsCsv,
+    remainingBudgetMillions:
+        remainingBudgetMillions ?? this.remainingBudgetMillions,
+    boostedDriverId: boostedDriverId.present
+        ? boostedDriverId.value
+        : this.boostedDriverId,
+    chipsUsedCsv: chipsUsedCsv ?? this.chipsUsedCsv,
+    savedAt: savedAt ?? this.savedAt,
+  );
+  TeamSnapshotRow copyWithCompanion(TeamSnapshotsCompanion data) {
+    return TeamSnapshotRow(
+      season: data.season.present ? data.season.value : this.season,
+      round: data.round.present ? data.round.value : this.round,
+      driverIdsCsv: data.driverIdsCsv.present
+          ? data.driverIdsCsv.value
+          : this.driverIdsCsv,
+      constructorIdsCsv: data.constructorIdsCsv.present
+          ? data.constructorIdsCsv.value
+          : this.constructorIdsCsv,
+      remainingBudgetMillions: data.remainingBudgetMillions.present
+          ? data.remainingBudgetMillions.value
+          : this.remainingBudgetMillions,
+      boostedDriverId: data.boostedDriverId.present
+          ? data.boostedDriverId.value
+          : this.boostedDriverId,
+      chipsUsedCsv: data.chipsUsedCsv.present
+          ? data.chipsUsedCsv.value
+          : this.chipsUsedCsv,
+      savedAt: data.savedAt.present ? data.savedAt.value : this.savedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TeamSnapshotRow(')
+          ..write('season: $season, ')
+          ..write('round: $round, ')
+          ..write('driverIdsCsv: $driverIdsCsv, ')
+          ..write('constructorIdsCsv: $constructorIdsCsv, ')
+          ..write('remainingBudgetMillions: $remainingBudgetMillions, ')
+          ..write('boostedDriverId: $boostedDriverId, ')
+          ..write('chipsUsedCsv: $chipsUsedCsv, ')
+          ..write('savedAt: $savedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    season,
+    round,
+    driverIdsCsv,
+    constructorIdsCsv,
+    remainingBudgetMillions,
+    boostedDriverId,
+    chipsUsedCsv,
+    savedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TeamSnapshotRow &&
+          other.season == this.season &&
+          other.round == this.round &&
+          other.driverIdsCsv == this.driverIdsCsv &&
+          other.constructorIdsCsv == this.constructorIdsCsv &&
+          other.remainingBudgetMillions == this.remainingBudgetMillions &&
+          other.boostedDriverId == this.boostedDriverId &&
+          other.chipsUsedCsv == this.chipsUsedCsv &&
+          other.savedAt == this.savedAt);
+}
+
+class TeamSnapshotsCompanion extends UpdateCompanion<TeamSnapshotRow> {
+  final Value<int> season;
+  final Value<int> round;
+  final Value<String> driverIdsCsv;
+  final Value<String> constructorIdsCsv;
+  final Value<double> remainingBudgetMillions;
+  final Value<String?> boostedDriverId;
+  final Value<String> chipsUsedCsv;
+  final Value<DateTime> savedAt;
+  final Value<int> rowid;
+  const TeamSnapshotsCompanion({
+    this.season = const Value.absent(),
+    this.round = const Value.absent(),
+    this.driverIdsCsv = const Value.absent(),
+    this.constructorIdsCsv = const Value.absent(),
+    this.remainingBudgetMillions = const Value.absent(),
+    this.boostedDriverId = const Value.absent(),
+    this.chipsUsedCsv = const Value.absent(),
+    this.savedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TeamSnapshotsCompanion.insert({
+    required int season,
+    required int round,
+    required String driverIdsCsv,
+    required String constructorIdsCsv,
+    required double remainingBudgetMillions,
+    this.boostedDriverId = const Value.absent(),
+    this.chipsUsedCsv = const Value.absent(),
+    required DateTime savedAt,
+    this.rowid = const Value.absent(),
+  }) : season = Value(season),
+       round = Value(round),
+       driverIdsCsv = Value(driverIdsCsv),
+       constructorIdsCsv = Value(constructorIdsCsv),
+       remainingBudgetMillions = Value(remainingBudgetMillions),
+       savedAt = Value(savedAt);
+  static Insertable<TeamSnapshotRow> custom({
+    Expression<int>? season,
+    Expression<int>? round,
+    Expression<String>? driverIdsCsv,
+    Expression<String>? constructorIdsCsv,
+    Expression<double>? remainingBudgetMillions,
+    Expression<String>? boostedDriverId,
+    Expression<String>? chipsUsedCsv,
+    Expression<DateTime>? savedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (season != null) 'season': season,
+      if (round != null) 'round': round,
+      if (driverIdsCsv != null) 'driver_ids_csv': driverIdsCsv,
+      if (constructorIdsCsv != null) 'constructor_ids_csv': constructorIdsCsv,
+      if (remainingBudgetMillions != null)
+        'remaining_budget_millions': remainingBudgetMillions,
+      if (boostedDriverId != null) 'boosted_driver_id': boostedDriverId,
+      if (chipsUsedCsv != null) 'chips_used_csv': chipsUsedCsv,
+      if (savedAt != null) 'saved_at': savedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TeamSnapshotsCompanion copyWith({
+    Value<int>? season,
+    Value<int>? round,
+    Value<String>? driverIdsCsv,
+    Value<String>? constructorIdsCsv,
+    Value<double>? remainingBudgetMillions,
+    Value<String?>? boostedDriverId,
+    Value<String>? chipsUsedCsv,
+    Value<DateTime>? savedAt,
+    Value<int>? rowid,
+  }) {
+    return TeamSnapshotsCompanion(
+      season: season ?? this.season,
+      round: round ?? this.round,
+      driverIdsCsv: driverIdsCsv ?? this.driverIdsCsv,
+      constructorIdsCsv: constructorIdsCsv ?? this.constructorIdsCsv,
+      remainingBudgetMillions:
+          remainingBudgetMillions ?? this.remainingBudgetMillions,
+      boostedDriverId: boostedDriverId ?? this.boostedDriverId,
+      chipsUsedCsv: chipsUsedCsv ?? this.chipsUsedCsv,
+      savedAt: savedAt ?? this.savedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (season.present) {
+      map['season'] = Variable<int>(season.value);
+    }
+    if (round.present) {
+      map['round'] = Variable<int>(round.value);
+    }
+    if (driverIdsCsv.present) {
+      map['driver_ids_csv'] = Variable<String>(driverIdsCsv.value);
+    }
+    if (constructorIdsCsv.present) {
+      map['constructor_ids_csv'] = Variable<String>(constructorIdsCsv.value);
+    }
+    if (remainingBudgetMillions.present) {
+      map['remaining_budget_millions'] = Variable<double>(
+        remainingBudgetMillions.value,
+      );
+    }
+    if (boostedDriverId.present) {
+      map['boosted_driver_id'] = Variable<String>(boostedDriverId.value);
+    }
+    if (chipsUsedCsv.present) {
+      map['chips_used_csv'] = Variable<String>(chipsUsedCsv.value);
+    }
+    if (savedAt.present) {
+      map['saved_at'] = Variable<DateTime>(savedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TeamSnapshotsCompanion(')
+          ..write('season: $season, ')
+          ..write('round: $round, ')
+          ..write('driverIdsCsv: $driverIdsCsv, ')
+          ..write('constructorIdsCsv: $constructorIdsCsv, ')
+          ..write('remainingBudgetMillions: $remainingBudgetMillions, ')
+          ..write('boostedDriverId: $boostedDriverId, ')
+          ..write('chipsUsedCsv: $chipsUsedCsv, ')
+          ..write('savedAt: $savedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PredictionsCacheTable extends PredictionsCache
     with TableInfo<$PredictionsCacheTable, PredictionCacheRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $PredictionsCacheTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _assetIdMeta =
-      const VerificationMeta('assetId');
+  static const VerificationMeta _assetIdMeta = const VerificationMeta(
+    'assetId',
+  );
   @override
   late final GeneratedColumn<String> assetId = GeneratedColumn<String>(
-      'asset_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _assetTypeMeta =
-      const VerificationMeta('assetType');
+    'asset_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _assetTypeMeta = const VerificationMeta(
+    'assetType',
+  );
   @override
   late final GeneratedColumn<String> assetType = GeneratedColumn<String>(
-      'asset_type', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'asset_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _seasonMeta = const VerificationMeta('season');
   @override
   late final GeneratedColumn<int> season = GeneratedColumn<int>(
-      'season', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+    'season',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _roundMeta = const VerificationMeta('round');
   @override
   late final GeneratedColumn<int> round = GeneratedColumn<int>(
-      'round', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _expectedPointsMeta =
-      const VerificationMeta('expectedPoints');
+    'round',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _expectedPointsMeta = const VerificationMeta(
+    'expectedPoints',
+  );
   @override
   late final GeneratedColumn<double> expectedPoints = GeneratedColumn<double>(
-      'expected_points', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _winProbabilityMeta =
-      const VerificationMeta('winProbability');
+    'expected_points',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _winProbabilityMeta = const VerificationMeta(
+    'winProbability',
+  );
   @override
   late final GeneratedColumn<double> winProbability = GeneratedColumn<double>(
-      'win_probability', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _podiumProbabilityMeta =
-      const VerificationMeta('podiumProbability');
+    'win_probability',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _podiumProbabilityMeta = const VerificationMeta(
+    'podiumProbability',
+  );
   @override
   late final GeneratedColumn<double> podiumProbability =
-      GeneratedColumn<double>('podium_probability', aliasedName, false,
-          type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _top10ProbabilityMeta =
-      const VerificationMeta('top10Probability');
+      GeneratedColumn<double>(
+        'podium_probability',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _top10ProbabilityMeta = const VerificationMeta(
+    'top10Probability',
+  );
   @override
   late final GeneratedColumn<double> top10Probability = GeneratedColumn<double>(
-      'top10_probability', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _priceMillionsMeta =
-      const VerificationMeta('priceMillions');
+    'top10_probability',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _priceMillionsMeta = const VerificationMeta(
+    'priceMillions',
+  );
   @override
   late final GeneratedColumn<double> priceMillions = GeneratedColumn<double>(
-      'price_millions', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _breakdownJsonMeta =
-      const VerificationMeta('breakdownJson');
+    'price_millions',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _breakdownJsonMeta = const VerificationMeta(
+    'breakdownJson',
+  );
   @override
   late final GeneratedColumn<String> breakdownJson = GeneratedColumn<String>(
-      'breakdown_json', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _computedAtMeta =
-      const VerificationMeta('computedAt');
+    'breakdown_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _computedAtMeta = const VerificationMeta(
+    'computedAt',
+  );
   @override
   late final GeneratedColumn<DateTime> computedAt = GeneratedColumn<DateTime>(
-      'computed_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+    'computed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
   @override
   List<GeneratedColumn> get $columns => [
-        assetId,
-        assetType,
-        season,
-        round,
-        expectedPoints,
-        winProbability,
-        podiumProbability,
-        top10Probability,
-        priceMillions,
-        breakdownJson,
-        computedAt
-      ];
+    assetId,
+    assetType,
+    season,
+    round,
+    expectedPoints,
+    winProbability,
+    podiumProbability,
+    top10Probability,
+    priceMillions,
+    breakdownJson,
+    computedAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'predictions_cache';
   @override
-  VerificationContext validateIntegrity(Insertable<PredictionCacheRow> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<PredictionCacheRow> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('asset_id')) {
-      context.handle(_assetIdMeta,
-          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
+      context.handle(
+        _assetIdMeta,
+        assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta),
+      );
     } else if (isInserting) {
       context.missing(_assetIdMeta);
     }
     if (data.containsKey('asset_type')) {
-      context.handle(_assetTypeMeta,
-          assetType.isAcceptableOrUnknown(data['asset_type']!, _assetTypeMeta));
+      context.handle(
+        _assetTypeMeta,
+        assetType.isAcceptableOrUnknown(data['asset_type']!, _assetTypeMeta),
+      );
     } else if (isInserting) {
       context.missing(_assetTypeMeta);
     }
     if (data.containsKey('season')) {
-      context.handle(_seasonMeta,
-          season.isAcceptableOrUnknown(data['season']!, _seasonMeta));
+      context.handle(
+        _seasonMeta,
+        season.isAcceptableOrUnknown(data['season']!, _seasonMeta),
+      );
     } else if (isInserting) {
       context.missing(_seasonMeta);
     }
     if (data.containsKey('round')) {
       context.handle(
-          _roundMeta, round.isAcceptableOrUnknown(data['round']!, _roundMeta));
+        _roundMeta,
+        round.isAcceptableOrUnknown(data['round']!, _roundMeta),
+      );
     } else if (isInserting) {
       context.missing(_roundMeta);
     }
     if (data.containsKey('expected_points')) {
       context.handle(
+        _expectedPointsMeta,
+        expectedPoints.isAcceptableOrUnknown(
+          data['expected_points']!,
           _expectedPointsMeta,
-          expectedPoints.isAcceptableOrUnknown(
-              data['expected_points']!, _expectedPointsMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_expectedPointsMeta);
     }
     if (data.containsKey('win_probability')) {
       context.handle(
+        _winProbabilityMeta,
+        winProbability.isAcceptableOrUnknown(
+          data['win_probability']!,
           _winProbabilityMeta,
-          winProbability.isAcceptableOrUnknown(
-              data['win_probability']!, _winProbabilityMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_winProbabilityMeta);
     }
     if (data.containsKey('podium_probability')) {
       context.handle(
+        _podiumProbabilityMeta,
+        podiumProbability.isAcceptableOrUnknown(
+          data['podium_probability']!,
           _podiumProbabilityMeta,
-          podiumProbability.isAcceptableOrUnknown(
-              data['podium_probability']!, _podiumProbabilityMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_podiumProbabilityMeta);
     }
     if (data.containsKey('top10_probability')) {
       context.handle(
+        _top10ProbabilityMeta,
+        top10Probability.isAcceptableOrUnknown(
+          data['top10_probability']!,
           _top10ProbabilityMeta,
-          top10Probability.isAcceptableOrUnknown(
-              data['top10_probability']!, _top10ProbabilityMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_top10ProbabilityMeta);
     }
     if (data.containsKey('price_millions')) {
       context.handle(
+        _priceMillionsMeta,
+        priceMillions.isAcceptableOrUnknown(
+          data['price_millions']!,
           _priceMillionsMeta,
-          priceMillions.isAcceptableOrUnknown(
-              data['price_millions']!, _priceMillionsMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_priceMillionsMeta);
     }
     if (data.containsKey('breakdown_json')) {
       context.handle(
+        _breakdownJsonMeta,
+        breakdownJson.isAcceptableOrUnknown(
+          data['breakdown_json']!,
           _breakdownJsonMeta,
-          breakdownJson.isAcceptableOrUnknown(
-              data['breakdown_json']!, _breakdownJsonMeta));
+        ),
+      );
     } else if (isInserting) {
       context.missing(_breakdownJsonMeta);
     }
     if (data.containsKey('computed_at')) {
       context.handle(
-          _computedAtMeta,
-          computedAt.isAcceptableOrUnknown(
-              data['computed_at']!, _computedAtMeta));
+        _computedAtMeta,
+        computedAt.isAcceptableOrUnknown(data['computed_at']!, _computedAtMeta),
+      );
     } else if (isInserting) {
       context.missing(_computedAtMeta);
     }
@@ -3510,28 +4759,50 @@ class $PredictionsCacheTable extends PredictionsCache
   PredictionCacheRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return PredictionCacheRow(
-      assetId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}asset_id'])!,
-      assetType: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}asset_type'])!,
-      season: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}season'])!,
-      round: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}round'])!,
+      assetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_id'],
+      )!,
+      assetType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_type'],
+      )!,
+      season: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season'],
+      )!,
+      round: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}round'],
+      )!,
       expectedPoints: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}expected_points'])!,
+        DriftSqlType.double,
+        data['${effectivePrefix}expected_points'],
+      )!,
       winProbability: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}win_probability'])!,
+        DriftSqlType.double,
+        data['${effectivePrefix}win_probability'],
+      )!,
       podiumProbability: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}podium_probability'])!,
+        DriftSqlType.double,
+        data['${effectivePrefix}podium_probability'],
+      )!,
       top10Probability: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}top10_probability'])!,
-      priceMillions: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}price_millions'])!,
-      breakdownJson: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}breakdown_json'])!,
-      computedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}computed_at'])!,
+        DriftSqlType.double,
+        data['${effectivePrefix}top10_probability'],
+      )!,
+      priceMillions: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}price_millions'],
+      )!,
+      breakdownJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}breakdown_json'],
+      )!,
+      computedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}computed_at'],
+      )!,
     );
   }
 
@@ -3554,18 +4825,19 @@ class PredictionCacheRow extends DataClass
   final double priceMillions;
   final String breakdownJson;
   final DateTime computedAt;
-  const PredictionCacheRow(
-      {required this.assetId,
-      required this.assetType,
-      required this.season,
-      required this.round,
-      required this.expectedPoints,
-      required this.winProbability,
-      required this.podiumProbability,
-      required this.top10Probability,
-      required this.priceMillions,
-      required this.breakdownJson,
-      required this.computedAt});
+  const PredictionCacheRow({
+    required this.assetId,
+    required this.assetType,
+    required this.season,
+    required this.round,
+    required this.expectedPoints,
+    required this.winProbability,
+    required this.podiumProbability,
+    required this.top10Probability,
+    required this.priceMillions,
+    required this.breakdownJson,
+    required this.computedAt,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -3599,8 +4871,10 @@ class PredictionCacheRow extends DataClass
     );
   }
 
-  factory PredictionCacheRow.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory PredictionCacheRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return PredictionCacheRow(
       assetId: serializer.fromJson<String>(json['assetId']),
@@ -3634,31 +4908,31 @@ class PredictionCacheRow extends DataClass
     };
   }
 
-  PredictionCacheRow copyWith(
-          {String? assetId,
-          String? assetType,
-          int? season,
-          int? round,
-          double? expectedPoints,
-          double? winProbability,
-          double? podiumProbability,
-          double? top10Probability,
-          double? priceMillions,
-          String? breakdownJson,
-          DateTime? computedAt}) =>
-      PredictionCacheRow(
-        assetId: assetId ?? this.assetId,
-        assetType: assetType ?? this.assetType,
-        season: season ?? this.season,
-        round: round ?? this.round,
-        expectedPoints: expectedPoints ?? this.expectedPoints,
-        winProbability: winProbability ?? this.winProbability,
-        podiumProbability: podiumProbability ?? this.podiumProbability,
-        top10Probability: top10Probability ?? this.top10Probability,
-        priceMillions: priceMillions ?? this.priceMillions,
-        breakdownJson: breakdownJson ?? this.breakdownJson,
-        computedAt: computedAt ?? this.computedAt,
-      );
+  PredictionCacheRow copyWith({
+    String? assetId,
+    String? assetType,
+    int? season,
+    int? round,
+    double? expectedPoints,
+    double? winProbability,
+    double? podiumProbability,
+    double? top10Probability,
+    double? priceMillions,
+    String? breakdownJson,
+    DateTime? computedAt,
+  }) => PredictionCacheRow(
+    assetId: assetId ?? this.assetId,
+    assetType: assetType ?? this.assetType,
+    season: season ?? this.season,
+    round: round ?? this.round,
+    expectedPoints: expectedPoints ?? this.expectedPoints,
+    winProbability: winProbability ?? this.winProbability,
+    podiumProbability: podiumProbability ?? this.podiumProbability,
+    top10Probability: top10Probability ?? this.top10Probability,
+    priceMillions: priceMillions ?? this.priceMillions,
+    breakdownJson: breakdownJson ?? this.breakdownJson,
+    computedAt: computedAt ?? this.computedAt,
+  );
   PredictionCacheRow copyWithCompanion(PredictionsCacheCompanion data) {
     return PredictionCacheRow(
       assetId: data.assetId.present ? data.assetId.value : this.assetId,
@@ -3683,8 +4957,9 @@ class PredictionCacheRow extends DataClass
       breakdownJson: data.breakdownJson.present
           ? data.breakdownJson.value
           : this.breakdownJson,
-      computedAt:
-          data.computedAt.present ? data.computedAt.value : this.computedAt,
+      computedAt: data.computedAt.present
+          ? data.computedAt.value
+          : this.computedAt,
     );
   }
 
@@ -3708,17 +4983,18 @@ class PredictionCacheRow extends DataClass
 
   @override
   int get hashCode => Object.hash(
-      assetId,
-      assetType,
-      season,
-      round,
-      expectedPoints,
-      winProbability,
-      podiumProbability,
-      top10Probability,
-      priceMillions,
-      breakdownJson,
-      computedAt);
+    assetId,
+    assetType,
+    season,
+    round,
+    expectedPoints,
+    winProbability,
+    podiumProbability,
+    top10Probability,
+    priceMillions,
+    breakdownJson,
+    computedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3776,17 +5052,17 @@ class PredictionsCacheCompanion extends UpdateCompanion<PredictionCacheRow> {
     required String breakdownJson,
     required DateTime computedAt,
     this.rowid = const Value.absent(),
-  })  : assetId = Value(assetId),
-        assetType = Value(assetType),
-        season = Value(season),
-        round = Value(round),
-        expectedPoints = Value(expectedPoints),
-        winProbability = Value(winProbability),
-        podiumProbability = Value(podiumProbability),
-        top10Probability = Value(top10Probability),
-        priceMillions = Value(priceMillions),
-        breakdownJson = Value(breakdownJson),
-        computedAt = Value(computedAt);
+  }) : assetId = Value(assetId),
+       assetType = Value(assetType),
+       season = Value(season),
+       round = Value(round),
+       expectedPoints = Value(expectedPoints),
+       winProbability = Value(winProbability),
+       podiumProbability = Value(podiumProbability),
+       top10Probability = Value(top10Probability),
+       priceMillions = Value(priceMillions),
+       breakdownJson = Value(breakdownJson),
+       computedAt = Value(computedAt);
   static Insertable<PredictionCacheRow> custom({
     Expression<String>? assetId,
     Expression<String>? assetType,
@@ -3817,19 +5093,20 @@ class PredictionsCacheCompanion extends UpdateCompanion<PredictionCacheRow> {
     });
   }
 
-  PredictionsCacheCompanion copyWith(
-      {Value<String>? assetId,
-      Value<String>? assetType,
-      Value<int>? season,
-      Value<int>? round,
-      Value<double>? expectedPoints,
-      Value<double>? winProbability,
-      Value<double>? podiumProbability,
-      Value<double>? top10Probability,
-      Value<double>? priceMillions,
-      Value<String>? breakdownJson,
-      Value<DateTime>? computedAt,
-      Value<int>? rowid}) {
+  PredictionsCacheCompanion copyWith({
+    Value<String>? assetId,
+    Value<String>? assetType,
+    Value<int>? season,
+    Value<int>? round,
+    Value<double>? expectedPoints,
+    Value<double>? winProbability,
+    Value<double>? podiumProbability,
+    Value<double>? top10Probability,
+    Value<double>? priceMillions,
+    Value<String>? breakdownJson,
+    Value<DateTime>? computedAt,
+    Value<int>? rowid,
+  }) {
     return PredictionsCacheCompanion(
       assetId: assetId ?? this.assetId,
       assetType: assetType ?? this.assetType,
@@ -3922,44 +5199,49 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $FantasyPointsTableTable fantasyPointsTable =
       $FantasyPointsTableTable(this);
   late final $MyTeamTableTable myTeamTable = $MyTeamTableTable(this);
-  late final $PredictionsCacheTable predictionsCache =
-      $PredictionsCacheTable(this);
+  late final $TeamSnapshotsTable teamSnapshots = $TeamSnapshotsTable(this);
+  late final $PredictionsCacheTable predictionsCache = $PredictionsCacheTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
-        drivers,
-        constructors,
-        races,
-        results,
-        qualifyingResults,
-        sessionLaps,
-        fantasyPrices,
-        fantasyPointsTable,
-        myTeamTable,
-        predictionsCache
-      ];
+    drivers,
+    constructors,
+    races,
+    results,
+    qualifyingResults,
+    sessionLaps,
+    fantasyPrices,
+    fantasyPointsTable,
+    myTeamTable,
+    teamSnapshots,
+    predictionsCache,
+  ];
 }
 
-typedef $$DriversTableCreateCompanionBuilder = DriversCompanion Function({
-  required String id,
-  required String code,
-  required String givenName,
-  required String familyName,
-  required String constructorId,
-  Value<int?> number,
-  Value<int> rowid,
-});
-typedef $$DriversTableUpdateCompanionBuilder = DriversCompanion Function({
-  Value<String> id,
-  Value<String> code,
-  Value<String> givenName,
-  Value<String> familyName,
-  Value<String> constructorId,
-  Value<int?> number,
-  Value<int> rowid,
-});
+typedef $$DriversTableCreateCompanionBuilder =
+    DriversCompanion Function({
+      required String id,
+      required String code,
+      required String givenName,
+      required String familyName,
+      required String constructorId,
+      Value<int?> number,
+      Value<int> rowid,
+    });
+typedef $$DriversTableUpdateCompanionBuilder =
+    DriversCompanion Function({
+      Value<String> id,
+      Value<String> code,
+      Value<String> givenName,
+      Value<String> familyName,
+      Value<String> constructorId,
+      Value<int?> number,
+      Value<int> rowid,
+    });
 
 class $$DriversTableFilterComposer
     extends Composer<_$AppDatabase, $DriversTable> {
@@ -3971,22 +5253,34 @@ class $$DriversTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get code => $composableBuilder(
-      column: $table.code, builder: (column) => ColumnFilters(column));
+    column: $table.code,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get givenName => $composableBuilder(
-      column: $table.givenName, builder: (column) => ColumnFilters(column));
+    column: $table.givenName,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get familyName => $composableBuilder(
-      column: $table.familyName, builder: (column) => ColumnFilters(column));
+    column: $table.familyName,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get constructorId => $composableBuilder(
-      column: $table.constructorId, builder: (column) => ColumnFilters(column));
+    column: $table.constructorId,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get number => $composableBuilder(
-      column: $table.number, builder: (column) => ColumnFilters(column));
+    column: $table.number,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$DriversTableOrderingComposer
@@ -3999,23 +5293,34 @@ class $$DriversTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get code => $composableBuilder(
-      column: $table.code, builder: (column) => ColumnOrderings(column));
+    column: $table.code,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get givenName => $composableBuilder(
-      column: $table.givenName, builder: (column) => ColumnOrderings(column));
+    column: $table.givenName,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get familyName => $composableBuilder(
-      column: $table.familyName, builder: (column) => ColumnOrderings(column));
+    column: $table.familyName,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get constructorId => $composableBuilder(
-      column: $table.constructorId,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.constructorId,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get number => $composableBuilder(
-      column: $table.number, builder: (column) => ColumnOrderings(column));
+    column: $table.number,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DriversTableAnnotationComposer
@@ -4037,29 +5342,37 @@ class $$DriversTableAnnotationComposer
       $composableBuilder(column: $table.givenName, builder: (column) => column);
 
   GeneratedColumn<String> get familyName => $composableBuilder(
-      column: $table.familyName, builder: (column) => column);
+    column: $table.familyName,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get constructorId => $composableBuilder(
-      column: $table.constructorId, builder: (column) => column);
+    column: $table.constructorId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get number =>
       $composableBuilder(column: $table.number, builder: (column) => column);
 }
 
-class $$DriversTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $DriversTable,
-    DriverRow,
-    $$DriversTableFilterComposer,
-    $$DriversTableOrderingComposer,
-    $$DriversTableAnnotationComposer,
-    $$DriversTableCreateCompanionBuilder,
-    $$DriversTableUpdateCompanionBuilder,
-    (DriverRow, BaseReferences<_$AppDatabase, $DriversTable, DriverRow>),
-    DriverRow,
-    PrefetchHooks Function()> {
+class $$DriversTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DriversTable,
+          DriverRow,
+          $$DriversTableFilterComposer,
+          $$DriversTableOrderingComposer,
+          $$DriversTableAnnotationComposer,
+          $$DriversTableCreateCompanionBuilder,
+          $$DriversTableUpdateCompanionBuilder,
+          (DriverRow, BaseReferences<_$AppDatabase, $DriversTable, DriverRow>),
+          DriverRow,
+          PrefetchHooks Function()
+        > {
   $$DriversTableTableManager(_$AppDatabase db, $DriversTable table)
-      : super(TableManagerState(
+    : super(
+        TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
@@ -4068,75 +5381,78 @@ class $$DriversTableTableManager extends RootTableManager<
               $$DriversTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$DriversTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> id = const Value.absent(),
-            Value<String> code = const Value.absent(),
-            Value<String> givenName = const Value.absent(),
-            Value<String> familyName = const Value.absent(),
-            Value<String> constructorId = const Value.absent(),
-            Value<int?> number = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              DriversCompanion(
-            id: id,
-            code: code,
-            givenName: givenName,
-            familyName: familyName,
-            constructorId: constructorId,
-            number: number,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String id,
-            required String code,
-            required String givenName,
-            required String familyName,
-            required String constructorId,
-            Value<int?> number = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              DriversCompanion.insert(
-            id: id,
-            code: code,
-            givenName: givenName,
-            familyName: familyName,
-            constructorId: constructorId,
-            number: number,
-            rowid: rowid,
-          ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> code = const Value.absent(),
+                Value<String> givenName = const Value.absent(),
+                Value<String> familyName = const Value.absent(),
+                Value<String> constructorId = const Value.absent(),
+                Value<int?> number = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DriversCompanion(
+                id: id,
+                code: code,
+                givenName: givenName,
+                familyName: familyName,
+                constructorId: constructorId,
+                number: number,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String code,
+                required String givenName,
+                required String familyName,
+                required String constructorId,
+                Value<int?> number = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DriversCompanion.insert(
+                id: id,
+                code: code,
+                givenName: givenName,
+                familyName: familyName,
+                constructorId: constructorId,
+                number: number,
+                rowid: rowid,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
-        ));
+        ),
+      );
 }
 
-typedef $$DriversTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $DriversTable,
-    DriverRow,
-    $$DriversTableFilterComposer,
-    $$DriversTableOrderingComposer,
-    $$DriversTableAnnotationComposer,
-    $$DriversTableCreateCompanionBuilder,
-    $$DriversTableUpdateCompanionBuilder,
-    (DriverRow, BaseReferences<_$AppDatabase, $DriversTable, DriverRow>),
-    DriverRow,
-    PrefetchHooks Function()>;
-typedef $$ConstructorsTableCreateCompanionBuilder = ConstructorsCompanion
-    Function({
-  required String id,
-  required String name,
-  required String nationality,
-  Value<int> rowid,
-});
-typedef $$ConstructorsTableUpdateCompanionBuilder = ConstructorsCompanion
-    Function({
-  Value<String> id,
-  Value<String> name,
-  Value<String> nationality,
-  Value<int> rowid,
-});
+typedef $$DriversTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DriversTable,
+      DriverRow,
+      $$DriversTableFilterComposer,
+      $$DriversTableOrderingComposer,
+      $$DriversTableAnnotationComposer,
+      $$DriversTableCreateCompanionBuilder,
+      $$DriversTableUpdateCompanionBuilder,
+      (DriverRow, BaseReferences<_$AppDatabase, $DriversTable, DriverRow>),
+      DriverRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ConstructorsTableCreateCompanionBuilder =
+    ConstructorsCompanion Function({
+      required String id,
+      required String name,
+      required String nationality,
+      Value<int> rowid,
+    });
+typedef $$ConstructorsTableUpdateCompanionBuilder =
+    ConstructorsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> nationality,
+      Value<int> rowid,
+    });
 
 class $$ConstructorsTableFilterComposer
     extends Composer<_$AppDatabase, $ConstructorsTable> {
@@ -4148,13 +5464,19 @@ class $$ConstructorsTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnFilters(column));
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get nationality => $composableBuilder(
-      column: $table.nationality, builder: (column) => ColumnFilters(column));
+    column: $table.nationality,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$ConstructorsTableOrderingComposer
@@ -4167,13 +5489,19 @@ class $$ConstructorsTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnOrderings(column));
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get nationality => $composableBuilder(
-      column: $table.nationality, builder: (column) => ColumnOrderings(column));
+    column: $table.nationality,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ConstructorsTableAnnotationComposer
@@ -4192,26 +5520,32 @@ class $$ConstructorsTableAnnotationComposer
       $composableBuilder(column: $table.name, builder: (column) => column);
 
   GeneratedColumn<String> get nationality => $composableBuilder(
-      column: $table.nationality, builder: (column) => column);
+    column: $table.nationality,
+    builder: (column) => column,
+  );
 }
 
-class $$ConstructorsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $ConstructorsTable,
-    ConstructorRow,
-    $$ConstructorsTableFilterComposer,
-    $$ConstructorsTableOrderingComposer,
-    $$ConstructorsTableAnnotationComposer,
-    $$ConstructorsTableCreateCompanionBuilder,
-    $$ConstructorsTableUpdateCompanionBuilder,
-    (
-      ConstructorRow,
-      BaseReferences<_$AppDatabase, $ConstructorsTable, ConstructorRow>
-    ),
-    ConstructorRow,
-    PrefetchHooks Function()> {
+class $$ConstructorsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ConstructorsTable,
+          ConstructorRow,
+          $$ConstructorsTableFilterComposer,
+          $$ConstructorsTableOrderingComposer,
+          $$ConstructorsTableAnnotationComposer,
+          $$ConstructorsTableCreateCompanionBuilder,
+          $$ConstructorsTableUpdateCompanionBuilder,
+          (
+            ConstructorRow,
+            BaseReferences<_$AppDatabase, $ConstructorsTable, ConstructorRow>,
+          ),
+          ConstructorRow,
+          PrefetchHooks Function()
+        > {
   $$ConstructorsTableTableManager(_$AppDatabase db, $ConstructorsTable table)
-      : super(TableManagerState(
+    : super(
+        TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
@@ -4220,74 +5554,79 @@ class $$ConstructorsTableTableManager extends RootTableManager<
               $$ConstructorsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$ConstructorsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> id = const Value.absent(),
-            Value<String> name = const Value.absent(),
-            Value<String> nationality = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              ConstructorsCompanion(
-            id: id,
-            name: name,
-            nationality: nationality,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String id,
-            required String name,
-            required String nationality,
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              ConstructorsCompanion.insert(
-            id: id,
-            name: name,
-            nationality: nationality,
-            rowid: rowid,
-          ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> nationality = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ConstructorsCompanion(
+                id: id,
+                name: name,
+                nationality: nationality,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String nationality,
+                Value<int> rowid = const Value.absent(),
+              }) => ConstructorsCompanion.insert(
+                id: id,
+                name: name,
+                nationality: nationality,
+                rowid: rowid,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
-        ));
+        ),
+      );
 }
 
-typedef $$ConstructorsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $ConstructorsTable,
-    ConstructorRow,
-    $$ConstructorsTableFilterComposer,
-    $$ConstructorsTableOrderingComposer,
-    $$ConstructorsTableAnnotationComposer,
-    $$ConstructorsTableCreateCompanionBuilder,
-    $$ConstructorsTableUpdateCompanionBuilder,
-    (
+typedef $$ConstructorsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ConstructorsTable,
       ConstructorRow,
-      BaseReferences<_$AppDatabase, $ConstructorsTable, ConstructorRow>
-    ),
-    ConstructorRow,
-    PrefetchHooks Function()>;
-typedef $$RacesTableCreateCompanionBuilder = RacesCompanion Function({
-  required int season,
-  required int round,
-  required String raceName,
-  required String circuitId,
-  required String circuitName,
-  required String country,
-  required DateTime date,
-  Value<bool> hasSprint,
-  Value<int> rowid,
-});
-typedef $$RacesTableUpdateCompanionBuilder = RacesCompanion Function({
-  Value<int> season,
-  Value<int> round,
-  Value<String> raceName,
-  Value<String> circuitId,
-  Value<String> circuitName,
-  Value<String> country,
-  Value<DateTime> date,
-  Value<bool> hasSprint,
-  Value<int> rowid,
-});
+      $$ConstructorsTableFilterComposer,
+      $$ConstructorsTableOrderingComposer,
+      $$ConstructorsTableAnnotationComposer,
+      $$ConstructorsTableCreateCompanionBuilder,
+      $$ConstructorsTableUpdateCompanionBuilder,
+      (
+        ConstructorRow,
+        BaseReferences<_$AppDatabase, $ConstructorsTable, ConstructorRow>,
+      ),
+      ConstructorRow,
+      PrefetchHooks Function()
+    >;
+typedef $$RacesTableCreateCompanionBuilder =
+    RacesCompanion Function({
+      required int season,
+      required int round,
+      required String raceName,
+      required String circuitId,
+      required String circuitName,
+      required String country,
+      required DateTime date,
+      Value<bool> hasSprint,
+      Value<int> rowid,
+    });
+typedef $$RacesTableUpdateCompanionBuilder =
+    RacesCompanion Function({
+      Value<int> season,
+      Value<int> round,
+      Value<String> raceName,
+      Value<String> circuitId,
+      Value<String> circuitName,
+      Value<String> country,
+      Value<DateTime> date,
+      Value<bool> hasSprint,
+      Value<int> rowid,
+    });
 
 class $$RacesTableFilterComposer extends Composer<_$AppDatabase, $RacesTable> {
   $$RacesTableFilterComposer({
@@ -4298,28 +5637,44 @@ class $$RacesTableFilterComposer extends Composer<_$AppDatabase, $RacesTable> {
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnFilters(column));
+    column: $table.season,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnFilters(column));
+    column: $table.round,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get raceName => $composableBuilder(
-      column: $table.raceName, builder: (column) => ColumnFilters(column));
+    column: $table.raceName,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get circuitId => $composableBuilder(
-      column: $table.circuitId, builder: (column) => ColumnFilters(column));
+    column: $table.circuitId,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get circuitName => $composableBuilder(
-      column: $table.circuitName, builder: (column) => ColumnFilters(column));
+    column: $table.circuitName,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get country => $composableBuilder(
-      column: $table.country, builder: (column) => ColumnFilters(column));
+    column: $table.country,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<DateTime> get date => $composableBuilder(
-      column: $table.date, builder: (column) => ColumnFilters(column));
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<bool> get hasSprint => $composableBuilder(
-      column: $table.hasSprint, builder: (column) => ColumnFilters(column));
+    column: $table.hasSprint,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$RacesTableOrderingComposer
@@ -4332,28 +5687,44 @@ class $$RacesTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnOrderings(column));
+    column: $table.season,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnOrderings(column));
+    column: $table.round,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get raceName => $composableBuilder(
-      column: $table.raceName, builder: (column) => ColumnOrderings(column));
+    column: $table.raceName,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get circuitId => $composableBuilder(
-      column: $table.circuitId, builder: (column) => ColumnOrderings(column));
+    column: $table.circuitId,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get circuitName => $composableBuilder(
-      column: $table.circuitName, builder: (column) => ColumnOrderings(column));
+    column: $table.circuitName,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get country => $composableBuilder(
-      column: $table.country, builder: (column) => ColumnOrderings(column));
+    column: $table.country,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<DateTime> get date => $composableBuilder(
-      column: $table.date, builder: (column) => ColumnOrderings(column));
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<bool> get hasSprint => $composableBuilder(
-      column: $table.hasSprint, builder: (column) => ColumnOrderings(column));
+    column: $table.hasSprint,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RacesTableAnnotationComposer
@@ -4378,7 +5749,9 @@ class $$RacesTableAnnotationComposer
       $composableBuilder(column: $table.circuitId, builder: (column) => column);
 
   GeneratedColumn<String> get circuitName => $composableBuilder(
-      column: $table.circuitName, builder: (column) => column);
+    column: $table.circuitName,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get country =>
       $composableBuilder(column: $table.country, builder: (column) => column);
@@ -4390,20 +5763,24 @@ class $$RacesTableAnnotationComposer
       $composableBuilder(column: $table.hasSprint, builder: (column) => column);
 }
 
-class $$RacesTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $RacesTable,
-    RaceRow,
-    $$RacesTableFilterComposer,
-    $$RacesTableOrderingComposer,
-    $$RacesTableAnnotationComposer,
-    $$RacesTableCreateCompanionBuilder,
-    $$RacesTableUpdateCompanionBuilder,
-    (RaceRow, BaseReferences<_$AppDatabase, $RacesTable, RaceRow>),
-    RaceRow,
-    PrefetchHooks Function()> {
+class $$RacesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RacesTable,
+          RaceRow,
+          $$RacesTableFilterComposer,
+          $$RacesTableOrderingComposer,
+          $$RacesTableAnnotationComposer,
+          $$RacesTableCreateCompanionBuilder,
+          $$RacesTableUpdateCompanionBuilder,
+          (RaceRow, BaseReferences<_$AppDatabase, $RacesTable, RaceRow>),
+          RaceRow,
+          PrefetchHooks Function()
+        > {
   $$RacesTableTableManager(_$AppDatabase db, $RacesTable table)
-      : super(TableManagerState(
+    : super(
+        TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
@@ -4412,91 +5789,96 @@ class $$RacesTableTableManager extends RootTableManager<
               $$RacesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$RacesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> season = const Value.absent(),
-            Value<int> round = const Value.absent(),
-            Value<String> raceName = const Value.absent(),
-            Value<String> circuitId = const Value.absent(),
-            Value<String> circuitName = const Value.absent(),
-            Value<String> country = const Value.absent(),
-            Value<DateTime> date = const Value.absent(),
-            Value<bool> hasSprint = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              RacesCompanion(
-            season: season,
-            round: round,
-            raceName: raceName,
-            circuitId: circuitId,
-            circuitName: circuitName,
-            country: country,
-            date: date,
-            hasSprint: hasSprint,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required int season,
-            required int round,
-            required String raceName,
-            required String circuitId,
-            required String circuitName,
-            required String country,
-            required DateTime date,
-            Value<bool> hasSprint = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              RacesCompanion.insert(
-            season: season,
-            round: round,
-            raceName: raceName,
-            circuitId: circuitId,
-            circuitName: circuitName,
-            country: country,
-            date: date,
-            hasSprint: hasSprint,
-            rowid: rowid,
-          ),
+          updateCompanionCallback:
+              ({
+                Value<int> season = const Value.absent(),
+                Value<int> round = const Value.absent(),
+                Value<String> raceName = const Value.absent(),
+                Value<String> circuitId = const Value.absent(),
+                Value<String> circuitName = const Value.absent(),
+                Value<String> country = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<bool> hasSprint = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RacesCompanion(
+                season: season,
+                round: round,
+                raceName: raceName,
+                circuitId: circuitId,
+                circuitName: circuitName,
+                country: country,
+                date: date,
+                hasSprint: hasSprint,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int season,
+                required int round,
+                required String raceName,
+                required String circuitId,
+                required String circuitName,
+                required String country,
+                required DateTime date,
+                Value<bool> hasSprint = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RacesCompanion.insert(
+                season: season,
+                round: round,
+                raceName: raceName,
+                circuitId: circuitId,
+                circuitName: circuitName,
+                country: country,
+                date: date,
+                hasSprint: hasSprint,
+                rowid: rowid,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
-        ));
+        ),
+      );
 }
 
-typedef $$RacesTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $RacesTable,
-    RaceRow,
-    $$RacesTableFilterComposer,
-    $$RacesTableOrderingComposer,
-    $$RacesTableAnnotationComposer,
-    $$RacesTableCreateCompanionBuilder,
-    $$RacesTableUpdateCompanionBuilder,
-    (RaceRow, BaseReferences<_$AppDatabase, $RacesTable, RaceRow>),
-    RaceRow,
-    PrefetchHooks Function()>;
-typedef $$ResultsTableCreateCompanionBuilder = ResultsCompanion Function({
-  required int season,
-  required int round,
-  required String driverId,
-  required String constructorId,
-  required int gridPosition,
-  Value<int?> finishPosition,
-  required String status,
-  Value<bool> fastestLap,
-  Value<int> rowid,
-});
-typedef $$ResultsTableUpdateCompanionBuilder = ResultsCompanion Function({
-  Value<int> season,
-  Value<int> round,
-  Value<String> driverId,
-  Value<String> constructorId,
-  Value<int> gridPosition,
-  Value<int?> finishPosition,
-  Value<String> status,
-  Value<bool> fastestLap,
-  Value<int> rowid,
-});
+typedef $$RacesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RacesTable,
+      RaceRow,
+      $$RacesTableFilterComposer,
+      $$RacesTableOrderingComposer,
+      $$RacesTableAnnotationComposer,
+      $$RacesTableCreateCompanionBuilder,
+      $$RacesTableUpdateCompanionBuilder,
+      (RaceRow, BaseReferences<_$AppDatabase, $RacesTable, RaceRow>),
+      RaceRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ResultsTableCreateCompanionBuilder =
+    ResultsCompanion Function({
+      required int season,
+      required int round,
+      required String driverId,
+      required String constructorId,
+      required int gridPosition,
+      Value<int?> finishPosition,
+      required String status,
+      Value<bool> fastestLap,
+      Value<int> rowid,
+    });
+typedef $$ResultsTableUpdateCompanionBuilder =
+    ResultsCompanion Function({
+      Value<int> season,
+      Value<int> round,
+      Value<String> driverId,
+      Value<String> constructorId,
+      Value<int> gridPosition,
+      Value<int?> finishPosition,
+      Value<String> status,
+      Value<bool> fastestLap,
+      Value<int> rowid,
+    });
 
 class $$ResultsTableFilterComposer
     extends Composer<_$AppDatabase, $ResultsTable> {
@@ -4508,29 +5890,44 @@ class $$ResultsTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnFilters(column));
+    column: $table.season,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnFilters(column));
+    column: $table.round,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get driverId => $composableBuilder(
-      column: $table.driverId, builder: (column) => ColumnFilters(column));
+    column: $table.driverId,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get constructorId => $composableBuilder(
-      column: $table.constructorId, builder: (column) => ColumnFilters(column));
+    column: $table.constructorId,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get gridPosition => $composableBuilder(
-      column: $table.gridPosition, builder: (column) => ColumnFilters(column));
+    column: $table.gridPosition,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get finishPosition => $composableBuilder(
-      column: $table.finishPosition,
-      builder: (column) => ColumnFilters(column));
+    column: $table.finishPosition,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get status => $composableBuilder(
-      column: $table.status, builder: (column) => ColumnFilters(column));
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<bool> get fastestLap => $composableBuilder(
-      column: $table.fastestLap, builder: (column) => ColumnFilters(column));
+    column: $table.fastestLap,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$ResultsTableOrderingComposer
@@ -4543,31 +5940,44 @@ class $$ResultsTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnOrderings(column));
+    column: $table.season,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnOrderings(column));
+    column: $table.round,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get driverId => $composableBuilder(
-      column: $table.driverId, builder: (column) => ColumnOrderings(column));
+    column: $table.driverId,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get constructorId => $composableBuilder(
-      column: $table.constructorId,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.constructorId,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get gridPosition => $composableBuilder(
-      column: $table.gridPosition,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.gridPosition,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get finishPosition => $composableBuilder(
-      column: $table.finishPosition,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.finishPosition,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get status => $composableBuilder(
-      column: $table.status, builder: (column) => ColumnOrderings(column));
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<bool> get fastestLap => $composableBuilder(
-      column: $table.fastestLap, builder: (column) => ColumnOrderings(column));
+    column: $table.fastestLap,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ResultsTableAnnotationComposer
@@ -4589,35 +5999,47 @@ class $$ResultsTableAnnotationComposer
       $composableBuilder(column: $table.driverId, builder: (column) => column);
 
   GeneratedColumn<String> get constructorId => $composableBuilder(
-      column: $table.constructorId, builder: (column) => column);
+    column: $table.constructorId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get gridPosition => $composableBuilder(
-      column: $table.gridPosition, builder: (column) => column);
+    column: $table.gridPosition,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get finishPosition => $composableBuilder(
-      column: $table.finishPosition, builder: (column) => column);
+    column: $table.finishPosition,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
   GeneratedColumn<bool> get fastestLap => $composableBuilder(
-      column: $table.fastestLap, builder: (column) => column);
+    column: $table.fastestLap,
+    builder: (column) => column,
+  );
 }
 
-class $$ResultsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $ResultsTable,
-    ResultRow,
-    $$ResultsTableFilterComposer,
-    $$ResultsTableOrderingComposer,
-    $$ResultsTableAnnotationComposer,
-    $$ResultsTableCreateCompanionBuilder,
-    $$ResultsTableUpdateCompanionBuilder,
-    (ResultRow, BaseReferences<_$AppDatabase, $ResultsTable, ResultRow>),
-    ResultRow,
-    PrefetchHooks Function()> {
+class $$ResultsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ResultsTable,
+          ResultRow,
+          $$ResultsTableFilterComposer,
+          $$ResultsTableOrderingComposer,
+          $$ResultsTableAnnotationComposer,
+          $$ResultsTableCreateCompanionBuilder,
+          $$ResultsTableUpdateCompanionBuilder,
+          (ResultRow, BaseReferences<_$AppDatabase, $ResultsTable, ResultRow>),
+          ResultRow,
+          PrefetchHooks Function()
+        > {
   $$ResultsTableTableManager(_$AppDatabase db, $ResultsTable table)
-      : super(TableManagerState(
+    : super(
+        TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
@@ -4626,91 +6048,94 @@ class $$ResultsTableTableManager extends RootTableManager<
               $$ResultsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$ResultsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> season = const Value.absent(),
-            Value<int> round = const Value.absent(),
-            Value<String> driverId = const Value.absent(),
-            Value<String> constructorId = const Value.absent(),
-            Value<int> gridPosition = const Value.absent(),
-            Value<int?> finishPosition = const Value.absent(),
-            Value<String> status = const Value.absent(),
-            Value<bool> fastestLap = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              ResultsCompanion(
-            season: season,
-            round: round,
-            driverId: driverId,
-            constructorId: constructorId,
-            gridPosition: gridPosition,
-            finishPosition: finishPosition,
-            status: status,
-            fastestLap: fastestLap,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required int season,
-            required int round,
-            required String driverId,
-            required String constructorId,
-            required int gridPosition,
-            Value<int?> finishPosition = const Value.absent(),
-            required String status,
-            Value<bool> fastestLap = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              ResultsCompanion.insert(
-            season: season,
-            round: round,
-            driverId: driverId,
-            constructorId: constructorId,
-            gridPosition: gridPosition,
-            finishPosition: finishPosition,
-            status: status,
-            fastestLap: fastestLap,
-            rowid: rowid,
-          ),
+          updateCompanionCallback:
+              ({
+                Value<int> season = const Value.absent(),
+                Value<int> round = const Value.absent(),
+                Value<String> driverId = const Value.absent(),
+                Value<String> constructorId = const Value.absent(),
+                Value<int> gridPosition = const Value.absent(),
+                Value<int?> finishPosition = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<bool> fastestLap = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ResultsCompanion(
+                season: season,
+                round: round,
+                driverId: driverId,
+                constructorId: constructorId,
+                gridPosition: gridPosition,
+                finishPosition: finishPosition,
+                status: status,
+                fastestLap: fastestLap,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int season,
+                required int round,
+                required String driverId,
+                required String constructorId,
+                required int gridPosition,
+                Value<int?> finishPosition = const Value.absent(),
+                required String status,
+                Value<bool> fastestLap = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ResultsCompanion.insert(
+                season: season,
+                round: round,
+                driverId: driverId,
+                constructorId: constructorId,
+                gridPosition: gridPosition,
+                finishPosition: finishPosition,
+                status: status,
+                fastestLap: fastestLap,
+                rowid: rowid,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
-        ));
+        ),
+      );
 }
 
-typedef $$ResultsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $ResultsTable,
-    ResultRow,
-    $$ResultsTableFilterComposer,
-    $$ResultsTableOrderingComposer,
-    $$ResultsTableAnnotationComposer,
-    $$ResultsTableCreateCompanionBuilder,
-    $$ResultsTableUpdateCompanionBuilder,
-    (ResultRow, BaseReferences<_$AppDatabase, $ResultsTable, ResultRow>),
-    ResultRow,
-    PrefetchHooks Function()>;
-typedef $$QualifyingResultsTableCreateCompanionBuilder
-    = QualifyingResultsCompanion Function({
-  required int season,
-  required int round,
-  required String driverId,
-  required int position,
-  Value<int?> q1Millis,
-  Value<int?> q2Millis,
-  Value<int?> q3Millis,
-  Value<int> rowid,
-});
-typedef $$QualifyingResultsTableUpdateCompanionBuilder
-    = QualifyingResultsCompanion Function({
-  Value<int> season,
-  Value<int> round,
-  Value<String> driverId,
-  Value<int> position,
-  Value<int?> q1Millis,
-  Value<int?> q2Millis,
-  Value<int?> q3Millis,
-  Value<int> rowid,
-});
+typedef $$ResultsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ResultsTable,
+      ResultRow,
+      $$ResultsTableFilterComposer,
+      $$ResultsTableOrderingComposer,
+      $$ResultsTableAnnotationComposer,
+      $$ResultsTableCreateCompanionBuilder,
+      $$ResultsTableUpdateCompanionBuilder,
+      (ResultRow, BaseReferences<_$AppDatabase, $ResultsTable, ResultRow>),
+      ResultRow,
+      PrefetchHooks Function()
+    >;
+typedef $$QualifyingResultsTableCreateCompanionBuilder =
+    QualifyingResultsCompanion Function({
+      required int season,
+      required int round,
+      required String driverId,
+      required int position,
+      Value<int?> q1Millis,
+      Value<int?> q2Millis,
+      Value<int?> q3Millis,
+      Value<int> rowid,
+    });
+typedef $$QualifyingResultsTableUpdateCompanionBuilder =
+    QualifyingResultsCompanion Function({
+      Value<int> season,
+      Value<int> round,
+      Value<String> driverId,
+      Value<int> position,
+      Value<int?> q1Millis,
+      Value<int?> q2Millis,
+      Value<int?> q3Millis,
+      Value<int> rowid,
+    });
 
 class $$QualifyingResultsTableFilterComposer
     extends Composer<_$AppDatabase, $QualifyingResultsTable> {
@@ -4722,25 +6147,39 @@ class $$QualifyingResultsTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnFilters(column));
+    column: $table.season,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnFilters(column));
+    column: $table.round,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get driverId => $composableBuilder(
-      column: $table.driverId, builder: (column) => ColumnFilters(column));
+    column: $table.driverId,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get position => $composableBuilder(
-      column: $table.position, builder: (column) => ColumnFilters(column));
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get q1Millis => $composableBuilder(
-      column: $table.q1Millis, builder: (column) => ColumnFilters(column));
+    column: $table.q1Millis,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get q2Millis => $composableBuilder(
-      column: $table.q2Millis, builder: (column) => ColumnFilters(column));
+    column: $table.q2Millis,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get q3Millis => $composableBuilder(
-      column: $table.q3Millis, builder: (column) => ColumnFilters(column));
+    column: $table.q3Millis,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$QualifyingResultsTableOrderingComposer
@@ -4753,25 +6192,39 @@ class $$QualifyingResultsTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnOrderings(column));
+    column: $table.season,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnOrderings(column));
+    column: $table.round,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get driverId => $composableBuilder(
-      column: $table.driverId, builder: (column) => ColumnOrderings(column));
+    column: $table.driverId,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get position => $composableBuilder(
-      column: $table.position, builder: (column) => ColumnOrderings(column));
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get q1Millis => $composableBuilder(
-      column: $table.q1Millis, builder: (column) => ColumnOrderings(column));
+    column: $table.q1Millis,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get q2Millis => $composableBuilder(
-      column: $table.q2Millis, builder: (column) => ColumnOrderings(column));
+    column: $table.q2Millis,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get q3Millis => $composableBuilder(
-      column: $table.q3Millis, builder: (column) => ColumnOrderings(column));
+    column: $table.q3Millis,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$QualifyingResultsTableAnnotationComposer
@@ -4805,25 +6258,33 @@ class $$QualifyingResultsTableAnnotationComposer
       $composableBuilder(column: $table.q3Millis, builder: (column) => column);
 }
 
-class $$QualifyingResultsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $QualifyingResultsTable,
-    QualifyingResultRow,
-    $$QualifyingResultsTableFilterComposer,
-    $$QualifyingResultsTableOrderingComposer,
-    $$QualifyingResultsTableAnnotationComposer,
-    $$QualifyingResultsTableCreateCompanionBuilder,
-    $$QualifyingResultsTableUpdateCompanionBuilder,
-    (
-      QualifyingResultRow,
-      BaseReferences<_$AppDatabase, $QualifyingResultsTable,
-          QualifyingResultRow>
-    ),
-    QualifyingResultRow,
-    PrefetchHooks Function()> {
+class $$QualifyingResultsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $QualifyingResultsTable,
+          QualifyingResultRow,
+          $$QualifyingResultsTableFilterComposer,
+          $$QualifyingResultsTableOrderingComposer,
+          $$QualifyingResultsTableAnnotationComposer,
+          $$QualifyingResultsTableCreateCompanionBuilder,
+          $$QualifyingResultsTableUpdateCompanionBuilder,
+          (
+            QualifyingResultRow,
+            BaseReferences<
+              _$AppDatabase,
+              $QualifyingResultsTable,
+              QualifyingResultRow
+            >,
+          ),
+          QualifyingResultRow,
+          PrefetchHooks Function()
+        > {
   $$QualifyingResultsTableTableManager(
-      _$AppDatabase db, $QualifyingResultsTable table)
-      : super(TableManagerState(
+    _$AppDatabase db,
+    $QualifyingResultsTable table,
+  ) : super(
+        TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
@@ -4832,94 +6293,102 @@ class $$QualifyingResultsTableTableManager extends RootTableManager<
               $$QualifyingResultsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$QualifyingResultsTableAnnotationComposer(
-                  $db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> season = const Value.absent(),
-            Value<int> round = const Value.absent(),
-            Value<String> driverId = const Value.absent(),
-            Value<int> position = const Value.absent(),
-            Value<int?> q1Millis = const Value.absent(),
-            Value<int?> q2Millis = const Value.absent(),
-            Value<int?> q3Millis = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              QualifyingResultsCompanion(
-            season: season,
-            round: round,
-            driverId: driverId,
-            position: position,
-            q1Millis: q1Millis,
-            q2Millis: q2Millis,
-            q3Millis: q3Millis,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required int season,
-            required int round,
-            required String driverId,
-            required int position,
-            Value<int?> q1Millis = const Value.absent(),
-            Value<int?> q2Millis = const Value.absent(),
-            Value<int?> q3Millis = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              QualifyingResultsCompanion.insert(
-            season: season,
-            round: round,
-            driverId: driverId,
-            position: position,
-            q1Millis: q1Millis,
-            q2Millis: q2Millis,
-            q3Millis: q3Millis,
-            rowid: rowid,
-          ),
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> season = const Value.absent(),
+                Value<int> round = const Value.absent(),
+                Value<String> driverId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int?> q1Millis = const Value.absent(),
+                Value<int?> q2Millis = const Value.absent(),
+                Value<int?> q3Millis = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => QualifyingResultsCompanion(
+                season: season,
+                round: round,
+                driverId: driverId,
+                position: position,
+                q1Millis: q1Millis,
+                q2Millis: q2Millis,
+                q3Millis: q3Millis,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int season,
+                required int round,
+                required String driverId,
+                required int position,
+                Value<int?> q1Millis = const Value.absent(),
+                Value<int?> q2Millis = const Value.absent(),
+                Value<int?> q3Millis = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => QualifyingResultsCompanion.insert(
+                season: season,
+                round: round,
+                driverId: driverId,
+                position: position,
+                q1Millis: q1Millis,
+                q2Millis: q2Millis,
+                q3Millis: q3Millis,
+                rowid: rowid,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
-        ));
+        ),
+      );
 }
 
-typedef $$QualifyingResultsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $QualifyingResultsTable,
-    QualifyingResultRow,
-    $$QualifyingResultsTableFilterComposer,
-    $$QualifyingResultsTableOrderingComposer,
-    $$QualifyingResultsTableAnnotationComposer,
-    $$QualifyingResultsTableCreateCompanionBuilder,
-    $$QualifyingResultsTableUpdateCompanionBuilder,
-    (
+typedef $$QualifyingResultsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $QualifyingResultsTable,
       QualifyingResultRow,
-      BaseReferences<_$AppDatabase, $QualifyingResultsTable,
-          QualifyingResultRow>
-    ),
-    QualifyingResultRow,
-    PrefetchHooks Function()>;
-typedef $$SessionLapsTableCreateCompanionBuilder = SessionLapsCompanion
-    Function({
-  required int season,
-  required int round,
-  required String sessionKey,
-  required String driverId,
-  required double bestStintAvgMs,
-  required double top2StintsAvgMs,
-  required double bestLapMs,
-  required int lapCount,
-  Value<int> rowid,
-});
-typedef $$SessionLapsTableUpdateCompanionBuilder = SessionLapsCompanion
-    Function({
-  Value<int> season,
-  Value<int> round,
-  Value<String> sessionKey,
-  Value<String> driverId,
-  Value<double> bestStintAvgMs,
-  Value<double> top2StintsAvgMs,
-  Value<double> bestLapMs,
-  Value<int> lapCount,
-  Value<int> rowid,
-});
+      $$QualifyingResultsTableFilterComposer,
+      $$QualifyingResultsTableOrderingComposer,
+      $$QualifyingResultsTableAnnotationComposer,
+      $$QualifyingResultsTableCreateCompanionBuilder,
+      $$QualifyingResultsTableUpdateCompanionBuilder,
+      (
+        QualifyingResultRow,
+        BaseReferences<
+          _$AppDatabase,
+          $QualifyingResultsTable,
+          QualifyingResultRow
+        >,
+      ),
+      QualifyingResultRow,
+      PrefetchHooks Function()
+    >;
+typedef $$SessionLapsTableCreateCompanionBuilder =
+    SessionLapsCompanion Function({
+      required int season,
+      required int round,
+      required String sessionKey,
+      required String driverId,
+      required double bestStintAvgMs,
+      required double top2StintsAvgMs,
+      required double bestLapMs,
+      required int lapCount,
+      Value<int> rowid,
+    });
+typedef $$SessionLapsTableUpdateCompanionBuilder =
+    SessionLapsCompanion Function({
+      Value<int> season,
+      Value<int> round,
+      Value<String> sessionKey,
+      Value<String> driverId,
+      Value<double> bestStintAvgMs,
+      Value<double> top2StintsAvgMs,
+      Value<double> bestLapMs,
+      Value<int> lapCount,
+      Value<int> rowid,
+    });
 
 class $$SessionLapsTableFilterComposer
     extends Composer<_$AppDatabase, $SessionLapsTable> {
@@ -4931,30 +6400,44 @@ class $$SessionLapsTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnFilters(column));
+    column: $table.season,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnFilters(column));
+    column: $table.round,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get sessionKey => $composableBuilder(
-      column: $table.sessionKey, builder: (column) => ColumnFilters(column));
+    column: $table.sessionKey,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get driverId => $composableBuilder(
-      column: $table.driverId, builder: (column) => ColumnFilters(column));
+    column: $table.driverId,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<double> get bestStintAvgMs => $composableBuilder(
-      column: $table.bestStintAvgMs,
-      builder: (column) => ColumnFilters(column));
+    column: $table.bestStintAvgMs,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<double> get top2StintsAvgMs => $composableBuilder(
-      column: $table.top2StintsAvgMs,
-      builder: (column) => ColumnFilters(column));
+    column: $table.top2StintsAvgMs,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<double> get bestLapMs => $composableBuilder(
-      column: $table.bestLapMs, builder: (column) => ColumnFilters(column));
+    column: $table.bestLapMs,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get lapCount => $composableBuilder(
-      column: $table.lapCount, builder: (column) => ColumnFilters(column));
+    column: $table.lapCount,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$SessionLapsTableOrderingComposer
@@ -4967,30 +6450,44 @@ class $$SessionLapsTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnOrderings(column));
+    column: $table.season,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnOrderings(column));
+    column: $table.round,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get sessionKey => $composableBuilder(
-      column: $table.sessionKey, builder: (column) => ColumnOrderings(column));
+    column: $table.sessionKey,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get driverId => $composableBuilder(
-      column: $table.driverId, builder: (column) => ColumnOrderings(column));
+    column: $table.driverId,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<double> get bestStintAvgMs => $composableBuilder(
-      column: $table.bestStintAvgMs,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.bestStintAvgMs,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<double> get top2StintsAvgMs => $composableBuilder(
-      column: $table.top2StintsAvgMs,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.top2StintsAvgMs,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<double> get bestLapMs => $composableBuilder(
-      column: $table.bestLapMs, builder: (column) => ColumnOrderings(column));
+    column: $table.bestLapMs,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get lapCount => $composableBuilder(
-      column: $table.lapCount, builder: (column) => ColumnOrderings(column));
+    column: $table.lapCount,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SessionLapsTableAnnotationComposer
@@ -5009,16 +6506,22 @@ class $$SessionLapsTableAnnotationComposer
       $composableBuilder(column: $table.round, builder: (column) => column);
 
   GeneratedColumn<String> get sessionKey => $composableBuilder(
-      column: $table.sessionKey, builder: (column) => column);
+    column: $table.sessionKey,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get driverId =>
       $composableBuilder(column: $table.driverId, builder: (column) => column);
 
   GeneratedColumn<double> get bestStintAvgMs => $composableBuilder(
-      column: $table.bestStintAvgMs, builder: (column) => column);
+    column: $table.bestStintAvgMs,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<double> get top2StintsAvgMs => $composableBuilder(
-      column: $table.top2StintsAvgMs, builder: (column) => column);
+    column: $table.top2StintsAvgMs,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<double> get bestLapMs =>
       $composableBuilder(column: $table.bestLapMs, builder: (column) => column);
@@ -5027,23 +6530,27 @@ class $$SessionLapsTableAnnotationComposer
       $composableBuilder(column: $table.lapCount, builder: (column) => column);
 }
 
-class $$SessionLapsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $SessionLapsTable,
-    SessionLapRow,
-    $$SessionLapsTableFilterComposer,
-    $$SessionLapsTableOrderingComposer,
-    $$SessionLapsTableAnnotationComposer,
-    $$SessionLapsTableCreateCompanionBuilder,
-    $$SessionLapsTableUpdateCompanionBuilder,
-    (
-      SessionLapRow,
-      BaseReferences<_$AppDatabase, $SessionLapsTable, SessionLapRow>
-    ),
-    SessionLapRow,
-    PrefetchHooks Function()> {
+class $$SessionLapsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionLapsTable,
+          SessionLapRow,
+          $$SessionLapsTableFilterComposer,
+          $$SessionLapsTableOrderingComposer,
+          $$SessionLapsTableAnnotationComposer,
+          $$SessionLapsTableCreateCompanionBuilder,
+          $$SessionLapsTableUpdateCompanionBuilder,
+          (
+            SessionLapRow,
+            BaseReferences<_$AppDatabase, $SessionLapsTable, SessionLapRow>,
+          ),
+          SessionLapRow,
+          PrefetchHooks Function()
+        > {
   $$SessionLapsTableTableManager(_$AppDatabase db, $SessionLapsTable table)
-      : super(TableManagerState(
+    : super(
+        TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
@@ -5052,90 +6559,93 @@ class $$SessionLapsTableTableManager extends RootTableManager<
               $$SessionLapsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$SessionLapsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> season = const Value.absent(),
-            Value<int> round = const Value.absent(),
-            Value<String> sessionKey = const Value.absent(),
-            Value<String> driverId = const Value.absent(),
-            Value<double> bestStintAvgMs = const Value.absent(),
-            Value<double> top2StintsAvgMs = const Value.absent(),
-            Value<double> bestLapMs = const Value.absent(),
-            Value<int> lapCount = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              SessionLapsCompanion(
-            season: season,
-            round: round,
-            sessionKey: sessionKey,
-            driverId: driverId,
-            bestStintAvgMs: bestStintAvgMs,
-            top2StintsAvgMs: top2StintsAvgMs,
-            bestLapMs: bestLapMs,
-            lapCount: lapCount,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required int season,
-            required int round,
-            required String sessionKey,
-            required String driverId,
-            required double bestStintAvgMs,
-            required double top2StintsAvgMs,
-            required double bestLapMs,
-            required int lapCount,
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              SessionLapsCompanion.insert(
-            season: season,
-            round: round,
-            sessionKey: sessionKey,
-            driverId: driverId,
-            bestStintAvgMs: bestStintAvgMs,
-            top2StintsAvgMs: top2StintsAvgMs,
-            bestLapMs: bestLapMs,
-            lapCount: lapCount,
-            rowid: rowid,
-          ),
+          updateCompanionCallback:
+              ({
+                Value<int> season = const Value.absent(),
+                Value<int> round = const Value.absent(),
+                Value<String> sessionKey = const Value.absent(),
+                Value<String> driverId = const Value.absent(),
+                Value<double> bestStintAvgMs = const Value.absent(),
+                Value<double> top2StintsAvgMs = const Value.absent(),
+                Value<double> bestLapMs = const Value.absent(),
+                Value<int> lapCount = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SessionLapsCompanion(
+                season: season,
+                round: round,
+                sessionKey: sessionKey,
+                driverId: driverId,
+                bestStintAvgMs: bestStintAvgMs,
+                top2StintsAvgMs: top2StintsAvgMs,
+                bestLapMs: bestLapMs,
+                lapCount: lapCount,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int season,
+                required int round,
+                required String sessionKey,
+                required String driverId,
+                required double bestStintAvgMs,
+                required double top2StintsAvgMs,
+                required double bestLapMs,
+                required int lapCount,
+                Value<int> rowid = const Value.absent(),
+              }) => SessionLapsCompanion.insert(
+                season: season,
+                round: round,
+                sessionKey: sessionKey,
+                driverId: driverId,
+                bestStintAvgMs: bestStintAvgMs,
+                top2StintsAvgMs: top2StintsAvgMs,
+                bestLapMs: bestLapMs,
+                lapCount: lapCount,
+                rowid: rowid,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
-        ));
+        ),
+      );
 }
 
-typedef $$SessionLapsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $SessionLapsTable,
-    SessionLapRow,
-    $$SessionLapsTableFilterComposer,
-    $$SessionLapsTableOrderingComposer,
-    $$SessionLapsTableAnnotationComposer,
-    $$SessionLapsTableCreateCompanionBuilder,
-    $$SessionLapsTableUpdateCompanionBuilder,
-    (
+typedef $$SessionLapsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionLapsTable,
       SessionLapRow,
-      BaseReferences<_$AppDatabase, $SessionLapsTable, SessionLapRow>
-    ),
-    SessionLapRow,
-    PrefetchHooks Function()>;
-typedef $$FantasyPricesTableCreateCompanionBuilder = FantasyPricesCompanion
-    Function({
-  required String assetId,
-  required String assetType,
-  required int season,
-  required int round,
-  required double priceMillions,
-  Value<int> rowid,
-});
-typedef $$FantasyPricesTableUpdateCompanionBuilder = FantasyPricesCompanion
-    Function({
-  Value<String> assetId,
-  Value<String> assetType,
-  Value<int> season,
-  Value<int> round,
-  Value<double> priceMillions,
-  Value<int> rowid,
-});
+      $$SessionLapsTableFilterComposer,
+      $$SessionLapsTableOrderingComposer,
+      $$SessionLapsTableAnnotationComposer,
+      $$SessionLapsTableCreateCompanionBuilder,
+      $$SessionLapsTableUpdateCompanionBuilder,
+      (
+        SessionLapRow,
+        BaseReferences<_$AppDatabase, $SessionLapsTable, SessionLapRow>,
+      ),
+      SessionLapRow,
+      PrefetchHooks Function()
+    >;
+typedef $$FantasyPricesTableCreateCompanionBuilder =
+    FantasyPricesCompanion Function({
+      required String assetId,
+      required String assetType,
+      required int season,
+      required int round,
+      required double priceMillions,
+      Value<int> rowid,
+    });
+typedef $$FantasyPricesTableUpdateCompanionBuilder =
+    FantasyPricesCompanion Function({
+      Value<String> assetId,
+      Value<String> assetType,
+      Value<int> season,
+      Value<int> round,
+      Value<double> priceMillions,
+      Value<int> rowid,
+    });
 
 class $$FantasyPricesTableFilterComposer
     extends Composer<_$AppDatabase, $FantasyPricesTable> {
@@ -5147,19 +6657,29 @@ class $$FantasyPricesTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<String> get assetId => $composableBuilder(
-      column: $table.assetId, builder: (column) => ColumnFilters(column));
+    column: $table.assetId,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get assetType => $composableBuilder(
-      column: $table.assetType, builder: (column) => ColumnFilters(column));
+    column: $table.assetType,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnFilters(column));
+    column: $table.season,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnFilters(column));
+    column: $table.round,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<double> get priceMillions => $composableBuilder(
-      column: $table.priceMillions, builder: (column) => ColumnFilters(column));
+    column: $table.priceMillions,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$FantasyPricesTableOrderingComposer
@@ -5172,20 +6692,29 @@ class $$FantasyPricesTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<String> get assetId => $composableBuilder(
-      column: $table.assetId, builder: (column) => ColumnOrderings(column));
+    column: $table.assetId,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get assetType => $composableBuilder(
-      column: $table.assetType, builder: (column) => ColumnOrderings(column));
+    column: $table.assetType,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnOrderings(column));
+    column: $table.season,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnOrderings(column));
+    column: $table.round,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<double> get priceMillions => $composableBuilder(
-      column: $table.priceMillions,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.priceMillions,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FantasyPricesTableAnnotationComposer
@@ -5210,26 +6739,32 @@ class $$FantasyPricesTableAnnotationComposer
       $composableBuilder(column: $table.round, builder: (column) => column);
 
   GeneratedColumn<double> get priceMillions => $composableBuilder(
-      column: $table.priceMillions, builder: (column) => column);
+    column: $table.priceMillions,
+    builder: (column) => column,
+  );
 }
 
-class $$FantasyPricesTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $FantasyPricesTable,
-    FantasyPriceRow,
-    $$FantasyPricesTableFilterComposer,
-    $$FantasyPricesTableOrderingComposer,
-    $$FantasyPricesTableAnnotationComposer,
-    $$FantasyPricesTableCreateCompanionBuilder,
-    $$FantasyPricesTableUpdateCompanionBuilder,
-    (
-      FantasyPriceRow,
-      BaseReferences<_$AppDatabase, $FantasyPricesTable, FantasyPriceRow>
-    ),
-    FantasyPriceRow,
-    PrefetchHooks Function()> {
+class $$FantasyPricesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FantasyPricesTable,
+          FantasyPriceRow,
+          $$FantasyPricesTableFilterComposer,
+          $$FantasyPricesTableOrderingComposer,
+          $$FantasyPricesTableAnnotationComposer,
+          $$FantasyPricesTableCreateCompanionBuilder,
+          $$FantasyPricesTableUpdateCompanionBuilder,
+          (
+            FantasyPriceRow,
+            BaseReferences<_$AppDatabase, $FantasyPricesTable, FantasyPriceRow>,
+          ),
+          FantasyPriceRow,
+          PrefetchHooks Function()
+        > {
   $$FantasyPricesTableTableManager(_$AppDatabase db, $FantasyPricesTable table)
-      : super(TableManagerState(
+    : super(
+        TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
@@ -5238,78 +6773,81 @@ class $$FantasyPricesTableTableManager extends RootTableManager<
               $$FantasyPricesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$FantasyPricesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> assetId = const Value.absent(),
-            Value<String> assetType = const Value.absent(),
-            Value<int> season = const Value.absent(),
-            Value<int> round = const Value.absent(),
-            Value<double> priceMillions = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              FantasyPricesCompanion(
-            assetId: assetId,
-            assetType: assetType,
-            season: season,
-            round: round,
-            priceMillions: priceMillions,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String assetId,
-            required String assetType,
-            required int season,
-            required int round,
-            required double priceMillions,
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              FantasyPricesCompanion.insert(
-            assetId: assetId,
-            assetType: assetType,
-            season: season,
-            round: round,
-            priceMillions: priceMillions,
-            rowid: rowid,
-          ),
+          updateCompanionCallback:
+              ({
+                Value<String> assetId = const Value.absent(),
+                Value<String> assetType = const Value.absent(),
+                Value<int> season = const Value.absent(),
+                Value<int> round = const Value.absent(),
+                Value<double> priceMillions = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FantasyPricesCompanion(
+                assetId: assetId,
+                assetType: assetType,
+                season: season,
+                round: round,
+                priceMillions: priceMillions,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String assetId,
+                required String assetType,
+                required int season,
+                required int round,
+                required double priceMillions,
+                Value<int> rowid = const Value.absent(),
+              }) => FantasyPricesCompanion.insert(
+                assetId: assetId,
+                assetType: assetType,
+                season: season,
+                round: round,
+                priceMillions: priceMillions,
+                rowid: rowid,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
-        ));
+        ),
+      );
 }
 
-typedef $$FantasyPricesTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $FantasyPricesTable,
-    FantasyPriceRow,
-    $$FantasyPricesTableFilterComposer,
-    $$FantasyPricesTableOrderingComposer,
-    $$FantasyPricesTableAnnotationComposer,
-    $$FantasyPricesTableCreateCompanionBuilder,
-    $$FantasyPricesTableUpdateCompanionBuilder,
-    (
+typedef $$FantasyPricesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FantasyPricesTable,
       FantasyPriceRow,
-      BaseReferences<_$AppDatabase, $FantasyPricesTable, FantasyPriceRow>
-    ),
-    FantasyPriceRow,
-    PrefetchHooks Function()>;
-typedef $$FantasyPointsTableTableCreateCompanionBuilder
-    = FantasyPointsTableCompanion Function({
-  required String assetId,
-  required String assetType,
-  required int season,
-  required int round,
-  required int points,
-  Value<int> rowid,
-});
-typedef $$FantasyPointsTableTableUpdateCompanionBuilder
-    = FantasyPointsTableCompanion Function({
-  Value<String> assetId,
-  Value<String> assetType,
-  Value<int> season,
-  Value<int> round,
-  Value<int> points,
-  Value<int> rowid,
-});
+      $$FantasyPricesTableFilterComposer,
+      $$FantasyPricesTableOrderingComposer,
+      $$FantasyPricesTableAnnotationComposer,
+      $$FantasyPricesTableCreateCompanionBuilder,
+      $$FantasyPricesTableUpdateCompanionBuilder,
+      (
+        FantasyPriceRow,
+        BaseReferences<_$AppDatabase, $FantasyPricesTable, FantasyPriceRow>,
+      ),
+      FantasyPriceRow,
+      PrefetchHooks Function()
+    >;
+typedef $$FantasyPointsTableTableCreateCompanionBuilder =
+    FantasyPointsTableCompanion Function({
+      required String assetId,
+      required String assetType,
+      required int season,
+      required int round,
+      required int points,
+      Value<int> rowid,
+    });
+typedef $$FantasyPointsTableTableUpdateCompanionBuilder =
+    FantasyPointsTableCompanion Function({
+      Value<String> assetId,
+      Value<String> assetType,
+      Value<int> season,
+      Value<int> round,
+      Value<int> points,
+      Value<int> rowid,
+    });
 
 class $$FantasyPointsTableTableFilterComposer
     extends Composer<_$AppDatabase, $FantasyPointsTableTable> {
@@ -5321,19 +6859,29 @@ class $$FantasyPointsTableTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<String> get assetId => $composableBuilder(
-      column: $table.assetId, builder: (column) => ColumnFilters(column));
+    column: $table.assetId,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get assetType => $composableBuilder(
-      column: $table.assetType, builder: (column) => ColumnFilters(column));
+    column: $table.assetType,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnFilters(column));
+    column: $table.season,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnFilters(column));
+    column: $table.round,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get points => $composableBuilder(
-      column: $table.points, builder: (column) => ColumnFilters(column));
+    column: $table.points,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$FantasyPointsTableTableOrderingComposer
@@ -5346,19 +6894,29 @@ class $$FantasyPointsTableTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<String> get assetId => $composableBuilder(
-      column: $table.assetId, builder: (column) => ColumnOrderings(column));
+    column: $table.assetId,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get assetType => $composableBuilder(
-      column: $table.assetType, builder: (column) => ColumnOrderings(column));
+    column: $table.assetType,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnOrderings(column));
+    column: $table.season,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnOrderings(column));
+    column: $table.round,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get points => $composableBuilder(
-      column: $table.points, builder: (column) => ColumnOrderings(column));
+    column: $table.points,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FantasyPointsTableTableAnnotationComposer
@@ -5386,24 +6944,33 @@ class $$FantasyPointsTableTableAnnotationComposer
       $composableBuilder(column: $table.points, builder: (column) => column);
 }
 
-class $$FantasyPointsTableTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $FantasyPointsTableTable,
-    FantasyPointsRow,
-    $$FantasyPointsTableTableFilterComposer,
-    $$FantasyPointsTableTableOrderingComposer,
-    $$FantasyPointsTableTableAnnotationComposer,
-    $$FantasyPointsTableTableCreateCompanionBuilder,
-    $$FantasyPointsTableTableUpdateCompanionBuilder,
-    (
-      FantasyPointsRow,
-      BaseReferences<_$AppDatabase, $FantasyPointsTableTable, FantasyPointsRow>
-    ),
-    FantasyPointsRow,
-    PrefetchHooks Function()> {
+class $$FantasyPointsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FantasyPointsTableTable,
+          FantasyPointsRow,
+          $$FantasyPointsTableTableFilterComposer,
+          $$FantasyPointsTableTableOrderingComposer,
+          $$FantasyPointsTableTableAnnotationComposer,
+          $$FantasyPointsTableTableCreateCompanionBuilder,
+          $$FantasyPointsTableTableUpdateCompanionBuilder,
+          (
+            FantasyPointsRow,
+            BaseReferences<
+              _$AppDatabase,
+              $FantasyPointsTableTable,
+              FantasyPointsRow
+            >,
+          ),
+          FantasyPointsRow,
+          PrefetchHooks Function()
+        > {
   $$FantasyPointsTableTableTableManager(
-      _$AppDatabase db, $FantasyPointsTableTable table)
-      : super(TableManagerState(
+    _$AppDatabase db,
+    $FantasyPointsTableTable table,
+  ) : super(
+        TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
@@ -5412,81 +6979,90 @@ class $$FantasyPointsTableTableTableManager extends RootTableManager<
               $$FantasyPointsTableTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$FantasyPointsTableTableAnnotationComposer(
-                  $db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> assetId = const Value.absent(),
-            Value<String> assetType = const Value.absent(),
-            Value<int> season = const Value.absent(),
-            Value<int> round = const Value.absent(),
-            Value<int> points = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              FantasyPointsTableCompanion(
-            assetId: assetId,
-            assetType: assetType,
-            season: season,
-            round: round,
-            points: points,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String assetId,
-            required String assetType,
-            required int season,
-            required int round,
-            required int points,
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              FantasyPointsTableCompanion.insert(
-            assetId: assetId,
-            assetType: assetType,
-            season: season,
-            round: round,
-            points: points,
-            rowid: rowid,
-          ),
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> assetId = const Value.absent(),
+                Value<String> assetType = const Value.absent(),
+                Value<int> season = const Value.absent(),
+                Value<int> round = const Value.absent(),
+                Value<int> points = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FantasyPointsTableCompanion(
+                assetId: assetId,
+                assetType: assetType,
+                season: season,
+                round: round,
+                points: points,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String assetId,
+                required String assetType,
+                required int season,
+                required int round,
+                required int points,
+                Value<int> rowid = const Value.absent(),
+              }) => FantasyPointsTableCompanion.insert(
+                assetId: assetId,
+                assetType: assetType,
+                season: season,
+                round: round,
+                points: points,
+                rowid: rowid,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
-        ));
+        ),
+      );
 }
 
-typedef $$FantasyPointsTableTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $FantasyPointsTableTable,
-    FantasyPointsRow,
-    $$FantasyPointsTableTableFilterComposer,
-    $$FantasyPointsTableTableOrderingComposer,
-    $$FantasyPointsTableTableAnnotationComposer,
-    $$FantasyPointsTableTableCreateCompanionBuilder,
-    $$FantasyPointsTableTableUpdateCompanionBuilder,
-    (
+typedef $$FantasyPointsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FantasyPointsTableTable,
       FantasyPointsRow,
-      BaseReferences<_$AppDatabase, $FantasyPointsTableTable, FantasyPointsRow>
-    ),
-    FantasyPointsRow,
-    PrefetchHooks Function()>;
-typedef $$MyTeamTableTableCreateCompanionBuilder = MyTeamTableCompanion
-    Function({
-  Value<int> id,
-  required String driverIdsCsv,
-  required String constructorIdsCsv,
-  required double remainingBudgetMillions,
-  Value<String?> boostedDriverId,
-  required String source,
-  Value<String> chipsUsedCsv,
-});
-typedef $$MyTeamTableTableUpdateCompanionBuilder = MyTeamTableCompanion
-    Function({
-  Value<int> id,
-  Value<String> driverIdsCsv,
-  Value<String> constructorIdsCsv,
-  Value<double> remainingBudgetMillions,
-  Value<String?> boostedDriverId,
-  Value<String> source,
-  Value<String> chipsUsedCsv,
-});
+      $$FantasyPointsTableTableFilterComposer,
+      $$FantasyPointsTableTableOrderingComposer,
+      $$FantasyPointsTableTableAnnotationComposer,
+      $$FantasyPointsTableTableCreateCompanionBuilder,
+      $$FantasyPointsTableTableUpdateCompanionBuilder,
+      (
+        FantasyPointsRow,
+        BaseReferences<
+          _$AppDatabase,
+          $FantasyPointsTableTable,
+          FantasyPointsRow
+        >,
+      ),
+      FantasyPointsRow,
+      PrefetchHooks Function()
+    >;
+typedef $$MyTeamTableTableCreateCompanionBuilder =
+    MyTeamTableCompanion Function({
+      Value<int> id,
+      required String driverIdsCsv,
+      required String constructorIdsCsv,
+      required double remainingBudgetMillions,
+      Value<String?> boostedDriverId,
+      required String source,
+      Value<String> chipsUsedCsv,
+    });
+typedef $$MyTeamTableTableUpdateCompanionBuilder =
+    MyTeamTableCompanion Function({
+      Value<int> id,
+      Value<String> driverIdsCsv,
+      Value<String> constructorIdsCsv,
+      Value<double> remainingBudgetMillions,
+      Value<String?> boostedDriverId,
+      Value<String> source,
+      Value<String> chipsUsedCsv,
+    });
 
 class $$MyTeamTableTableFilterComposer
     extends Composer<_$AppDatabase, $MyTeamTableTable> {
@@ -5498,28 +7074,39 @@ class $$MyTeamTableTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get driverIdsCsv => $composableBuilder(
-      column: $table.driverIdsCsv, builder: (column) => ColumnFilters(column));
+    column: $table.driverIdsCsv,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get constructorIdsCsv => $composableBuilder(
-      column: $table.constructorIdsCsv,
-      builder: (column) => ColumnFilters(column));
+    column: $table.constructorIdsCsv,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<double> get remainingBudgetMillions => $composableBuilder(
-      column: $table.remainingBudgetMillions,
-      builder: (column) => ColumnFilters(column));
+    column: $table.remainingBudgetMillions,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get boostedDriverId => $composableBuilder(
-      column: $table.boostedDriverId,
-      builder: (column) => ColumnFilters(column));
+    column: $table.boostedDriverId,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get source => $composableBuilder(
-      column: $table.source, builder: (column) => ColumnFilters(column));
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get chipsUsedCsv => $composableBuilder(
-      column: $table.chipsUsedCsv, builder: (column) => ColumnFilters(column));
+    column: $table.chipsUsedCsv,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$MyTeamTableTableOrderingComposer
@@ -5532,30 +7119,39 @@ class $$MyTeamTableTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get driverIdsCsv => $composableBuilder(
-      column: $table.driverIdsCsv,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.driverIdsCsv,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get constructorIdsCsv => $composableBuilder(
-      column: $table.constructorIdsCsv,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.constructorIdsCsv,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<double> get remainingBudgetMillions => $composableBuilder(
-      column: $table.remainingBudgetMillions,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.remainingBudgetMillions,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get boostedDriverId => $composableBuilder(
-      column: $table.boostedDriverId,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.boostedDriverId,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get source => $composableBuilder(
-      column: $table.source, builder: (column) => ColumnOrderings(column));
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get chipsUsedCsv => $composableBuilder(
-      column: $table.chipsUsedCsv,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.chipsUsedCsv,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MyTeamTableTableAnnotationComposer
@@ -5571,38 +7167,55 @@ class $$MyTeamTableTableAnnotationComposer
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get driverIdsCsv => $composableBuilder(
-      column: $table.driverIdsCsv, builder: (column) => column);
+    column: $table.driverIdsCsv,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get constructorIdsCsv => $composableBuilder(
-      column: $table.constructorIdsCsv, builder: (column) => column);
+    column: $table.constructorIdsCsv,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<double> get remainingBudgetMillions => $composableBuilder(
-      column: $table.remainingBudgetMillions, builder: (column) => column);
+    column: $table.remainingBudgetMillions,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get boostedDriverId => $composableBuilder(
-      column: $table.boostedDriverId, builder: (column) => column);
+    column: $table.boostedDriverId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
 
   GeneratedColumn<String> get chipsUsedCsv => $composableBuilder(
-      column: $table.chipsUsedCsv, builder: (column) => column);
+    column: $table.chipsUsedCsv,
+    builder: (column) => column,
+  );
 }
 
-class $$MyTeamTableTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $MyTeamTableTable,
-    MyTeamRow,
-    $$MyTeamTableTableFilterComposer,
-    $$MyTeamTableTableOrderingComposer,
-    $$MyTeamTableTableAnnotationComposer,
-    $$MyTeamTableTableCreateCompanionBuilder,
-    $$MyTeamTableTableUpdateCompanionBuilder,
-    (MyTeamRow, BaseReferences<_$AppDatabase, $MyTeamTableTable, MyTeamRow>),
-    MyTeamRow,
-    PrefetchHooks Function()> {
+class $$MyTeamTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MyTeamTableTable,
+          MyTeamRow,
+          $$MyTeamTableTableFilterComposer,
+          $$MyTeamTableTableOrderingComposer,
+          $$MyTeamTableTableAnnotationComposer,
+          $$MyTeamTableTableCreateCompanionBuilder,
+          $$MyTeamTableTableUpdateCompanionBuilder,
+          (
+            MyTeamRow,
+            BaseReferences<_$AppDatabase, $MyTeamTableTable, MyTeamRow>,
+          ),
+          MyTeamRow,
+          PrefetchHooks Function()
+        > {
   $$MyTeamTableTableTableManager(_$AppDatabase db, $MyTeamTableTable table)
-      : super(TableManagerState(
+    : super(
+        TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
@@ -5611,91 +7224,361 @@ class $$MyTeamTableTableTableManager extends RootTableManager<
               $$MyTeamTableTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$MyTeamTableTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> driverIdsCsv = const Value.absent(),
-            Value<String> constructorIdsCsv = const Value.absent(),
-            Value<double> remainingBudgetMillions = const Value.absent(),
-            Value<String?> boostedDriverId = const Value.absent(),
-            Value<String> source = const Value.absent(),
-            Value<String> chipsUsedCsv = const Value.absent(),
-          }) =>
-              MyTeamTableCompanion(
-            id: id,
-            driverIdsCsv: driverIdsCsv,
-            constructorIdsCsv: constructorIdsCsv,
-            remainingBudgetMillions: remainingBudgetMillions,
-            boostedDriverId: boostedDriverId,
-            source: source,
-            chipsUsedCsv: chipsUsedCsv,
-          ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String driverIdsCsv,
-            required String constructorIdsCsv,
-            required double remainingBudgetMillions,
-            Value<String?> boostedDriverId = const Value.absent(),
-            required String source,
-            Value<String> chipsUsedCsv = const Value.absent(),
-          }) =>
-              MyTeamTableCompanion.insert(
-            id: id,
-            driverIdsCsv: driverIdsCsv,
-            constructorIdsCsv: constructorIdsCsv,
-            remainingBudgetMillions: remainingBudgetMillions,
-            boostedDriverId: boostedDriverId,
-            source: source,
-            chipsUsedCsv: chipsUsedCsv,
-          ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> driverIdsCsv = const Value.absent(),
+                Value<String> constructorIdsCsv = const Value.absent(),
+                Value<double> remainingBudgetMillions = const Value.absent(),
+                Value<String?> boostedDriverId = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String> chipsUsedCsv = const Value.absent(),
+              }) => MyTeamTableCompanion(
+                id: id,
+                driverIdsCsv: driverIdsCsv,
+                constructorIdsCsv: constructorIdsCsv,
+                remainingBudgetMillions: remainingBudgetMillions,
+                boostedDriverId: boostedDriverId,
+                source: source,
+                chipsUsedCsv: chipsUsedCsv,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String driverIdsCsv,
+                required String constructorIdsCsv,
+                required double remainingBudgetMillions,
+                Value<String?> boostedDriverId = const Value.absent(),
+                required String source,
+                Value<String> chipsUsedCsv = const Value.absent(),
+              }) => MyTeamTableCompanion.insert(
+                id: id,
+                driverIdsCsv: driverIdsCsv,
+                constructorIdsCsv: constructorIdsCsv,
+                remainingBudgetMillions: remainingBudgetMillions,
+                boostedDriverId: boostedDriverId,
+                source: source,
+                chipsUsedCsv: chipsUsedCsv,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
-        ));
+        ),
+      );
 }
 
-typedef $$MyTeamTableTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $MyTeamTableTable,
-    MyTeamRow,
-    $$MyTeamTableTableFilterComposer,
-    $$MyTeamTableTableOrderingComposer,
-    $$MyTeamTableTableAnnotationComposer,
-    $$MyTeamTableTableCreateCompanionBuilder,
-    $$MyTeamTableTableUpdateCompanionBuilder,
-    (MyTeamRow, BaseReferences<_$AppDatabase, $MyTeamTableTable, MyTeamRow>),
-    MyTeamRow,
-    PrefetchHooks Function()>;
-typedef $$PredictionsCacheTableCreateCompanionBuilder
-    = PredictionsCacheCompanion Function({
-  required String assetId,
-  required String assetType,
-  required int season,
-  required int round,
-  required double expectedPoints,
-  required double winProbability,
-  required double podiumProbability,
-  required double top10Probability,
-  required double priceMillions,
-  required String breakdownJson,
-  required DateTime computedAt,
-  Value<int> rowid,
-});
-typedef $$PredictionsCacheTableUpdateCompanionBuilder
-    = PredictionsCacheCompanion Function({
-  Value<String> assetId,
-  Value<String> assetType,
-  Value<int> season,
-  Value<int> round,
-  Value<double> expectedPoints,
-  Value<double> winProbability,
-  Value<double> podiumProbability,
-  Value<double> top10Probability,
-  Value<double> priceMillions,
-  Value<String> breakdownJson,
-  Value<DateTime> computedAt,
-  Value<int> rowid,
-});
+typedef $$MyTeamTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MyTeamTableTable,
+      MyTeamRow,
+      $$MyTeamTableTableFilterComposer,
+      $$MyTeamTableTableOrderingComposer,
+      $$MyTeamTableTableAnnotationComposer,
+      $$MyTeamTableTableCreateCompanionBuilder,
+      $$MyTeamTableTableUpdateCompanionBuilder,
+      (MyTeamRow, BaseReferences<_$AppDatabase, $MyTeamTableTable, MyTeamRow>),
+      MyTeamRow,
+      PrefetchHooks Function()
+    >;
+typedef $$TeamSnapshotsTableCreateCompanionBuilder =
+    TeamSnapshotsCompanion Function({
+      required int season,
+      required int round,
+      required String driverIdsCsv,
+      required String constructorIdsCsv,
+      required double remainingBudgetMillions,
+      Value<String?> boostedDriverId,
+      Value<String> chipsUsedCsv,
+      required DateTime savedAt,
+      Value<int> rowid,
+    });
+typedef $$TeamSnapshotsTableUpdateCompanionBuilder =
+    TeamSnapshotsCompanion Function({
+      Value<int> season,
+      Value<int> round,
+      Value<String> driverIdsCsv,
+      Value<String> constructorIdsCsv,
+      Value<double> remainingBudgetMillions,
+      Value<String?> boostedDriverId,
+      Value<String> chipsUsedCsv,
+      Value<DateTime> savedAt,
+      Value<int> rowid,
+    });
+
+class $$TeamSnapshotsTableFilterComposer
+    extends Composer<_$AppDatabase, $TeamSnapshotsTable> {
+  $$TeamSnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get season => $composableBuilder(
+    column: $table.season,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get round => $composableBuilder(
+    column: $table.round,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get driverIdsCsv => $composableBuilder(
+    column: $table.driverIdsCsv,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get constructorIdsCsv => $composableBuilder(
+    column: $table.constructorIdsCsv,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get remainingBudgetMillions => $composableBuilder(
+    column: $table.remainingBudgetMillions,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get boostedDriverId => $composableBuilder(
+    column: $table.boostedDriverId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get chipsUsedCsv => $composableBuilder(
+    column: $table.chipsUsedCsv,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get savedAt => $composableBuilder(
+    column: $table.savedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TeamSnapshotsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TeamSnapshotsTable> {
+  $$TeamSnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get season => $composableBuilder(
+    column: $table.season,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get round => $composableBuilder(
+    column: $table.round,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get driverIdsCsv => $composableBuilder(
+    column: $table.driverIdsCsv,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get constructorIdsCsv => $composableBuilder(
+    column: $table.constructorIdsCsv,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get remainingBudgetMillions => $composableBuilder(
+    column: $table.remainingBudgetMillions,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get boostedDriverId => $composableBuilder(
+    column: $table.boostedDriverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get chipsUsedCsv => $composableBuilder(
+    column: $table.chipsUsedCsv,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get savedAt => $composableBuilder(
+    column: $table.savedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TeamSnapshotsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TeamSnapshotsTable> {
+  $$TeamSnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get season =>
+      $composableBuilder(column: $table.season, builder: (column) => column);
+
+  GeneratedColumn<int> get round =>
+      $composableBuilder(column: $table.round, builder: (column) => column);
+
+  GeneratedColumn<String> get driverIdsCsv => $composableBuilder(
+    column: $table.driverIdsCsv,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get constructorIdsCsv => $composableBuilder(
+    column: $table.constructorIdsCsv,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get remainingBudgetMillions => $composableBuilder(
+    column: $table.remainingBudgetMillions,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get boostedDriverId => $composableBuilder(
+    column: $table.boostedDriverId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get chipsUsedCsv => $composableBuilder(
+    column: $table.chipsUsedCsv,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get savedAt =>
+      $composableBuilder(column: $table.savedAt, builder: (column) => column);
+}
+
+class $$TeamSnapshotsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TeamSnapshotsTable,
+          TeamSnapshotRow,
+          $$TeamSnapshotsTableFilterComposer,
+          $$TeamSnapshotsTableOrderingComposer,
+          $$TeamSnapshotsTableAnnotationComposer,
+          $$TeamSnapshotsTableCreateCompanionBuilder,
+          $$TeamSnapshotsTableUpdateCompanionBuilder,
+          (
+            TeamSnapshotRow,
+            BaseReferences<_$AppDatabase, $TeamSnapshotsTable, TeamSnapshotRow>,
+          ),
+          TeamSnapshotRow,
+          PrefetchHooks Function()
+        > {
+  $$TeamSnapshotsTableTableManager(_$AppDatabase db, $TeamSnapshotsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TeamSnapshotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TeamSnapshotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TeamSnapshotsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> season = const Value.absent(),
+                Value<int> round = const Value.absent(),
+                Value<String> driverIdsCsv = const Value.absent(),
+                Value<String> constructorIdsCsv = const Value.absent(),
+                Value<double> remainingBudgetMillions = const Value.absent(),
+                Value<String?> boostedDriverId = const Value.absent(),
+                Value<String> chipsUsedCsv = const Value.absent(),
+                Value<DateTime> savedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TeamSnapshotsCompanion(
+                season: season,
+                round: round,
+                driverIdsCsv: driverIdsCsv,
+                constructorIdsCsv: constructorIdsCsv,
+                remainingBudgetMillions: remainingBudgetMillions,
+                boostedDriverId: boostedDriverId,
+                chipsUsedCsv: chipsUsedCsv,
+                savedAt: savedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int season,
+                required int round,
+                required String driverIdsCsv,
+                required String constructorIdsCsv,
+                required double remainingBudgetMillions,
+                Value<String?> boostedDriverId = const Value.absent(),
+                Value<String> chipsUsedCsv = const Value.absent(),
+                required DateTime savedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => TeamSnapshotsCompanion.insert(
+                season: season,
+                round: round,
+                driverIdsCsv: driverIdsCsv,
+                constructorIdsCsv: constructorIdsCsv,
+                remainingBudgetMillions: remainingBudgetMillions,
+                boostedDriverId: boostedDriverId,
+                chipsUsedCsv: chipsUsedCsv,
+                savedAt: savedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TeamSnapshotsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TeamSnapshotsTable,
+      TeamSnapshotRow,
+      $$TeamSnapshotsTableFilterComposer,
+      $$TeamSnapshotsTableOrderingComposer,
+      $$TeamSnapshotsTableAnnotationComposer,
+      $$TeamSnapshotsTableCreateCompanionBuilder,
+      $$TeamSnapshotsTableUpdateCompanionBuilder,
+      (
+        TeamSnapshotRow,
+        BaseReferences<_$AppDatabase, $TeamSnapshotsTable, TeamSnapshotRow>,
+      ),
+      TeamSnapshotRow,
+      PrefetchHooks Function()
+    >;
+typedef $$PredictionsCacheTableCreateCompanionBuilder =
+    PredictionsCacheCompanion Function({
+      required String assetId,
+      required String assetType,
+      required int season,
+      required int round,
+      required double expectedPoints,
+      required double winProbability,
+      required double podiumProbability,
+      required double top10Probability,
+      required double priceMillions,
+      required String breakdownJson,
+      required DateTime computedAt,
+      Value<int> rowid,
+    });
+typedef $$PredictionsCacheTableUpdateCompanionBuilder =
+    PredictionsCacheCompanion Function({
+      Value<String> assetId,
+      Value<String> assetType,
+      Value<int> season,
+      Value<int> round,
+      Value<double> expectedPoints,
+      Value<double> winProbability,
+      Value<double> podiumProbability,
+      Value<double> top10Probability,
+      Value<double> priceMillions,
+      Value<String> breakdownJson,
+      Value<DateTime> computedAt,
+      Value<int> rowid,
+    });
 
 class $$PredictionsCacheTableFilterComposer
     extends Composer<_$AppDatabase, $PredictionsCacheTable> {
@@ -5707,41 +7590,59 @@ class $$PredictionsCacheTableFilterComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnFilters<String> get assetId => $composableBuilder(
-      column: $table.assetId, builder: (column) => ColumnFilters(column));
+    column: $table.assetId,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get assetType => $composableBuilder(
-      column: $table.assetType, builder: (column) => ColumnFilters(column));
+    column: $table.assetType,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnFilters(column));
+    column: $table.season,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnFilters(column));
+    column: $table.round,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<double> get expectedPoints => $composableBuilder(
-      column: $table.expectedPoints,
-      builder: (column) => ColumnFilters(column));
+    column: $table.expectedPoints,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<double> get winProbability => $composableBuilder(
-      column: $table.winProbability,
-      builder: (column) => ColumnFilters(column));
+    column: $table.winProbability,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<double> get podiumProbability => $composableBuilder(
-      column: $table.podiumProbability,
-      builder: (column) => ColumnFilters(column));
+    column: $table.podiumProbability,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<double> get top10Probability => $composableBuilder(
-      column: $table.top10Probability,
-      builder: (column) => ColumnFilters(column));
+    column: $table.top10Probability,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<double> get priceMillions => $composableBuilder(
-      column: $table.priceMillions, builder: (column) => ColumnFilters(column));
+    column: $table.priceMillions,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get breakdownJson => $composableBuilder(
-      column: $table.breakdownJson, builder: (column) => ColumnFilters(column));
+    column: $table.breakdownJson,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<DateTime> get computedAt => $composableBuilder(
-      column: $table.computedAt, builder: (column) => ColumnFilters(column));
+    column: $table.computedAt,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$PredictionsCacheTableOrderingComposer
@@ -5754,43 +7655,59 @@ class $$PredictionsCacheTableOrderingComposer
     super.$removeJoinBuilderFromRootComposer,
   });
   ColumnOrderings<String> get assetId => $composableBuilder(
-      column: $table.assetId, builder: (column) => ColumnOrderings(column));
+    column: $table.assetId,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get assetType => $composableBuilder(
-      column: $table.assetType, builder: (column) => ColumnOrderings(column));
+    column: $table.assetType,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get season => $composableBuilder(
-      column: $table.season, builder: (column) => ColumnOrderings(column));
+    column: $table.season,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<int> get round => $composableBuilder(
-      column: $table.round, builder: (column) => ColumnOrderings(column));
+    column: $table.round,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<double> get expectedPoints => $composableBuilder(
-      column: $table.expectedPoints,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.expectedPoints,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<double> get winProbability => $composableBuilder(
-      column: $table.winProbability,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.winProbability,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<double> get podiumProbability => $composableBuilder(
-      column: $table.podiumProbability,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.podiumProbability,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<double> get top10Probability => $composableBuilder(
-      column: $table.top10Probability,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.top10Probability,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<double> get priceMillions => $composableBuilder(
-      column: $table.priceMillions,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.priceMillions,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<String> get breakdownJson => $composableBuilder(
-      column: $table.breakdownJson,
-      builder: (column) => ColumnOrderings(column));
+    column: $table.breakdownJson,
+    builder: (column) => ColumnOrderings(column),
+  );
 
   ColumnOrderings<DateTime> get computedAt => $composableBuilder(
-      column: $table.computedAt, builder: (column) => ColumnOrderings(column));
+    column: $table.computedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PredictionsCacheTableAnnotationComposer
@@ -5815,45 +7732,68 @@ class $$PredictionsCacheTableAnnotationComposer
       $composableBuilder(column: $table.round, builder: (column) => column);
 
   GeneratedColumn<double> get expectedPoints => $composableBuilder(
-      column: $table.expectedPoints, builder: (column) => column);
+    column: $table.expectedPoints,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<double> get winProbability => $composableBuilder(
-      column: $table.winProbability, builder: (column) => column);
+    column: $table.winProbability,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<double> get podiumProbability => $composableBuilder(
-      column: $table.podiumProbability, builder: (column) => column);
+    column: $table.podiumProbability,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<double> get top10Probability => $composableBuilder(
-      column: $table.top10Probability, builder: (column) => column);
+    column: $table.top10Probability,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<double> get priceMillions => $composableBuilder(
-      column: $table.priceMillions, builder: (column) => column);
+    column: $table.priceMillions,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get breakdownJson => $composableBuilder(
-      column: $table.breakdownJson, builder: (column) => column);
+    column: $table.breakdownJson,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get computedAt => $composableBuilder(
-      column: $table.computedAt, builder: (column) => column);
+    column: $table.computedAt,
+    builder: (column) => column,
+  );
 }
 
-class $$PredictionsCacheTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $PredictionsCacheTable,
-    PredictionCacheRow,
-    $$PredictionsCacheTableFilterComposer,
-    $$PredictionsCacheTableOrderingComposer,
-    $$PredictionsCacheTableAnnotationComposer,
-    $$PredictionsCacheTableCreateCompanionBuilder,
-    $$PredictionsCacheTableUpdateCompanionBuilder,
-    (
-      PredictionCacheRow,
-      BaseReferences<_$AppDatabase, $PredictionsCacheTable, PredictionCacheRow>
-    ),
-    PredictionCacheRow,
-    PrefetchHooks Function()> {
+class $$PredictionsCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PredictionsCacheTable,
+          PredictionCacheRow,
+          $$PredictionsCacheTableFilterComposer,
+          $$PredictionsCacheTableOrderingComposer,
+          $$PredictionsCacheTableAnnotationComposer,
+          $$PredictionsCacheTableCreateCompanionBuilder,
+          $$PredictionsCacheTableUpdateCompanionBuilder,
+          (
+            PredictionCacheRow,
+            BaseReferences<
+              _$AppDatabase,
+              $PredictionsCacheTable,
+              PredictionCacheRow
+            >,
+          ),
+          PredictionCacheRow,
+          PrefetchHooks Function()
+        > {
   $$PredictionsCacheTableTableManager(
-      _$AppDatabase db, $PredictionsCacheTable table)
-      : super(TableManagerState(
+    _$AppDatabase db,
+    $PredictionsCacheTable table,
+  ) : super(
+        TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
@@ -5862,84 +7802,91 @@ class $$PredictionsCacheTableTableManager extends RootTableManager<
               $$PredictionsCacheTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$PredictionsCacheTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> assetId = const Value.absent(),
-            Value<String> assetType = const Value.absent(),
-            Value<int> season = const Value.absent(),
-            Value<int> round = const Value.absent(),
-            Value<double> expectedPoints = const Value.absent(),
-            Value<double> winProbability = const Value.absent(),
-            Value<double> podiumProbability = const Value.absent(),
-            Value<double> top10Probability = const Value.absent(),
-            Value<double> priceMillions = const Value.absent(),
-            Value<String> breakdownJson = const Value.absent(),
-            Value<DateTime> computedAt = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              PredictionsCacheCompanion(
-            assetId: assetId,
-            assetType: assetType,
-            season: season,
-            round: round,
-            expectedPoints: expectedPoints,
-            winProbability: winProbability,
-            podiumProbability: podiumProbability,
-            top10Probability: top10Probability,
-            priceMillions: priceMillions,
-            breakdownJson: breakdownJson,
-            computedAt: computedAt,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String assetId,
-            required String assetType,
-            required int season,
-            required int round,
-            required double expectedPoints,
-            required double winProbability,
-            required double podiumProbability,
-            required double top10Probability,
-            required double priceMillions,
-            required String breakdownJson,
-            required DateTime computedAt,
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              PredictionsCacheCompanion.insert(
-            assetId: assetId,
-            assetType: assetType,
-            season: season,
-            round: round,
-            expectedPoints: expectedPoints,
-            winProbability: winProbability,
-            podiumProbability: podiumProbability,
-            top10Probability: top10Probability,
-            priceMillions: priceMillions,
-            breakdownJson: breakdownJson,
-            computedAt: computedAt,
-            rowid: rowid,
-          ),
+          updateCompanionCallback:
+              ({
+                Value<String> assetId = const Value.absent(),
+                Value<String> assetType = const Value.absent(),
+                Value<int> season = const Value.absent(),
+                Value<int> round = const Value.absent(),
+                Value<double> expectedPoints = const Value.absent(),
+                Value<double> winProbability = const Value.absent(),
+                Value<double> podiumProbability = const Value.absent(),
+                Value<double> top10Probability = const Value.absent(),
+                Value<double> priceMillions = const Value.absent(),
+                Value<String> breakdownJson = const Value.absent(),
+                Value<DateTime> computedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PredictionsCacheCompanion(
+                assetId: assetId,
+                assetType: assetType,
+                season: season,
+                round: round,
+                expectedPoints: expectedPoints,
+                winProbability: winProbability,
+                podiumProbability: podiumProbability,
+                top10Probability: top10Probability,
+                priceMillions: priceMillions,
+                breakdownJson: breakdownJson,
+                computedAt: computedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String assetId,
+                required String assetType,
+                required int season,
+                required int round,
+                required double expectedPoints,
+                required double winProbability,
+                required double podiumProbability,
+                required double top10Probability,
+                required double priceMillions,
+                required String breakdownJson,
+                required DateTime computedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PredictionsCacheCompanion.insert(
+                assetId: assetId,
+                assetType: assetType,
+                season: season,
+                round: round,
+                expectedPoints: expectedPoints,
+                winProbability: winProbability,
+                podiumProbability: podiumProbability,
+                top10Probability: top10Probability,
+                priceMillions: priceMillions,
+                breakdownJson: breakdownJson,
+                computedAt: computedAt,
+                rowid: rowid,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
-        ));
+        ),
+      );
 }
 
-typedef $$PredictionsCacheTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $PredictionsCacheTable,
-    PredictionCacheRow,
-    $$PredictionsCacheTableFilterComposer,
-    $$PredictionsCacheTableOrderingComposer,
-    $$PredictionsCacheTableAnnotationComposer,
-    $$PredictionsCacheTableCreateCompanionBuilder,
-    $$PredictionsCacheTableUpdateCompanionBuilder,
-    (
+typedef $$PredictionsCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PredictionsCacheTable,
       PredictionCacheRow,
-      BaseReferences<_$AppDatabase, $PredictionsCacheTable, PredictionCacheRow>
-    ),
-    PredictionCacheRow,
-    PrefetchHooks Function()>;
+      $$PredictionsCacheTableFilterComposer,
+      $$PredictionsCacheTableOrderingComposer,
+      $$PredictionsCacheTableAnnotationComposer,
+      $$PredictionsCacheTableCreateCompanionBuilder,
+      $$PredictionsCacheTableUpdateCompanionBuilder,
+      (
+        PredictionCacheRow,
+        BaseReferences<
+          _$AppDatabase,
+          $PredictionsCacheTable,
+          PredictionCacheRow
+        >,
+      ),
+      PredictionCacheRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5962,6 +7909,8 @@ class $AppDatabaseManager {
       $$FantasyPointsTableTableTableManager(_db, _db.fantasyPointsTable);
   $$MyTeamTableTableTableManager get myTeamTable =>
       $$MyTeamTableTableTableManager(_db, _db.myTeamTable);
+  $$TeamSnapshotsTableTableManager get teamSnapshots =>
+      $$TeamSnapshotsTableTableManager(_db, _db.teamSnapshots);
   $$PredictionsCacheTableTableManager get predictionsCache =>
       $$PredictionsCacheTableTableManager(_db, _db.predictionsCache);
 }

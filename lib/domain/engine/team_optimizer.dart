@@ -11,12 +11,21 @@ class TeamCombo {
     required this.constructorIds,
     required this.totalCostMillions,
     required this.totalExpectedPoints,
+    this.boostedDriverId,
+    this.boostGain = 0,
   });
 
   final List<String> driverIds;
   final List<String> constructorIds;
   final double totalCostMillions;
+
+  /// Puntuación base, sin contar el efecto del boost x2.
   final double totalExpectedPoints;
+  final String? boostedDriverId;
+  final double boostGain;
+
+  double get baseExpectedPoints => totalExpectedPoints;
+  double get boostedExpectedPoints => totalExpectedPoints + boostGain;
 }
 
 class TransferPlan {
@@ -35,6 +44,23 @@ class TransferPlan {
   final int extraTransferPenaltyApplied;
   final TeamCombo resultingTeam;
   final double netExpectedGain;
+}
+
+/// Resultado estable del centro de decisión. Mantiene separados los planes
+/// de exactamente uno y dos cambios para que la interfaz no dependa del orden
+/// de una lista de sugerencias, y añade el techo absoluto del GP.
+class TeamDecisionCenter {
+  const TeamDecisionCenter({
+    required this.currentTeam,
+    required this.oneTransfer,
+    required this.twoTransfers,
+    required this.perfectTeam,
+  });
+
+  final TeamCombo currentTeam;
+  final TransferPlan? oneTransfer;
+  final TransferPlan? twoTransfers;
+  final TeamCombo perfectTeam;
 }
 
 /// Optimizador de equipo (sección 5.3 del plan). Enumeración exhaustiva con
@@ -90,54 +116,246 @@ class TeamOptimizer {
     required double remainingBudgetMillions,
     int maxTransfersToConsider = 3,
     int extraTransferPenalty = -10,
+    String? currentBoostedDriverId,
   }) {
-    final currentTeamCost = _sumCost(currentDriverIds, driverPredictions) +
+    final plans = transferCandidates(
+      currentDriverIds: currentDriverIds,
+      currentConstructorIds: currentConstructorIds,
+      driverPredictions: driverPredictions,
+      constructorPredictions: constructorPredictions,
+      remainingBudgetMillions: remainingBudgetMillions,
+      maxTransfersToConsider: maxTransfersToConsider,
+      extraTransferPenalty: extraTransferPenalty,
+      candidatesPerTransferCount: 1,
+      currentBoostedDriverId: currentBoostedDriverId,
+    );
+    plans.sort((a, b) => b.netExpectedGain.compareTo(a.netExpectedGain));
+    return plans;
+  }
+
+  /// Devuelve varias alternativas por número exacto de cambios recorriendo el
+  /// espacio legal una sola vez. El planificador de varios GP usa estas ramas
+  /// para no quedar atrapado en la mejor decisión inmediata.
+  List<TransferPlan> transferCandidates({
+    required List<String> currentDriverIds,
+    required List<String> currentConstructorIds,
+    required List<AssetPrediction> driverPredictions,
+    required List<AssetPrediction> constructorPredictions,
+    required double remainingBudgetMillions,
+    int maxTransfersToConsider = 3,
+    int extraTransferPenalty = -10,
+    int candidatesPerTransferCount = 2,
+    String? currentBoostedDriverId,
+  }) {
+    final currentTeamCost =
+        _sumCost(currentDriverIds, driverPredictions) +
         _sumCost(currentConstructorIds, constructorPredictions);
-    final currentTeamPoints = _sumPoints(currentDriverIds, driverPredictions) +
+    final currentBasePoints =
+        _sumPoints(currentDriverIds, driverPredictions) +
         _sumPoints(currentConstructorIds, constructorPredictions);
+    final currentBoostId =
+        currentBoostedDriverId != null &&
+            currentDriverIds.contains(currentBoostedDriverId)
+        ? currentBoostedDriverId
+        : recommendBoost(currentDriverIds, driverPredictions);
+    final currentBoostGain = _pointsForId(currentBoostId, driverPredictions);
+    final currentTeamPoints = currentBasePoints + currentBoostGain;
     final availableBudget = remainingBudgetMillions + currentTeamCost;
+    final currentDrivers = currentDriverIds.toSet();
+    final currentConstructors = currentConstructorIds.toSet();
+    final bestByChanges = <int, List<_BestSwapResult>>{};
 
-    final plans = <TransferPlan>[];
-
-    // 0 cambios: el equipo actual, de referencia.
-    plans.add(TransferPlan(
+    final current = _BestSwapResult(
       transfersOut: const [],
       transfersIn: const [],
-      numberOfTransfers: 0,
-      extraTransferPenaltyApplied: 0,
-      resultingTeam: TeamCombo(
-        driverIds: currentDriverIds,
-        constructorIds: currentConstructorIds,
+      combo: TeamCombo(
+        driverIds: List.unmodifiable(currentDriverIds),
+        constructorIds: List.unmodifiable(currentConstructorIds),
         totalCostMillions: currentTeamCost,
-        totalExpectedPoints: currentTeamPoints,
+        totalExpectedPoints: currentBasePoints,
+        boostedDriverId: currentBoostId,
+        boostGain: currentBoostGain,
       ),
-      netExpectedGain: 0,
-    ));
+    );
+    bestByChanges[0] = [current];
 
-    for (var n = 1; n <= maxTransfersToConsider; n++) {
-      final penalty = n > 2 ? extraTransferPenalty * (n - 2) : 0;
-      final best = _bestSwap(
-        currentDriverIds: currentDriverIds,
-        currentConstructorIds: currentConstructorIds,
-        driverPredictions: driverPredictions,
-        constructorPredictions: constructorPredictions,
-        availableBudget: availableBudget,
-        swapsAllowed: n,
-      );
-      if (best == null) continue;
-      final netGain = (best.totalExpectedPoints + penalty) - currentTeamPoints;
-      plans.add(TransferPlan(
-        transfersOut: best.transfersOut,
-        transfersIn: best.transfersIn,
-        numberOfTransfers: n,
-        extraTransferPenaltyApplied: penalty,
-        resultingTeam: best.combo,
-        netExpectedGain: netGain,
-      ));
+    final driverCombosByChanges = List.generate(
+      maxTransfersToConsider + 1,
+      (_) => <TeamCombo>[],
+    );
+    for (final combo in _combinations(driverPredictions, 5)) {
+      final changes = 5 - combo.driverIds.where(currentDrivers.contains).length;
+      if (changes <= maxTransfersToConsider) {
+        // El boost del piloto queda calculado una vez por combinación, no
+        // dentro del producto cartesiano con los constructores.
+        driverCombosByChanges[changes].add(
+          _withBestDriverBoost(combo, driverPredictions),
+        );
+      }
+    }
+    final constructorCombosByChanges = List.generate(
+      maxTransfersToConsider + 1,
+      (_) => <TeamCombo>[],
+    );
+    for (final combo in _combinations(constructorPredictions, 2)) {
+      final changes =
+          2 - combo.driverIds.where(currentConstructors.contains).length;
+      if (changes <= maxTransfersToConsider) {
+        constructorCombosByChanges[changes].add(combo);
+      }
     }
 
-    plans.sort((a, b) => b.netExpectedGain.compareTo(a.netExpectedGain));
-    return plans.take(3).toList();
+    for (
+      var driverChanges = 0;
+      driverChanges <= maxTransfersToConsider;
+      driverChanges++
+    ) {
+      final maxConstructorChanges = maxTransfersToConsider - driverChanges;
+      for (
+        var constructorChanges = 0;
+        constructorChanges <= maxConstructorChanges;
+        constructorChanges++
+      ) {
+        final changes = driverChanges + constructorChanges;
+        if (changes == 0) continue;
+        final driverCombos = driverCombosByChanges[driverChanges];
+        final constructorCombos =
+            constructorCombosByChanges[constructorChanges];
+        for (final drivers in driverCombos) {
+          for (final constructors in constructorCombos) {
+            final cost =
+                drivers.totalCostMillions + constructors.totalCostMillions;
+            if (cost > availableBudget + 0.0001) continue;
+            final basePoints =
+                drivers.totalExpectedPoints + constructors.totalExpectedPoints;
+            final boostedPoints = basePoints + drivers.boostGain;
+            final list = bestByChanges.putIfAbsent(changes, () => []);
+            if (candidatesPerTransferCount <= 0) continue;
+            if (list.length >= candidatesPerTransferCount &&
+                boostedPoints <= list.last.combo.boostedExpectedPoints) {
+              continue;
+            }
+
+            final nextDrivers = drivers.driverIds;
+            final nextConstructors = constructors.driverIds;
+            final candidate = _BestSwapResult(
+              transfersOut: [
+                ...currentDriverIds.where((id) => !nextDrivers.contains(id)),
+                ...currentConstructorIds.where(
+                  (id) => !nextConstructors.contains(id),
+                ),
+              ],
+              transfersIn: [
+                ...nextDrivers.where((id) => !currentDrivers.contains(id)),
+                ...nextConstructors.where(
+                  (id) => !currentConstructors.contains(id),
+                ),
+              ],
+              combo: TeamCombo(
+                driverIds: List.unmodifiable(nextDrivers),
+                constructorIds: List.unmodifiable(nextConstructors),
+                totalCostMillions: cost,
+                totalExpectedPoints: basePoints,
+                boostedDriverId: drivers.boostedDriverId,
+                boostGain: drivers.boostGain,
+              ),
+            );
+            var insertAt = list.length;
+            while (insertAt > 0 &&
+                boostedPoints >
+                    list[insertAt - 1].combo.boostedExpectedPoints) {
+              insertAt--;
+            }
+            list.insert(insertAt, candidate);
+            if (list.length > candidatesPerTransferCount) list.removeLast();
+          }
+        }
+      }
+    }
+
+    final result = <TransferPlan>[];
+    for (final entry in bestByChanges.entries) {
+      final penalty = entry.key > 2
+          ? extraTransferPenalty * (entry.key - 2)
+          : 0;
+      for (final candidate in entry.value) {
+        result.add(
+          TransferPlan(
+            transfersOut: candidate.transfersOut,
+            transfersIn: candidate.transfersIn,
+            numberOfTransfers: entry.key,
+            extraTransferPenaltyApplied: penalty,
+            resultingTeam: candidate.combo,
+            netExpectedGain:
+                candidate.combo.boostedExpectedPoints +
+                penalty -
+                currentTeamPoints,
+          ),
+        );
+      }
+    }
+    return result;
+  }
+
+  /// Construye las mismas tres referencias que el calculador de MotoGP:
+  /// exactamente 1 cambio, exactamente 2 cambios y el equipo perfecto sin
+  /// límite de transferencias. El presupuesto real es el valor de la
+  /// plantilla actual más el dinero disponible en banco.
+  TeamDecisionCenter buildDecisionCenter({
+    required List<String> currentDriverIds,
+    required List<String> currentConstructorIds,
+    required List<AssetPrediction> driverPredictions,
+    required List<AssetPrediction> constructorPredictions,
+    required double remainingBudgetMillions,
+    String? currentBoostedDriverId,
+  }) {
+    final currentCost =
+        _sumCost(currentDriverIds, driverPredictions) +
+        _sumCost(currentConstructorIds, constructorPredictions);
+    final currentBasePoints =
+        _sumPoints(currentDriverIds, driverPredictions) +
+        _sumPoints(currentConstructorIds, constructorPredictions);
+    final currentBoostId =
+        currentBoostedDriverId != null &&
+            currentDriverIds.contains(currentBoostedDriverId)
+        ? currentBoostedDriverId
+        : recommendBoost(currentDriverIds, driverPredictions);
+    final currentBoostGain = _pointsForId(currentBoostId, driverPredictions);
+    final availableBudget = currentCost + remainingBudgetMillions;
+    final plans = suggestTransfers(
+      currentDriverIds: currentDriverIds,
+      currentConstructorIds: currentConstructorIds,
+      driverPredictions: driverPredictions,
+      constructorPredictions: constructorPredictions,
+      remainingBudgetMillions: remainingBudgetMillions,
+      maxTransfersToConsider: 2,
+      currentBoostedDriverId: currentBoostId,
+    );
+
+    TransferPlan? exact(int count) {
+      for (final plan in plans) {
+        if (plan.numberOfTransfers == count) return plan;
+      }
+      return null;
+    }
+
+    return TeamDecisionCenter(
+      currentTeam: TeamCombo(
+        driverIds: List.unmodifiable(currentDriverIds),
+        constructorIds: List.unmodifiable(currentConstructorIds),
+        totalCostMillions: currentCost,
+        totalExpectedPoints: currentBasePoints,
+        boostedDriverId: currentBoostId,
+        boostGain: currentBoostGain,
+      ),
+      oneTransfer: exact(1),
+      twoTransfers: exact(2),
+      perfectTeam: findOptimalTeam(
+        driverPredictions: driverPredictions,
+        constructorPredictions: constructorPredictions,
+        totalBudgetMillions: availableBudget,
+      ),
+    );
   }
 
   /// Piloto óptimo para el boost x2: el de mayor puntuación esperada
@@ -148,7 +366,33 @@ class TeamOptimizer {
   ) {
     final byId = {for (final p in driverPredictions) p.assetId: p};
     final inTeam = driverIds.map((id) => byId[id]).whereType<AssetPrediction>();
-    return inTeam.reduce((a, b) => a.expectedPoints >= b.expectedPoints ? a : b).assetId;
+    if (inTeam.isEmpty) return '';
+    return inTeam
+        .reduce((a, b) => a.expectedPoints >= b.expectedPoints ? a : b)
+        .assetId;
+  }
+
+  TeamCombo _withBestDriverBoost(
+    TeamCombo combo,
+    List<AssetPrediction> driverPredictions,
+  ) {
+    if (combo.driverIds.isEmpty) return combo;
+    final boostedId = recommendBoost(combo.driverIds, driverPredictions);
+    return TeamCombo(
+      driverIds: combo.driverIds,
+      constructorIds: combo.constructorIds,
+      totalCostMillions: combo.totalCostMillions,
+      totalExpectedPoints: combo.totalExpectedPoints,
+      boostedDriverId: boostedId,
+      boostGain: _pointsForId(boostedId, driverPredictions),
+    );
+  }
+
+  double _pointsForId(String id, List<AssetPrediction> predictions) {
+    for (final prediction in predictions) {
+      if (prediction.assetId == id) return prediction.expectedPoints;
+    }
+    return 0;
   }
 
   // ---- Implementación ----
@@ -158,7 +402,11 @@ class TeamOptimizer {
     List<AssetPrediction> constructors,
     double budget,
   ) {
-    final driverCombos = _bestPointsPerBudget(_combinations(drivers, 5));
+    final boostedDriverCombos = _combinations(
+      drivers,
+      5,
+    ).map((combo) => _withBestDriverBoost(combo, drivers)).toList();
+    final driverCombos = _bestPointsPerBudget(boostedDriverCombos);
     final constructorCombos = _combinations(constructors, 2);
 
     TeamCombo? best;
@@ -167,13 +415,18 @@ class TeamOptimizer {
       if (remaining < 0) continue;
       final bestDrivers = _lookupBestForBudget(driverCombos, remaining);
       if (bestDrivers == null) continue;
-      final total = bestDrivers.totalExpectedPoints + cCombo.totalExpectedPoints;
-      if (best == null || total > best.totalExpectedPoints) {
+      final total =
+          bestDrivers.boostedExpectedPoints + cCombo.totalExpectedPoints;
+      if (best == null || total > best.boostedExpectedPoints) {
         best = TeamCombo(
           driverIds: bestDrivers.driverIds,
           constructorIds: cCombo.driverIds, // reutiliza el mismo campo de ids
-          totalCostMillions: bestDrivers.totalCostMillions + cCombo.totalCostMillions,
-          totalExpectedPoints: total,
+          totalCostMillions:
+              bestDrivers.totalCostMillions + cCombo.totalCostMillions,
+          totalExpectedPoints:
+              bestDrivers.totalExpectedPoints + cCombo.totalExpectedPoints,
+          boostedDriverId: bestDrivers.boostedDriverId,
+          boostGain: bestDrivers.boostGain,
         );
       }
     }
@@ -195,26 +448,54 @@ class TeamOptimizer {
     final driverBudget = budget * driverBudgetFraction;
     final constructorBudget = budget - driverBudget;
 
-    final bestDrivers = _bestSingleGroup(drivers, 5, driverBudget);
-    final bestConstructors = _bestSingleGroup(constructors, 2, constructorBudget);
+    final bestDrivers = _bestSingleGroup(
+      drivers,
+      5,
+      driverBudget,
+      boostDrivers: true,
+    );
+    final bestConstructors = _bestSingleGroup(
+      constructors,
+      2,
+      constructorBudget,
+    );
 
     return TeamCombo(
       driverIds: bestDrivers.driverIds,
       constructorIds: bestConstructors.driverIds,
-      totalCostMillions: bestDrivers.totalCostMillions + bestConstructors.totalCostMillions,
-      totalExpectedPoints: bestDrivers.totalExpectedPoints + bestConstructors.totalExpectedPoints,
+      totalCostMillions:
+          bestDrivers.totalCostMillions + bestConstructors.totalCostMillions,
+      totalExpectedPoints:
+          bestDrivers.totalExpectedPoints +
+          bestConstructors.totalExpectedPoints,
+      boostedDriverId: bestDrivers.boostedDriverId,
+      boostGain: bestDrivers.boostGain,
     );
   }
 
-  TeamCombo _bestSingleGroup(List<AssetPrediction> pool, int count, double budget) {
+  TeamCombo _bestSingleGroup(
+    List<AssetPrediction> pool,
+    int count,
+    double budget, {
+    bool boostDrivers = false,
+  }) {
     final combos = _combinations(pool, count);
     TeamCombo? best;
     for (final c in combos) {
       if (c.totalCostMillions > budget) continue;
-      if (best == null || c.totalExpectedPoints > best.totalExpectedPoints) best = c;
+      final scored = boostDrivers ? _withBestDriverBoost(c, pool) : c;
+      if (best == null ||
+          scored.boostedExpectedPoints > best.boostedExpectedPoints) {
+        best = scored;
+      }
     }
     return best ??
-        const TeamCombo(driverIds: [], constructorIds: [], totalCostMillions: 0, totalExpectedPoints: 0);
+        const TeamCombo(
+          driverIds: [],
+          constructorIds: [],
+          totalCostMillions: 0,
+          totalExpectedPoints: 0,
+        );
   }
 
   /// Genera todas las combinaciones de tamaño `count` de `pool`.
@@ -222,12 +503,17 @@ class TeamOptimizer {
     final results = <TeamCombo>[];
     void recurse(int start, List<AssetPrediction> chosen) {
       if (chosen.length == count) {
-        results.add(TeamCombo(
-          driverIds: chosen.map((p) => p.assetId).toList(),
-          constructorIds: const [],
-          totalCostMillions: chosen.fold(0.0, (s, p) => s + p.priceMillions),
-          totalExpectedPoints: chosen.fold(0.0, (s, p) => s + p.expectedPoints),
-        ));
+        results.add(
+          TeamCombo(
+            driverIds: chosen.map((p) => p.assetId).toList(),
+            constructorIds: const [],
+            totalCostMillions: chosen.fold(0.0, (s, p) => s + p.priceMillions),
+            totalExpectedPoints: chosen.fold(
+              0.0,
+              (s, p) => s + p.expectedPoints,
+            ),
+          ),
+        );
         return;
       }
       for (var i = start; i < pool.length; i++) {
@@ -247,13 +533,13 @@ class TeamOptimizer {
   /// combinación de pilotos con una búsqueda binaria en vez de recorrer
   /// las ~26k combinaciones por cada combinación de constructores.
   List<TeamCombo> _bestPointsPerBudget(List<TeamCombo> combos) {
-    final sorted = [...combos]..sort((a, b) => a.totalCostMillions.compareTo(b.totalCostMillions));
-    var runningBest = sorted.isEmpty
-        ? null
-        : sorted.first;
+    final sorted = [...combos]
+      ..sort((a, b) => a.totalCostMillions.compareTo(b.totalCostMillions));
+    var runningBest = sorted.isEmpty ? null : sorted.first;
     final prefixed = <TeamCombo>[];
     for (final c in sorted) {
-      if (runningBest == null || c.totalExpectedPoints > runningBest.totalExpectedPoints) {
+      if (runningBest == null ||
+          c.boostedExpectedPoints > runningBest.boostedExpectedPoints) {
         runningBest = c;
       }
       prefixed.add(runningBest);
@@ -261,7 +547,10 @@ class TeamOptimizer {
     return prefixed; // mismo orden (ascendente por coste) que `sorted`
   }
 
-  TeamCombo? _lookupBestForBudget(List<TeamCombo> prefixMaxSortedByCost, double budget) {
+  TeamCombo? _lookupBestForBudget(
+    List<TeamCombo> prefixMaxSortedByCost,
+    double budget,
+  ) {
     if (prefixMaxSortedByCost.isEmpty) return null;
     // Búsqueda binaria del último índice con coste <= budget.
     var lo = 0;
@@ -293,130 +582,6 @@ class TeamOptimizer {
   /// constructores, indistintamente) del equipo actual por otros mejores,
   /// dentro del presupuesto disponible. Simplificación razonable para v1:
   /// no separa pilotos de constructores al elegir qué N cambiar.
-  _BestSwapResult? _bestSwap({
-    required List<String> currentDriverIds,
-    required List<String> currentConstructorIds,
-    required List<AssetPrediction> driverPredictions,
-    required List<AssetPrediction> constructorPredictions,
-    required double availableBudget,
-    required int swapsAllowed,
-  }) {
-    final driverById = {for (final p in driverPredictions) p.assetId: p};
-    final constructorById = {for (final p in constructorPredictions) p.assetId: p};
-
-    final currentAssets = [
-      ...currentDriverIds.map((id) => (id: id, isDriver: true)),
-      ...currentConstructorIds.map((id) => (id: id, isDriver: false)),
-    ];
-
-    _BestSwapResult? best;
-
-    void recurse(int idx, List<int> outIndices) {
-      if (outIndices.length == swapsAllowed) {
-        final result = _evaluateSwap(
-          currentAssets: currentAssets,
-          outIndices: outIndices,
-          driverPredictions: driverPredictions,
-          constructorPredictions: constructorPredictions,
-          driverById: driverById,
-          constructorById: constructorById,
-          currentDriverIds: currentDriverIds,
-          currentConstructorIds: currentConstructorIds,
-          availableBudget: availableBudget,
-        );
-        if (result != null &&
-            (best == null || result.totalExpectedPoints > best!.totalExpectedPoints)) {
-          best = result;
-        }
-        return;
-      }
-      if (idx >= currentAssets.length) return;
-      // Con outIndices.length
-      recurse(idx + 1, [...outIndices, idx]);
-      recurse(idx + 1, outIndices);
-    }
-
-    recurse(0, []);
-    return best;
-  }
-
-  _BestSwapResult? _evaluateSwap({
-    required List<({String id, bool isDriver})> currentAssets,
-    required List<int> outIndices,
-    required List<AssetPrediction> driverPredictions,
-    required List<AssetPrediction> constructorPredictions,
-    required Map<String, AssetPrediction> driverById,
-    required Map<String, AssetPrediction> constructorById,
-    required List<String> currentDriverIds,
-    required List<String> currentConstructorIds,
-    required double availableBudget,
-  }) {
-    // Para no volver a enumerar combinaciones completas, se sustituye cada
-    // activo saliente por el mejor activo entrante disponible (greedy) que
-    // quepa en el presupuesto restante. No es 100% óptimo para swapsAllowed
-    // >= 2 simultáneos, pero es una aproximación razonable y rápida para v1;
-    // documentar como mejora futura (branch & bound completo).
-    final remainingDriverIds = [...currentDriverIds];
-    final remainingConstructorIds = [...currentConstructorIds];
-    var budget = availableBudget -
-        _sumCostFromIds(currentDriverIds, driverById) -
-        _sumCostFromIds(currentConstructorIds, constructorById);
-
-    final transfersOut = <String>[];
-    final transfersIn = <String>[];
-
-    for (final idx in outIndices) {
-      final asset = currentAssets[idx];
-      transfersOut.add(asset.id);
-      if (asset.isDriver) {
-        remainingDriverIds.remove(asset.id);
-        budget += driverById[asset.id]?.priceMillions ?? 0;
-      } else {
-        remainingConstructorIds.remove(asset.id);
-        budget += constructorById[asset.id]?.priceMillions ?? 0;
-      }
-    }
-
-    for (final idx in outIndices) {
-      final asset = currentAssets[idx];
-      final pool = asset.isDriver ? driverPredictions : constructorPredictions;
-      final currentIds = asset.isDriver ? remainingDriverIds : remainingConstructorIds;
-      final candidate = pool
-          .where((p) => !currentIds.contains(p.assetId) && p.priceMillions <= budget)
-          .fold<AssetPrediction?>(null, (best, p) =>
-              best == null || p.expectedPoints > best.expectedPoints ? p : best);
-      if (candidate == null) return null; // no hay sustituto viable
-      budget -= candidate.priceMillions;
-      transfersIn.add(candidate.assetId);
-      if (asset.isDriver) {
-        remainingDriverIds.add(candidate.assetId);
-      } else {
-        remainingConstructorIds.add(candidate.assetId);
-      }
-    }
-
-    final totalCost = _sumCostFromIds(remainingDriverIds, driverById) +
-        _sumCostFromIds(remainingConstructorIds, constructorById);
-    final totalPoints = _sumPointsFromIds(remainingDriverIds, driverById) +
-        _sumPointsFromIds(remainingConstructorIds, constructorById);
-
-    return _BestSwapResult(
-      transfersOut: transfersOut,
-      transfersIn: transfersIn,
-      combo: TeamCombo(
-        driverIds: remainingDriverIds,
-        constructorIds: remainingConstructorIds,
-        totalCostMillions: totalCost,
-        totalExpectedPoints: totalPoints,
-      ),
-    );
-  }
-
-  double _sumCostFromIds(List<String> ids, Map<String, AssetPrediction> byId) =>
-      ids.fold(0.0, (s, id) => s + (byId[id]?.priceMillions ?? 0));
-
-  double _sumPointsFromIds(List<String> ids, Map<String, AssetPrediction> byId) =>
-      ids.fold(0.0, (s, id) => s + (byId[id]?.expectedPoints ?? 0));
 }
 
 class _BestSwapResult {

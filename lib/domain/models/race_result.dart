@@ -36,8 +36,9 @@ class RaceResult {
       driverId: driver['driverId'] as String,
       constructorId: constructor['constructorId'] as String,
       gridPosition: int.tryParse(json['grid']?.toString() ?? '') ?? 0,
-      finishPosition:
-          status == 'Finished' || status.contains('Lap') ? int.tryParse(posText ?? '') : null,
+      finishPosition: status == 'Finished' || status.contains('Lap')
+          ? int.tryParse(posText ?? '')
+          : null,
       status: status,
       fastestLap: (json['FastestLap']?['rank'] as String?) == '1',
     );

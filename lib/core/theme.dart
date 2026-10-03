@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Sistema de diseño extraído 1:1 del index.html de la app de referencia
-/// ("Fantasy Advisor" MotoGP, PLAN_DESARROLLO.md sección 1.1 y 6).
+/// ("Fantasy Advisor" MotoGP, docs/archive/PLAN_DESARROLLO.md sección 1.1 y 6).
 ///
 /// Tokens CSS de la referencia:
 ///   --bg:#08080b  --bg-2:#0b0b10
@@ -17,45 +17,78 @@ import 'package:google_fonts/google_fonts.dart';
 class AppColors {
   AppColors._();
 
-  static const Color background = Color(0xFF08080B); // --bg
-  static const Color background2 = Color(0xFF0B0B10); // --bg-2
-  static const Color surface1 = Color(0xFF101015);
-  static const Color surface2 = Color(0xFF16161D);
-  static const Color surface3 = Color(0xFF1E1E25);
-  static const Color surface4 = Color(0xFF262631);
+  // La raíz sincroniza estos tokens con el tema elegido. Los widgets que los
+  // usan se suscriben a Theme.of(context) para actualizarse al cambiar de modo.
+  static Brightness brightness = Brightness.dark;
+  static bool get isLight => brightness == Brightness.light;
 
-  static const Color textPrimary = Color(0xFFF9F9FB); // --t1
-  static const Color textSecondary = Color(0xFFA0A0B0); // --t2
-  static const Color textTertiary = Color(0xFF606070); // --t3
+  static Color get background =>
+      isLight ? const Color(0xFFF5F6FA) : const Color(0xFF08080B); // --bg
+  static Color get background2 =>
+      isLight ? const Color(0xFFEEF1F6) : const Color(0xFF0B0B10); // --bg-2
+  static Color get surface1 =>
+      isLight ? const Color(0xFFFFFFFF) : const Color(0xFF101015);
+  static Color get surface2 =>
+      isLight ? const Color(0xFFF9FAFC) : const Color(0xFF16161D);
+  static Color get surface3 =>
+      isLight ? const Color(0xFFEDF0F5) : const Color(0xFF1E1E25);
+  static Color get surface4 =>
+      isLight ? const Color(0xFFE1E6EF) : const Color(0xFF262631);
 
-  static const Color border1 = Color(0x14FFFFFF); // rgba(255,255,255,.08)
-  static const Color border2 = Color(0x24FFFFFF); // rgba(255,255,255,.14)
-  static const Color glassFill = Color(0x0AFFFFFF); // --glass .04
-  static const Color glassStrong = Color(0x12FFFFFF); // --glass-strong .07
+  static Color get textPrimary =>
+      isLight ? const Color(0xFF192234) : const Color(0xFFF9F9FB); // --t1
+  static Color get textSecondary =>
+      isLight ? const Color(0xFF4E5B70) : const Color(0xFFA0A0B0); // --t2
+  static Color get textTertiary =>
+      isLight ? const Color(0xFF637086) : const Color(0xFF606070); // --t3
+
+  static Color get border1 => isLight
+      ? const Color(0xFFDCE2EC)
+      : const Color(0x14FFFFFF); // rgba(255,255,255,.08)
+  static Color get border2 => isLight
+      ? const Color(0xFFC6CFDD)
+      : const Color(0x24FFFFFF); // rgba(255,255,255,.14)
+  static Color get glassFill => isLight
+      ? const Color(0xFFFFFFFF)
+      : const Color(0x0AFFFFFF); // --glass .04
+  static Color get glassStrong => isLight
+      ? const Color(0xFFEEF1F6)
+      : const Color(0x12FFFFFF); // --glass-strong .07
 
   // Se conservan los nombres internos `lime`/`lime2` para no romper widgets
   // existentes; visualmente son ahora el rojo principal de la app F1.
-  static const Color lime = Color(0xFFFF1838);
-  static const Color lime2 = Color(0xFFFF5268);
-  static const Color cyan = Color(0xFF00E5FF);
-  static const Color magenta = Color(0xFFFF3CB8);
-  static const Color violet = Color(0xFF9B5CFF);
-  static const Color orange = Color(0xFFFF7000);
-  static const Color gold = Color(0xFFFFD700);
-  static const Color silver = Color(0xFFC7C9D6);
+  static Color get lime =>
+      isLight ? const Color(0xFFD51132) : const Color(0xFFFF1838);
+  static Color get lime2 =>
+      isLight ? const Color(0xFFCB2546) : const Color(0xFFFF5268);
+  static Color get cyan =>
+      isLight ? const Color(0xFF00788D) : const Color(0xFF00E5FF);
+  static Color get magenta =>
+      isLight ? const Color(0xFFBA207E) : const Color(0xFFFF3CB8);
+  static Color get violet =>
+      isLight ? const Color(0xFF7138C4) : const Color(0xFF9B5CFF);
+  static Color get orange =>
+      isLight ? const Color(0xFFBD5100) : const Color(0xFFFF7000);
+  static Color get gold =>
+      isLight ? const Color(0xFF976C00) : const Color(0xFFFFD700);
+  static Color get silver =>
+      isLight ? const Color(0xFF65738A) : const Color(0xFFC7C9D6);
 
-  static const Color ok = Color(0xFF00E096);
-  static const Color warning = Color(0xFFFFB833);
-  static const Color error = Color(0xFFFF4466);
+  static Color get ok =>
+      isLight ? const Color(0xFF007B57) : const Color(0xFF00E096);
+  static Color get warning =>
+      isLight ? const Color(0xFF996000) : const Color(0xFFFFB833);
+  static Color get error =>
+      isLight ? const Color(0xFFC92346) : const Color(0xFFFF4466);
 
   // Alias usados por widgets antiguos (compatibilidad).
-  static const Color glassBorder = border1;
-  static const Color accentCyan = cyan;
-  static const Color accentLime = lime;
-  static const Color accentMagenta = magenta;
-  static const Color accentViolet = violet;
-  static const Color accentOrange = orange;
-  static const Color backgroundDeep = background;
+  static Color get glassBorder => border1;
+  static Color get accentCyan => cyan;
+  static Color get accentLime => lime;
+  static Color get accentMagenta => magenta;
+  static Color get accentViolet => violet;
+  static Color get accentOrange => orange;
+  static Color get backgroundDeep => background;
 }
 
 class AppRadii {
@@ -84,53 +117,67 @@ class AppText {
   AppText._();
 
   /// Títulos: Syne 800, letter-spacing -0.03em (h1,h2,h3 de la referencia).
-  static TextStyle syne(double size,
-      {Color color = AppColors.textPrimary,
-      FontWeight weight = FontWeight.w800}) {
+  static TextStyle syne(
+    double size, {
+    Color? color,
+    FontWeight weight = FontWeight.w800,
+  }) {
     return GoogleFonts.syne(
       fontSize: size,
       fontWeight: weight,
-      color: color,
+      color: color ?? AppColors.textPrimary,
       letterSpacing: -0.03 * size,
       height: 1.1,
     );
   }
 
   /// Cuerpo: DM Sans (body de la referencia, line-height 1.55).
-  static TextStyle body(double size,
-      {Color color = AppColors.textPrimary,
-      FontWeight weight = FontWeight.w400}) {
+  static TextStyle body(
+    double size, {
+    Color? color,
+    FontWeight weight = FontWeight.w400,
+  }) {
     return GoogleFonts.dmSans(
-        fontSize: size, fontWeight: weight, color: color, height: 1.45);
+      fontSize: size,
+      fontWeight: weight,
+      color: color ?? AppColors.textPrimary,
+      height: 1.45,
+    );
   }
 
   /// Etiquetas técnicas: JetBrains Mono uppercase con tracking ancho
   /// (.brand-sub, .section-kicker, .nav-tab, .gscorelabel de la referencia).
-  static TextStyle mono(double size,
-      {Color color = AppColors.textTertiary,
-      FontWeight weight = FontWeight.w700}) {
+  static TextStyle mono(
+    double size, {
+    Color? color,
+    FontWeight weight = FontWeight.w700,
+  }) {
     return GoogleFonts.jetBrainsMono(
       fontSize: size,
       fontWeight: weight,
-      color: color,
+      color: color ?? AppColors.textTertiary,
       letterSpacing: 0.12 * size,
     );
   }
 }
 
 ThemeData buildAppTheme() {
-  const scheme = ColorScheme.dark(
+  final scheme = ColorScheme.fromSeed(
+    seedColor: AppColors.lime,
+    brightness: AppColors.brightness,
     surface: AppColors.background,
     primary: AppColors.lime,
     secondary: AppColors.cyan,
     error: AppColors.error,
   );
 
-  final dmSans = GoogleFonts.dmSansTextTheme(ThemeData.dark().textTheme);
+  final dmSans = GoogleFonts.dmSansTextTheme(
+    (AppColors.isLight ? ThemeData.light() : ThemeData.dark()).textTheme,
+  );
 
   return ThemeData(
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: AppColors.brightness,
     scaffoldBackgroundColor: AppColors.background,
     colorScheme: scheme,
     textTheme: dmSans.copyWith(
@@ -171,11 +218,16 @@ ThemeData buildAppTheme() {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.lime,
-        foregroundColor: const Color(0xFF111111),
-        textStyle: AppText.body(13, weight: FontWeight.w800)
-            .copyWith(letterSpacing: 0.8),
+        foregroundColor: AppColors.isLight
+            ? Colors.white
+            : const Color(0xFF111111),
+        textStyle: AppText.body(
+          13,
+          weight: FontWeight.w800,
+        ).copyWith(letterSpacing: 0.8),
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.sm)),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       ),
     ),
@@ -183,10 +235,11 @@ ThemeData buildAppTheme() {
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.textPrimary,
         backgroundColor: AppColors.surface3,
-        side: const BorderSide(color: AppColors.border1),
+        side: BorderSide(color: AppColors.border1),
         textStyle: AppText.body(13, weight: FontWeight.w800),
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.sm)),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     ),
@@ -196,11 +249,11 @@ ThemeData buildAppTheme() {
       hintStyle: AppText.body(14, color: AppColors.textTertiary),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        borderSide: const BorderSide(color: AppColors.border1),
+        borderSide: BorderSide(color: AppColors.border1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        borderSide: const BorderSide(color: AppColors.cyan),
+        borderSide: BorderSide(color: AppColors.cyan),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
     ),

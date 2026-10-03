@@ -34,10 +34,10 @@ class DataRepository {
     required JolpicaApi jolpica,
     required OpenF1Api openF1,
     required FantasyApi fantasyApi,
-  })  : _db = db,
-        _jolpica = jolpica,
-        _openF1 = openF1,
-        _fantasyApi = fantasyApi;
+  }) : _db = db,
+       _jolpica = jolpica,
+       _openF1 = openF1,
+       _fantasyApi = fantasyApi;
 
   final AppDatabase _db;
   final JolpicaApi _jolpica;
@@ -55,16 +55,25 @@ class DataRepository {
     // de que terminen primero todas las descargas históricas.
     final seasonsToSync = [currentSeason, currentSeason - 1, currentSeason - 2];
     for (final season in seasonsToSync) {
-      await _trySync(report, 'temporada $season',
-          () => _syncCalendarAndResults(season, report));
+      await _trySync(
+        report,
+        'temporada $season',
+        () => _syncCalendarAndResults(season, report),
+      );
     }
     await _trySync(
-        report, 'precios fantasy', () => _syncPrices(currentSeason, report));
+      report,
+      'precios fantasy',
+      () => _syncPrices(currentSeason, report),
+    );
     return report;
   }
 
   Future<void> _trySync(
-      SyncReport report, String label, Future<void> Function() task) async {
+    SyncReport report,
+    String label,
+    Future<void> Function() task,
+  ) async {
     try {
       await task();
     } catch (e) {
@@ -85,25 +94,33 @@ class DataRepository {
     report.racesSynced += calendar.length;
 
     final drivers = await _jolpica.getDrivers(season);
-    await _db.upsertDrivers(drivers
-        .map((d) => DriversCompanion.insert(
+    await _db.upsertDrivers(
+      drivers
+          .map(
+            (d) => DriversCompanion.insert(
               id: d.id,
               code: d.code,
               givenName: d.givenName,
               familyName: d.familyName,
               constructorId: d.constructorId,
               number: Value(d.number),
-            ))
-        .toList());
+            ),
+          )
+          .toList(),
+    );
 
     final constructorsList = await _jolpica.getConstructors(season);
-    await _db.upsertConstructors(constructorsList
-        .map((c) => ConstructorsCompanion.insert(
+    await _db.upsertConstructors(
+      constructorsList
+          .map(
+            (c) => ConstructorsCompanion.insert(
               id: c.id,
               name: c.name,
               nationality: c.nationality,
-            ))
-        .toList());
+            ),
+          )
+          .toList(),
+    );
 
     // Descargas agrupadas: resultados y clasificación requieren una sola
     // petición cada uno, en lugar de dos peticiones por ronda.
@@ -131,17 +148,36 @@ class DataRepository {
   }
 
   Future<void> _syncPrices(int season, SyncReport report) async {
-    final prices = await _fantasyApi.getCurrentPrices(season);
-    report.pricesSynced += prices.length;
-    await _db.upsertPrices(prices
-        .map((p) => FantasyPricesCompanion.insert(
+    final snapshots = await _fantasyApi.getRecentRoundSnapshots(season);
+    final prices = snapshots.expand((snapshot) => snapshot.prices).toList();
+    report.pricesSynced += snapshots.lastOrNull?.prices.length ?? 0;
+    await _db.upsertPrices(
+      prices
+          .map(
+            (p) => FantasyPricesCompanion.insert(
               assetId: p.assetId,
               assetType: p.assetType.name,
               season: p.season,
               round: p.round,
               priceMillions: p.priceMillions,
-            ))
-        .toList());
+            ),
+          )
+          .toList(),
+    );
+    final completedPoints = snapshots
+        .where((snapshot) => !snapshot.isCurrent)
+        .expand((snapshot) => snapshot.points)
+        .map(
+          (p) => FantasyPointsTableCompanion.insert(
+            assetId: p.assetId,
+            assetType: p.assetType.name,
+            season: p.season,
+            round: p.round,
+            points: p.points,
+          ),
+        )
+        .toList();
+    await _db.upsertFantasyPoints(completedPoints);
   }
 
   // ---- Lecturas (siempre desde caché local; instantáneas) ----
@@ -158,6 +194,32 @@ class DataRepository {
 
   Future<double?> currentPrice(String assetId, {required bool isConstructor}) =>
       _db.latestPrice(assetId, isConstructor ? 'constructor' : 'driver');
+
+  Future<List<int>> recentFantasyPoints(
+    String assetId, {
+    required bool isConstructor,
+    int limit = 2,
+  }) async {
+    final rows = await _db.recentFantasyPoints(
+      assetId,
+      isConstructor ? 'constructor' : 'driver',
+      limit: limit,
+    );
+    return rows.map((row) => row.points).toList();
+  }
+
+  Future<List<double>> recentPrices(
+    String assetId, {
+    required bool isConstructor,
+    int limit = 3,
+  }) async {
+    final rows = await _db.recentPrices(
+      assetId,
+      isConstructor ? 'constructor' : 'driver',
+      limit: limit,
+    );
+    return rows.map((row) => row.priceMillions).toList();
+  }
 
   /// ¿Hay precios reales de la API de F1 Fantasy en caché? Si no, la UI
   /// usa los precios estimados (y lo indica con un aviso).
@@ -229,55 +291,93 @@ class DataRepository {
 
       final dnfCount = recent8.where((r) => r.finishPosition == null).length;
 
-      contexts.add(DriverContext(
-        driverId: driver.id,
-        constructorId: constructorId,
-        // Se pasan las 8 (no solo 5): la feature de ritmo reciente usa solo
-        // las 5 más recientes internamente (take(5)) y la de consistencia
-        // usa las 8 (sección 5.1); DriverContext lleva la ventana más ancha.
-        recentRaceFinishPositions:
-            recent8.map((r) => r.finishPosition).toList(),
-        recentQualifyingPositions: recentQuali.map((q) => q.position).toList(),
-        // Aproximación sin OpenF1: 0 si tuvo la vuelta rápida, 1.5% si no.
-        // Sustituir por el gap real de OpenF1 cuando haya sesión en curso.
-        recentFastestLapGapPercent:
-            recent8.map((r) => r.fastestLap ? 0.0 : 1.5).toList(),
-        circuitHistoryFinishPositions:
-            circuitHistory.map((r) => r.finishPosition).toList(),
-        constructorRecentPoints: constructorRecent
-            .map((r) => (raceScoreByPosition[r.finishPosition] ?? 0).toDouble())
-            .toList(),
-        driverDnfRateLast2Seasons:
-            recent8.isEmpty ? 0.1 : dnfCount / recent8.length,
-        constructorDnfRateLast2Seasons:
-            0.1, // placeholder hasta agregarlo por constructor
-        gridSize: gridSize,
-      ));
+      contexts.add(
+        DriverContext(
+          driverId: driver.id,
+          constructorId: constructorId,
+          // Se pasan las 8 (no solo 5): la feature de ritmo reciente usa solo
+          // las 5 más recientes internamente (take(5)) y la de consistencia
+          // usa las 8 (sección 5.1); DriverContext lleva la ventana más ancha.
+          recentRaceFinishPositions: recent8
+              .map((r) => r.finishPosition)
+              .toList(),
+          recentQualifyingPositions: recentQuali
+              .map((q) => q.position)
+              .toList(),
+          // Aproximación sin OpenF1: 0 si tuvo la vuelta rápida, 1.5% si no.
+          // Sustituir por el gap real de OpenF1 cuando haya sesión en curso.
+          recentFastestLapGapPercent: recent8
+              .map((r) => r.fastestLap ? 0.0 : 1.5)
+              .toList(),
+          circuitHistoryFinishPositions: circuitHistory
+              .map((r) => r.finishPosition)
+              .toList(),
+          constructorRecentPoints: constructorRecent
+              .map(
+                (r) => (raceScoreByPosition[r.finishPosition] ?? 0).toDouble(),
+              )
+              .toList(),
+          driverDnfRateLast2Seasons: recent8.isEmpty
+              ? 0.1
+              : dnfCount / recent8.length,
+          constructorDnfRateLast2Seasons:
+              0.1, // placeholder hasta agregarlo por constructor
+          gridSize: gridSize,
+        ),
+      );
     }
     return contexts;
   }
 
   // ---- Mi equipo ----
 
-  Future<void> saveMyTeam(MyTeam team) async {
-    await _db.saveMyTeam(MyTeamTableCompanion.insert(
-      driverIdsCsv: team.driverIds.join(','),
-      constructorIdsCsv: team.constructorIds.join(','),
-      remainingBudgetMillions: team.remainingBudgetMillions,
-      boostedDriverId: Value(team.boostedDriverId),
-      source: team.source.name,
-      chipsUsedCsv: Value(team.chipsUsed.join(',')),
-    ));
+  Future<void> saveMyTeam(MyTeam team, {int? season, int? round}) async {
+    await _db.saveMyTeam(
+      MyTeamTableCompanion.insert(
+        driverIdsCsv: team.driverIds.join(','),
+        constructorIdsCsv: team.constructorIds.join(','),
+        remainingBudgetMillions: team.remainingBudgetMillions,
+        boostedDriverId: Value(team.boostedDriverId),
+        source: team.source.name,
+        chipsUsedCsv: Value(team.chipsUsed.join(',')),
+      ),
+    );
+    if (season != null && round != null) {
+      await _db.saveTeamSnapshot(
+        TeamSnapshotsCompanion.insert(
+          season: season,
+          round: round,
+          driverIdsCsv: team.driverIds.join(','),
+          constructorIdsCsv: team.constructorIds.join(','),
+          remainingBudgetMillions: team.remainingBudgetMillions,
+          boostedDriverId: Value(team.boostedDriverId),
+          chipsUsedCsv: Value(team.chipsUsed.join(',')),
+          savedAt: DateTime.now(),
+        ),
+      );
+    }
   }
+
+  Future<List<TeamSnapshotRow>> teamSnapshots() => _db.allTeamSnapshots();
+
+  Future<List<FantasyPointsRow>> fantasyPointsForRound(int season, int round) =>
+      _db.fantasyPointsForRound(season, round);
+
+  Future<List<FantasyPriceRow>> pricesForRound(int season, int round) =>
+      _db.pricesForRound(season, round);
 
   Future<MyTeam?> loadMyTeam() async {
     final row = await _db.loadMyTeam();
     if (row == null) return null;
     return MyTeam(
-      driverIds:
-          row.driverIdsCsv.split(',').where((s) => s.isNotEmpty).toList(),
-      constructorIds:
-          row.constructorIdsCsv.split(',').where((s) => s.isNotEmpty).toList(),
+      driverIds: row.driverIdsCsv
+          .split(',')
+          .where((s) => s.isNotEmpty)
+          .toList(),
+      constructorIds: row.constructorIdsCsv
+          .split(',')
+          .where((s) => s.isNotEmpty)
+          .toList(),
       remainingBudgetMillions: row.remainingBudgetMillions,
       boostedDriverId: row.boostedDriverId,
       source: MyTeamSource.values.firstWhere(
@@ -291,37 +391,37 @@ class DataRepository {
   // ---- Mappers dominio <-> companions/rows drift ----
 
   Race _raceRowToDomain(RaceRow r) => Race(
-        season: r.season,
-        round: r.round,
-        raceName: r.raceName,
-        circuitId: r.circuitId,
-        circuitName: r.circuitName,
-        country: r.country,
-        date: r.date,
-        hasSprint: r.hasSprint,
-      );
+    season: r.season,
+    round: r.round,
+    raceName: r.raceName,
+    circuitId: r.circuitId,
+    circuitName: r.circuitName,
+    country: r.country,
+    date: r.date,
+    hasSprint: r.hasSprint,
+  );
 
   RacesCompanion _raceToCompanion(Race r) => RacesCompanion.insert(
-        season: r.season,
-        round: r.round,
-        raceName: r.raceName,
-        circuitId: r.circuitId,
-        circuitName: r.circuitName,
-        country: r.country,
-        date: r.date,
-        hasSprint: Value(r.hasSprint),
-      );
+    season: r.season,
+    round: r.round,
+    raceName: r.raceName,
+    circuitId: r.circuitId,
+    circuitName: r.circuitName,
+    country: r.country,
+    date: r.date,
+    hasSprint: Value(r.hasSprint),
+  );
 
   ResultsCompanion _resultToCompanion(RaceResult r) => ResultsCompanion.insert(
-        season: r.season,
-        round: r.round,
-        driverId: r.driverId,
-        constructorId: r.constructorId,
-        gridPosition: r.gridPosition,
-        finishPosition: Value(r.finishPosition),
-        status: r.status,
-        fastestLap: Value(r.fastestLap),
-      );
+    season: r.season,
+    round: r.round,
+    driverId: r.driverId,
+    constructorId: r.constructorId,
+    gridPosition: r.gridPosition,
+    finishPosition: Value(r.finishPosition),
+    status: r.status,
+    fastestLap: Value(r.fastestLap),
+  );
 
   QualifyingResultsCompanion _qualiToCompanion(QualifyingResult q) =>
       QualifyingResultsCompanion.insert(

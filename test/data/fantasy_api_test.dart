@@ -16,7 +16,15 @@ class _FeedAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     paths.add(options.path);
-    final payload = options.path.contains('raceday_en.json')
+    final payload = options.path.contains('/privateleague/list_1_')
+        ? {
+            'Value': {
+              'leaderboard': [
+                {'user_guid': 'a', 'team_no': 1, 'cur_points': 100},
+              ],
+            },
+          }
+        : options.path.contains('raceday_en.json')
         ? {
             'Data': {
               'fixtures': [
@@ -87,5 +95,64 @@ void main() {
     expect(assets.first['canonical_id'], 'antonelli');
     expect(assets.last['is_constructor'], isTrue);
     expect(assets.last['price'], 28.0);
+  });
+
+  test('descarga precio y puntos de las tres jornadas recientes', () async {
+    final adapter = _FeedAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = FantasyApi(dio, publicBaseUrl: 'https://fantasy.formula1.com');
+
+    final snapshots = await api.getRecentRoundSnapshots(2026);
+
+    expect(snapshots.map((item) => item.round), [8, 9, 10]);
+    expect(snapshots.last.isCurrent, isTrue);
+    expect(snapshots.first.prices, hasLength(2));
+    expect(snapshots.first.points, hasLength(2));
+    expect(adapter.paths, hasLength(4));
+  });
+
+  test(
+    'construye la clasificación provisional desde el feed oficial',
+    () async {
+      final adapter = _FeedAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final api = FantasyApi(
+        dio,
+        publicBaseUrl: 'https://fantasy.formula1.com',
+      );
+
+      final live = await api.getLiveSnapshot(2026);
+
+      expect(live.round, 10);
+      expect(live.assets, hasLength(2));
+      expect(live.assets.first.assetId, 'antonelli');
+    },
+  );
+  test(
+    'el detalle usa el GP capturado aunque el calendario esté en otro',
+    () async {
+      final adapter = _FeedAdapter();
+      final api = FantasyApi(
+        Dio()..httpClientAdapter = adapter,
+        publicBaseUrl: 'https://fantasy.formula1.com',
+      );
+      final assets = await api.getGameDayAssets(7);
+      expect(adapter.paths, [
+        'https://fantasy.formula1.com/feeds/drivers/7_en.json',
+      ]);
+      expect(assets.every((asset) => asset['round'] == 7), isTrue);
+    },
+  );
+  test('la liga actual usa el feed oficial en vez del endpoint legacy', () async {
+    final adapter = _FeedAdapter();
+    final api = FantasyApi(
+      Dio()..httpClientAdapter = adapter,
+      publicBaseUrl: 'https://fantasy.formula1.com',
+    );
+    final board = await api.getPrivateLeagueStandings('4764009');
+    expect(adapter.paths, [
+      'https://fantasy.formula1.com/feeds/leaderboard/privateleague/list_1_4764009_0_1.json',
+    ]);
+    expect(board['Value']['leaderboard'], hasLength(1));
   });
 }

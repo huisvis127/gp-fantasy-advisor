@@ -21,7 +21,8 @@ class PredictionIsolateRunner {
     required bool isSprintWeekend,
   }) {
     return Isolate.run(() {
-      final engine = PredictionEngine(weights, ScoringTable.fromJson(scoringJson));
+      final engine =
+          PredictionEngine(weights, ScoringTable.fromJson(scoringJson));
       return engine.predictDrivers(
         drivers: drivers,
         currentPricesMillions: currentPricesMillions,

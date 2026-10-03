@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_providers.dart';
+import '../../../core/app_locale.dart';
 import '../../../core/fantasy_standings_provider.dart';
 import '../../../core/team_colors.dart';
 import '../../../core/theme.dart';
@@ -24,9 +25,11 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final comboAsync = ref.watch(optimalTeamProvider(_priority));
     final catalog = ref.watch(fantasyAssetNameProvider).valueOrNull ?? const {};
     final race = ref.watch(selectedRaceProvider).valueOrNull;
+    final strings = AppStrings(ref.watch(appLocaleProvider));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
@@ -36,20 +39,23 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SectionHead(
-                kicker: 'Presupuesto 100 M\$',
+                kicker: strings.t('budget_100'),
                 title: race == null
-                    ? 'Equipo ideal'
-                    : 'Equipo ideal · ${race.raceName}',
+                    ? strings.t('ideal_team')
+                    : '${strings.t('ideal_team')} · ${race.raceName}',
               ),
               const SizedBox(height: 6),
               Text(
-                '5 pilotos + 2 constructores maximizando los puntos esperados '
-                'con tus pesos. Se recalcula al cambiar GP o sliders.',
+                strings.t('ideal_intro'),
                 style: AppText.body(11.5, color: AppColors.textTertiary),
               ),
               const SizedBox(height: 12),
               SubTabs(
-                labels: const ['Pilotos', 'Equilibrado', 'Constructores'],
+                labels: [
+                  strings.t('drivers'),
+                  strings.t('balanced'),
+                  strings.t('constructors'),
+                ],
                 selectedIndex: switch (_priority) {
                   TeamPriority.drivers => 0,
                   TeamPriority.balanced => 1,
@@ -70,22 +76,21 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
         comboAsync.when(
           data: (combo) {
             if (combo.driverIds.isEmpty) {
-              return const StatusBanner(
-                message:
-                    'No hay datos suficientes para optimizar. Sincroniza en Resumen.',
-              );
+              return StatusBanner(message: strings.t('sync_to_optimize'));
             }
-            return _result(combo, catalog);
+            return _result(combo, catalog, strings);
           },
-          loading: () => const Center(
+          loading: () => Center(
             child: Padding(
-              padding: EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
               child: CircularProgressIndicator(
-                  strokeWidth: 2, color: AppColors.lime),
+                strokeWidth: 2,
+                color: AppColors.lime,
+              ),
             ),
           ),
           error: (e, _) => StatusBanner(
-            message: 'Error optimizando: $e',
+            message: '${strings.t('optimization_failed')}: $e',
             isError: true,
             onRetry: () => ref.invalidate(optimalTeamProvider(_priority)),
           ),
@@ -94,7 +99,11 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
     );
   }
 
-  Widget _result(TeamCombo combo, Map<String, FantasyAssetInfo> catalog) {
+  Widget _result(
+    TeamCombo combo,
+    Map<String, FantasyAssetInfo> catalog,
+    AppStrings strings,
+  ) {
     String nameOf(String id) => catalog[id]?.name ?? prettifyId(id);
     String teamOf(String id) => catalog[id]?.teamName ?? '';
     double priceOf(String id) => catalog[id]?.priceMillions ?? 0;
@@ -110,13 +119,15 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
       children: [
         Center(
           child: TotalPill(
-            value: combo.totalExpectedPoints.toStringAsFixed(1),
-            label: 'pts esperados',
+            value: combo.boostedExpectedPoints.toStringAsFixed(1),
+            label: strings.t('expected_points').toLowerCase(),
           ),
         ),
         const SizedBox(height: 14),
-        Text('PILOTOS',
-            style: AppText.mono(10, color: AppColors.textSecondary)),
+        Text(
+          strings.t('drivers'),
+          style: AppText.mono(10, color: AppColors.textSecondary),
+        ),
         const SizedBox(height: 8),
         GridView.count(
           crossAxisCount: 2,
@@ -129,15 +140,18 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
             for (final id in combo.driverIds)
               AssetCard(
                 tag: '${priceOf(id).toStringAsFixed(1)} M\$',
-                name: nameOf(id),
+                name:
+                    '${nameOf(id)}${combo.boostedDriverId == id ? ' ×2' : ''}',
                 subtitle: teamOf(id),
                 barColor: colorOfDriver(id),
               ),
           ],
         ),
         const SizedBox(height: 14),
-        Text('CONSTRUCTORES',
-            style: AppText.mono(10, color: AppColors.textSecondary)),
+        Text(
+          strings.t('constructors'),
+          style: AppText.mono(10, color: AppColors.textSecondary),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -146,7 +160,7 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
                 child: AssetCard(
                   tag: '${priceOf(id).toStringAsFixed(1)} M\$',
                   name: nameOf(id),
-                  subtitle: 'Constructor',
+                  subtitle: strings.t('constructor'),
                   barColor: teamColor(id),
                   tagColor: AppColors.orange,
                 ),
@@ -160,14 +174,18 @@ class _IdealScreenState extends ConsumerState<IdealScreen> {
           child: Text.rich(
             TextSpan(
               children: [
-                const TextSpan(text: 'Coste total '),
+                TextSpan(text: '${strings.t('total_cost')} '),
                 TextSpan(
                   text: '${combo.totalCostMillions.toStringAsFixed(1)} M\$',
-                  style: AppText.body(12,
-                      color: AppColors.lime, weight: FontWeight.w800),
+                  style: AppText.body(
+                    12,
+                    color: AppColors.lime,
+                    weight: FontWeight.w800,
+                  ),
                 ),
                 TextSpan(
-                  text: ' · te sobran ${remaining.toStringAsFixed(1)} M\$.',
+                  text:
+                      ' · ${remaining.toStringAsFixed(1)} M\$ ${strings.t('remaining')}.',
                 ),
               ],
             ),

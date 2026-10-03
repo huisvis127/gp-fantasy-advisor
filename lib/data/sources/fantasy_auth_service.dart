@@ -32,7 +32,7 @@ class FantasyAuthService {
 
   /// apiKey pública que usa la propia web de formula1.com para el login
   /// (documentada por la comunidad: proyectos f1-fantasy-api y el cheat
-  /// sheet de endpoints referenciados en PLAN_DESARROLLO.md sección 3.1).
+  /// sheet de endpoints referenciados en docs/archive/PLAN_DESARROLLO.md sección 3.1).
   static const _publicApiKey = 'fLRgnHF4kXTBRSPjnKSVefdWaMzTB1DP';
 
   Future<String> loginWithPassword({

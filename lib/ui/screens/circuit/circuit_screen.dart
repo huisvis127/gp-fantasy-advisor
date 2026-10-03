@@ -14,8 +14,10 @@ class CircuitScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    Theme.of(context);
     final raceAsync = ref.watch(selectedRaceProvider);
     final predictions = ref.watch(driverPredictionsProvider);
+    final weekend = ref.watch(weekendDataProvider);
     final catalog = ref.watch(fantasyAssetNameProvider).valueOrNull ?? const {};
 
     return ListView(
@@ -51,18 +53,97 @@ class CircuitScreen extends ConsumerWidget {
                         color: AppColors.cyan,
                       ),
                       if (race.hasSprint)
-                        const TagChip('Sprint', color: AppColors.orange),
+                        TagChip('Sprint', color: AppColors.orange),
                     ],
                   ),
                 ],
               ),
             );
           },
-          loading: () => const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          loading: () =>
+              const Center(child: CircularProgressIndicator(strokeWidth: 2)),
           error: (_, __) => const StatusBanner(
             message: 'No se pudo cargar el circuito seleccionado.',
+            isError: true,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const SectionHead(kicker: 'OpenF1', title: 'Inteligencia de sesión'),
+        const SizedBox(height: 8),
+        weekend.when(
+          data: (data) {
+            if (data.insights.isEmpty) {
+              return const StatusBanner(
+                message:
+                    'El panel se activará cuando termine una sesión de '
+                    'entrenamientos del GP seleccionado.',
+              );
+            }
+            final insights = data.insights.values.toList()
+              ..sort((a, b) => a.paceGapPercent.compareTo(b.paceGapPercent));
+            return Column(
+              children: [
+                for (final insight in insights.take(6)) ...[
+                  RefCard(
+                    padding: const EdgeInsets.all(13),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                catalog[insight.driverId]?.name ??
+                                    prettifyId(insight.driverId),
+                                style: AppText.body(
+                                  13.5,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${insight.totalLaps} vueltas · '
+                                '${insight.sessionCount} sesiones · '
+                                'dispersión larga '
+                                '${insight.longRunSpreadPercent.toStringAsFixed(1)}%',
+                                style: AppText.body(
+                                  10,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '+${insight.paceGapPercent.toStringAsFixed(2)}%',
+                              style: AppText.mono(10, color: AppColors.lime),
+                            ),
+                            Text(
+                              '1V +${insight.oneLapGapPercent.toStringAsFixed(2)}%',
+                              style: AppText.mono(
+                                8,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                ],
+              ],
+            );
+          },
+          loading: () => LinearProgressIndicator(
+            color: AppColors.cyan,
+            backgroundColor: AppColors.surface3,
+          ),
+          error: (error, _) => StatusBanner(
+            message: 'No se pudo cargar la telemetría: $error',
             isError: true,
           ),
         ),
@@ -105,8 +186,10 @@ class CircuitScreen extends ConsumerWidget {
                     padding: const EdgeInsets.all(14),
                     child: Row(
                       children: [
-                        Text('${i + 1}',
-                            style: AppText.syne(20, color: AppColors.lime)),
+                        Text(
+                          '${i + 1}',
+                          style: AppText.syne(20, color: AppColors.lime),
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -115,13 +198,17 @@ class CircuitScreen extends ConsumerWidget {
                               Text(
                                 catalog[sorted[i].assetId]?.name ??
                                     prettifyId(sorted[i].assetId),
-                                style:
-                                    AppText.body(14, weight: FontWeight.w700),
+                                style: AppText.body(
+                                  14,
+                                  weight: FontWeight.w700,
+                                ),
                               ),
                               Text(
                                 catalog[sorted[i].assetId]?.teamName ?? '',
-                                style: AppText.body(11,
-                                    color: AppColors.textTertiary),
+                                style: AppText.body(
+                                  11,
+                                  color: AppColors.textTertiary,
+                                ),
                               ),
                             ],
                           ),

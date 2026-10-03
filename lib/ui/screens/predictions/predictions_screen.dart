@@ -26,6 +26,7 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final weights = ref.watch(userWeightsProvider);
     final mode = ref.watch(weightsModeProvider);
     final driversAsync = ref.watch(driverPredictionsProvider);
@@ -49,24 +50,28 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
             Expanded(
               child: Text(
                 (weekend == null || weekend.isEmpty)
-                    ? 'Predicción con histórico. Cuando haya libres/quali del finde, se incorporan solos.'
-                    : 'Incluye las sesiones del finde ponderadas por la tabla calibrada.',
+                    ? 'Predicción con histórico. FP1, FP2 y FP3 se incorporan automáticamente.'
+                    : 'Modelo previo a clasificación: usa solo las sesiones libres disponibles.',
                 style: AppText.body(10.5, color: AppColors.textTertiary),
               ),
             ),
             IconButton(
               visualDensity: VisualDensity.compact,
               onPressed: () => ref.invalidate(weekendDataProvider),
-              icon: const Icon(Icons.refresh_rounded,
-                  size: 18, color: AppColors.textSecondary),
+              icon: Icon(
+                Icons.refresh_rounded,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),
         if (weekend?.error != null) ...[
           StatusBanner(
-              message: weekend!.error!,
-              isError: true,
-              onRetry: () => ref.invalidate(weekendDataProvider)),
+            message: weekend!.error!,
+            isError: true,
+            onRetry: () => ref.invalidate(weekendDataProvider),
+          ),
           const SizedBox(height: 8),
         ],
         const SizedBox(height: 6),
@@ -108,11 +113,11 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
                 Text(
                   mode == WeightsMode.aficionado
                       ? 'Los 4 pesos que importan. Al subir uno bajan los otros tres; '
-                          'los avanzados (forma, circuito, equipo, abandonos) quedan '
-                          'preconfigurados con los valores calibrados '
-                          '(${kAdvancedWeightKeys.fold<double>(0, (s, k) => s + (weights[k] ?? 0)).round()}% del total).'
+                            'los avanzados (forma, circuito, equipo, abandonos) quedan '
+                            'preconfigurados con los valores calibrados '
+                            '(${kAdvancedWeightKeys.fold<double>(0, (s, k) => s + (weights[k] ?? 0)).round()}% del total).'
                       : 'Los 8 pesos del modelo. Suman 100%: al subir uno bajan los '
-                          'demás. Todo se recalcula al instante.',
+                            'demás. Todo se recalcula al instante.',
                   style: AppText.body(11.5, color: AppColors.textTertiary),
                 ),
                 const SizedBox(height: 10),
@@ -196,16 +201,24 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
         final sorted = [...preds]
           ..sort((a, b) => b.expectedPoints.compareTo(a.expectedPoints));
         final maxScore = sorted.first.expectedPoints;
-        final bestValueId = ([...preds]
-              ..sort((a, b) => b.pointsPerValue.compareTo(a.pointsPerValue)))
-            .first
-            .assetId;
+        final bestValueId =
+            ([
+                  ...preds,
+                ]..sort((a, b) => b.pointsPerValue.compareTo(a.pointsPerValue)))
+                .first
+                .assetId;
 
         return Column(
           children: [
             for (var i = 0; i < sorted.length; i++) ...[
-              _row(sorted[i], i + 1, maxScore, bestValueId, catalog,
-                  isConstructor: isConstructor),
+              _row(
+                sorted[i],
+                i + 1,
+                maxScore,
+                bestValueId,
+                catalog,
+                isConstructor: isConstructor,
+              ),
               const SizedBox(height: 8),
             ],
             Align(
@@ -219,11 +232,13 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
           ],
         );
       },
-      loading: () => const Center(
+      loading: () => Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
-          child:
-              CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime),
+          padding: const EdgeInsets.all(24),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.lime,
+          ),
         ),
       ),
       error: (e, _) => StatusBanner(
@@ -255,13 +270,13 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
         : teamColor(info?.teamName.toLowerCase().replaceAll(' ', '_'));
 
     final chips = <TagChip>[
-      if (rank == 1) const TagChip('Pick', color: AppColors.lime),
+      if (rank == 1) TagChip('Pick', color: AppColors.lime),
       if (!isConstructor && pred.winProbability >= 0.18)
-        const TagChip('Capitán', color: AppColors.cyan),
+        TagChip('Capitán', color: AppColors.cyan),
       if (pred.assetId == bestValueId)
-        const TagChip('Valor', color: AppColors.violet),
+        TagChip('Valor', color: AppColors.violet),
       if (!isConstructor && (pred.breakdown['riesgo_dnf'] ?? 0) > 25)
-        const TagChip('Riesgo DNF', color: AppColors.warning),
+        TagChip('Riesgo DNF', color: AppColors.warning),
     ];
 
     final isExpanded = _expandedId == pred.assetId;
@@ -302,10 +317,14 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(catalog[entry.key]?.name ?? prettifyId(entry.key),
-                      style: AppText.body(12, color: AppColors.textSecondary)),
-                  Text('${entry.value.toStringAsFixed(1)} pts',
-                      style: AppText.body(12, weight: FontWeight.w700)),
+                  Text(
+                    catalog[entry.key]?.name ?? prettifyId(entry.key),
+                    style: AppText.body(12, color: AppColors.textSecondary),
+                  ),
+                  Text(
+                    '${entry.value.toStringAsFixed(1)} pts',
+                    style: AppText.body(12, weight: FontWeight.w700),
+                  ),
                 ],
               ),
             ),
@@ -321,7 +340,9 @@ class _PredictionsScreenState extends ConsumerState<PredictionsScreen> {
         for (final key in kWeightKeys)
           if (pred.breakdown.containsKey(key))
             FeatureBarRow(
-                label: kWeightLabels[key] ?? key, value: pred.breakdown[key]!),
+              label: kWeightLabels[key] ?? key,
+              value: pred.breakdown[key]!,
+            ),
         const SizedBox(height: 6),
         Row(
           children: [

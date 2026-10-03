@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_providers.dart';
+import '../../core/app_locale.dart';
 import '../../core/theme.dart';
 import '../widgets/ref_widgets.dart';
+import '../widgets/lazy_tab_stack.dart';
 import 'home/home_screen.dart';
 import 'circuit/circuit_screen.dart';
 import 'fantasy/fantasy_screen.dart';
@@ -25,11 +27,11 @@ class _RootShellState extends ConsumerState<RootShell> {
   int _index = 0;
 
   static const _tabs = [
-    ('RESUMEN', Icons.speed_rounded),
-    ('ANÁLISIS', Icons.query_stats_rounded),
-    ('FANTASY', Icons.auto_awesome_rounded),
-    ('CIRCUITO', Icons.route_rounded),
-    ('LIGA', Icons.emoji_events_rounded),
+    ('summary', Icons.speed_rounded),
+    ('analysis', Icons.query_stats_rounded),
+    ('fantasy', Icons.auto_awesome_rounded),
+    ('circuit', Icons.route_rounded),
+    ('league', Icons.emoji_events_rounded),
   ];
 
   static const _screens = [
@@ -42,7 +44,9 @@ class _RootShellState extends ConsumerState<RootShell> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     final selectedRace = ref.watch(selectedRaceProvider).valueOrNull;
+    final strings = AppStrings(ref.watch(appLocaleProvider));
 
     return Scaffold(
       body: AppBackground(
@@ -53,53 +57,69 @@ class _RootShellState extends ConsumerState<RootShell> {
               // .app-header
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: AppColors.border1)),
                 ),
-                child: Row(
-                  children: [
-                    Text(
-                      'Fantasy Companion',
-                      style: AppText.syne(18, color: AppColors.lime).copyWith(
-                        shadows: [
-                          Shadow(
-                            color: AppColors.lime.withValues(alpha: 0.45),
-                            blurRadius: 12,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Text('F1', style: AppText.mono(10)),
-                    const Spacer(),
-                    if (selectedRace != null)
-                      Flexible(
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Row(
+                    children: [
+                      Expanded(
                         child: Text(
-                          selectedRace.raceName.toUpperCase(),
+                          'GP Fantasy Advisor',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              AppText.mono(9, color: AppColors.textSecondary),
+                          style: AppText.syne(18, color: AppColors.lime)
+                              .copyWith(
+                                shadows: [
+                                  Shadow(
+                                    color: AppColors.lime.withValues(
+                                      alpha: 0.45,
+                                    ),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
                         ),
                       ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      tooltip: 'Ajustes',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const SettingsScreen()),
+                      const SizedBox(width: 9),
+                      Text('F1', style: AppText.mono(10)),
+                      if (selectedRace != null &&
+                          constraints.maxWidth >= 600) ...[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            selectedRace.raceName.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.mono(
+                              9,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 4),
+                      IconButton(
+                        tooltip: strings.t('settings'),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        ),
+                        icon: Icon(
+                          Icons.settings_rounded,
+                          size: 19,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                      icon: const Icon(
-                        Icons.settings_rounded,
-                        size: 19,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              Expanded(child: IndexedStack(index: _index, children: _screens)),
+              Expanded(
+                child: LazyTabStack(index: _index, children: _screens),
+              ),
             ],
           ),
         ),
@@ -107,7 +127,7 @@ class _RootShellState extends ConsumerState<RootShell> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppColors.background.withValues(alpha: 0.92),
-          border: const Border(top: BorderSide(color: AppColors.border1)),
+          border: Border(top: BorderSide(color: AppColors.border1)),
         ),
         child: SafeArea(
           top: false,
@@ -135,8 +155,9 @@ class _RootShellState extends ConsumerState<RootShell> {
                               boxShadow: i == _index
                                   ? [
                                       BoxShadow(
-                                        color: AppColors.lime
-                                            .withValues(alpha: 0.65),
+                                        color: AppColors.lime.withValues(
+                                          alpha: 0.65,
+                                        ),
                                         blurRadius: 12,
                                       ),
                                     ]
@@ -152,7 +173,7 @@ class _RootShellState extends ConsumerState<RootShell> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            _tabs[i].$1,
+                            strings.t(_tabs[i].$1),
                             style: AppText.mono(
                               8,
                               color: i == _index

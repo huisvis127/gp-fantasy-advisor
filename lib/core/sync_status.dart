@@ -18,7 +18,8 @@ class SyncState {
   final SyncReport? report;
   final String? fatalError;
 
-  bool get hasWarnings => (report?.errors.isNotEmpty ?? false) || fatalError != null;
+  bool get hasWarnings =>
+      (report?.errors.isNotEmpty ?? false) || fatalError != null;
 
   SyncState copyWith({
     bool? syncing,
@@ -59,4 +60,5 @@ class SyncController extends Notifier<SyncState> {
   }
 }
 
-final syncControllerProvider = NotifierProvider<SyncController, SyncState>(SyncController.new);
+final syncControllerProvider =
+    NotifierProvider<SyncController, SyncState>(SyncController.new);

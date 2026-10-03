@@ -1,0 +1,5 @@
+# Copia este archivo como key.properties y conserva la clave fuera de Git.
+storePassword=CAMBIAR
+keyPassword=CAMBIAR
+keyAlias=upload
+storeFile=app/upload-keystore.jks

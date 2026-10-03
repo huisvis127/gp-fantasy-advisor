@@ -15,6 +15,7 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    Theme.of(context);
     final sync = ref.watch(syncControllerProvider);
     final seasons = ref.watch(availableSeasonsProvider);
     final selectedSeason = ref.watch(selectedSeasonProvider);
@@ -71,9 +72,9 @@ class HomeScreen extends ConsumerWidget {
                         value: raceAsync.valueOrNull,
                         items: racesAsync.valueOrNull ?? const <Race>[],
                         itemLabel: (r) => 'R${r.round} · ${r.raceName}',
-                        onChanged: (r) => ref
-                            .read(selectedRoundProvider.notifier)
-                            .state = r.round,
+                        onChanged: (r) =>
+                            ref.read(selectedRoundProvider.notifier).state =
+                                r.round,
                       ),
                     ),
                   ],
@@ -83,13 +84,15 @@ class HomeScreen extends ConsumerWidget {
                   data: (race) => race == null
                       ? Text(
                           'Sin calendario todavia. Desliza para sincronizar.',
-                          style:
-                              AppText.body(12, color: AppColors.textTertiary),
+                          style: AppText.body(
+                            12,
+                            color: AppColors.textTertiary,
+                          ),
                         )
                       : _RaceInfo(race: race),
-                  loading: () => const Center(
+                  loading: () => Center(
                     child: Padding(
-                      padding: EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(12),
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: AppColors.lime,
@@ -146,10 +149,10 @@ class HomeScreen extends ConsumerWidget {
                 ..sort((a, b) => b.winProbability.compareTo(a.winProbability));
               final byValue = [...preds]
                 ..sort((a, b) => b.pointsPerValue.compareTo(a.pointsPerValue));
-              final expensive = preds
-                  .where((p) => p.priceMillions >= 15)
-                  .toList()
-                ..sort((a, b) => a.pointsPerValue.compareTo(b.pointsPerValue));
+              final expensive =
+                  preds.where((p) => p.priceMillions >= 15).toList()..sort(
+                    (a, b) => a.pointsPerValue.compareTo(b.pointsPerValue),
+                  );
 
               final pick = byPoints.first;
               final captain = byWin.first;
@@ -223,11 +226,13 @@ class HomeScreen extends ConsumerWidget {
                 ],
               );
             },
-            loading: () => const Center(
+            loading: () => Center(
               child: Padding(
-                padding: EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20),
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.lime),
+                  strokeWidth: 2,
+                  color: AppColors.lime,
+                ),
               ),
             ),
             error: (_, __) => StatusBanner(
@@ -249,8 +254,11 @@ class _RaceInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateText =
-        DateFormat("EEEE d 'de' MMMM · HH:mm", 'es').format(race.date);
+    Theme.of(context);
+    final dateText = DateFormat(
+      "EEEE d 'de' MMMM · HH:mm",
+      'es',
+    ).format(race.date);
     final isPast = race.date.isBefore(DateTime.now());
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,8 +270,10 @@ class _RaceInfo extends StatelessWidget {
           style: AppText.body(12.5, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 4),
-        Text(dateText,
-            style: AppText.body(11.5, color: AppColors.textTertiary)),
+        Text(
+          dateText,
+          style: AppText.body(11.5, color: AppColors.textTertiary),
+        ),
         const SizedBox(height: 12),
         if (!isPast) CountdownWidget(targetDate: race.date),
         Wrap(
@@ -271,10 +281,9 @@ class _RaceInfo extends StatelessWidget {
           runSpacing: 6,
           children: [
             if (race.hasSprint)
-              const TagChip('Fin de semana sprint', color: AppColors.orange),
+              TagChip('Fin de semana sprint', color: AppColors.orange),
             if (isPast)
-              const TagChip('GP ya disputado · modo analisis',
-                  color: AppColors.cyan),
+              TagChip('GP ya disputado · modo analisis', color: AppColors.cyan),
           ],
         ),
       ],
@@ -290,6 +299,7 @@ class _SyncBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     if (sync.syncing) {
       return const StatusBanner(
         message: 'Sincronizando calendario, resultados y precios...',
